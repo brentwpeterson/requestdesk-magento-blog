@@ -12,6 +12,9 @@
         "magento/module-catalog": "^104.0",
         "magento/module-cms": "^104.0"
     },
+    "suggest": {
+        "requestdesk/magento-aeo": "Adds product AEO scoring and product FAQ schema from the shared Q&A library. Recommended companion; disable or replace RequestDesk_Aeo freely — the blog does not depend on it."
+    },
     "autoload": {
         "files": [
             "registration.php"
