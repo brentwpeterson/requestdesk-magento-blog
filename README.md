@@ -21,16 +21,43 @@ Unlike Shopify or WordPress, **Magento has no built-in blog functionality**. Thi
 ## Features
 
 ### Blog Management
-- Full CRUD for blog posts via admin panel
-- Category management with hierarchical support
+- Full CRUD for blog posts via admin panel (Content → RequestDesk Blog → Posts)
 - SEO fields: meta title, meta description, URL keys
-- Featured images and media support
-- Draft/Published status workflow
+- Featured images, plus a proper Open Graph head block (`og:title/description/image`)
+- Draft/Published status workflow via an Active toggle
 - Store-scoped content
+
+### Taxonomy & authorship (reuse-first)
+This extension reuses native Magento constructs instead of inventing parallel ones:
+- **Categories** reuse **native Magento categories** — assign posts to real catalog
+  categories on the post form; a post links back to its category page and the blog
+  can be filtered by category.
+- **Authors** reuse **native admin users**, extended by a public **Author Profile**
+  (display name, bio, avatar, link). Managed at Content → RequestDesk Blog → Authors;
+  bylines, author pages, and schema all resolve through it, with a free-text fallback.
+- **Tags** are a blog-owned taxonomy with their own admin grid
+  (Content → RequestDesk Blog → Tags), tag archive pages, and schema keywords.
+
+### Comments
+- Guest comment form with form-key CSRF protection and a honeypot spam guard
+- Moderation grid (pending / approved / spam) with mass Approve / Spam / Delete
+- Approved-only display; `commentCount` and `comment[]` added to post schema
+
+### Answer Engine Optimization (AEO) by default
+- Every post emits **`BlogPosting`** JSON-LD
+- Posts with attached Q&A also emit **`FAQPage`** JSON-LD and render a visible FAQ
+- Q&A is powered by the shared **[RequestDesk_Qa](https://github.com/brentwpeterson/requestdesk-magento-qa)**
+  library, so the same pair can appear on a post *and* a product
+
+### Blocks / widget
+- Native Magento widget: recent posts, by-category, or **related-to-current-product**
+  (an AEO cross-link that surfaces posts sharing the product's categories on the PDP)
 
 ### RequestDesk Integration
 - **Product Export**: Sync your Magento product catalog to RequestDesk's knowledge base
-- **Post Import**: Pull AI-generated blog posts from RequestDesk
+- **Post Import**: Pull AI-generated blog posts from RequestDesk. Import matches an
+  incoming author name to a native admin user (else keeps the free-text byline) and
+  auto-creates + links tags.
 - **Sync Status Tracking**: Monitor which posts are synced, pending, or failed
 - **Automated Import**: Hourly cron job for automatic post imports
 - **API Key Authentication**: Secure communication via `X-RequestDesk-Key` header
@@ -45,24 +72,32 @@ Unlike Shopify or WordPress, **Magento has no built-in blog functionality**. Thi
 Complete API for headless/PWA implementations and RequestDesk communication.
 
 ### Frontend Templates
-- Responsive blog listing page
-- Individual post view
-- Category filtering
-- **Hyvä Theme Support**: Optimized templates for Hyvä-based stores
+- Responsive blog listing page with its own route (`/blog`)
+- Individual post view, author pages, tag archives, category-filtered listing
+- **Hyvä Theme Support**: templates for Hyvä-based stores
 
 ## Requirements
 
 - Magento Open Source or Adobe Commerce 2.4.7+
 - PHP 8.1 or later
-- RequestDesk account with API key
+- **[`requestdesk/magento-qa`](https://github.com/brentwpeterson/requestdesk-magento-qa)** — required. The shared Q&A library that powers on-post FAQ + FAQPage schema. Composer pulls it automatically.
+- RequestDesk account with API key (only needed for the RequestDesk sync/import features)
+
+### Optional companion
+
+- **[`requestdesk/magento-aeo`](https://github.com/brentwpeterson/requestdesk-magento-aeo)** — recommended, not required. Adds product AEO scoring and product FAQ schema from the same shared Q&A library. The blog has no code dependency on it, so you can disable `RequestDesk_Aeo` or swap in your own AEO module and the blog keeps working. Declared via composer `suggest`.
 
 ## Installation
 
 ### Via Composer (Recommended)
 
+Composer resolves the required `requestdesk/magento-qa` dependency for you.
+
 ```bash
 composer require requestdesk/magento-blog
-bin/magento module:enable RequestDesk_Blog
+# add the optional AEO companion too, if you want it:
+# composer require requestdesk/magento-aeo
+bin/magento module:enable RequestDesk_Qa RequestDesk_Blog
 bin/magento setup:upgrade
 bin/magento setup:di:compile
 bin/magento cache:clean
@@ -70,16 +105,16 @@ bin/magento cache:clean
 
 ### Manual Installation
 
-1. Create the directory structure:
-```bash
-mkdir -p app/code/RequestDesk/Blog
-```
+Install the QA library **first** (blog depends on it):
 
-2. Copy the module files to `app/code/RequestDesk/Blog/`
+1. Copy the modules into `app/code/RequestDesk/`:
+   - `RequestDesk/Qa`  (required)
+   - `RequestDesk/Blog`
+   - `RequestDesk/Aeo`  (optional)
 
-3. Enable and install:
+2. Enable and install (QA must be enabled before or with Blog):
 ```bash
-bin/magento module:enable RequestDesk_Blog
+bin/magento module:enable RequestDesk_Qa RequestDesk_Blog
 bin/magento setup:upgrade
 bin/magento setup:di:compile
 bin/magento cache:clean
@@ -150,6 +185,27 @@ Export products to RequestDesk:
 - Sync all products or limited batches
 - View sync statistics
 
+### Content > RequestDesk Blog > Tags
+
+Create, edit, and delete blog tags (auto-generated URL keys). Tags are assigned
+to posts on the post form and drive tag archive pages and schema keywords.
+
+### Content > RequestDesk Blog > Authors
+
+Manage public author profiles that extend native admin users (display name, bio,
+avatar, link). A post's author is assigned on the post form; the profile enriches
+the byline, author page, and schema.
+
+### Content > RequestDesk Blog > Comments
+
+Moderate reader comments: filter by status, and mass Approve / Spam / Delete.
+Only approved comments render on the frontend.
+
+### Content > Q&A Library > Q&A Pairs
+
+Provided by the required `RequestDesk_Qa` module. Create reusable Q&A pairs, then
+attach them to posts (and products) to drive on-page FAQ and `FAQPage` schema.
+
 ## REST API Endpoints
 
 ### Blog Post Management (JWT Auth)
@@ -208,7 +264,8 @@ Main blog posts table with RequestDesk sync tracking.
 | `meta_description` | text | SEO meta description |
 | `featured_image` | varchar(255) | Featured image path |
 | `status` | smallint | 0=Draft, 1=Published |
-| `author` | varchar(255) | Author name |
+| `author` | varchar(255) | Author name (free-text fallback byline) |
+| `author_id` | int | Native `admin_user.user_id` (nullable, `SET NULL`) |
 | `store_id` | int | Magento store ID |
 | `requestdesk_post_id` | varchar(50) | RequestDesk post ID |
 | `requestdesk_sync_status` | varchar(20) | synced/pending/failed |
@@ -216,23 +273,36 @@ Main blog posts table with RequestDesk sync tracking.
 | `created_at` | timestamp | Creation date |
 | `updated_at` | timestamp | Last update date |
 
-### `requestdesk_blog_category`
+### `requestdesk_blog_author_profile`
 
-Blog categories with store scoping.
+Public profile that extends a native admin user (keyed by `admin_user_id`).
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `category_id` | int | Primary key |
-| `name` | varchar(255) | Category name |
-| `url_key` | varchar(255) | SEO-friendly URL slug |
-| `description` | text | Category description |
-| `status` | smallint | 0=Disabled, 1=Enabled |
-| `sort_order` | int | Display order |
-| `store_id` | int | Magento store ID |
+| `admin_user_id` | int | Primary key, FK to `admin_user.user_id` (`CASCADE`) |
+| `display_name` | varchar(255) | Public byline name (overrides admin name) |
+| `bio` | text | Author bio |
+| `avatar` | varchar(255) | Avatar image path |
+| `url` | varchar(255) | Author link (site / social) |
 
 ### `requestdesk_blog_post_category`
 
-Many-to-many relationship between posts and categories.
+Links posts to **native Magento categories** — `category_id` is an FK to
+`catalog_category_entity.entity_id` (`CASCADE`). There is no separate blog
+category table; the invented taxonomy was removed in favor of catalog reuse.
+
+### `requestdesk_blog_tag` / `requestdesk_blog_post_tag`
+
+Blog-owned tags (`tag_id`, `name`, `url_key`) and their many-to-many link to
+posts. Deleting a tag cascades its post links.
+
+### `requestdesk_blog_comment`
+
+Reader comments: `comment_id`, `post_id` (FK, `CASCADE`), `author_name`,
+`author_email`, `content`, `status` (pending/approved/spam), timestamps.
+
+> Q&A pairs live in the shared `RequestDesk_Qa` module
+> (`requestdesk_qa_pair` + polymorphic `requestdesk_qa_link`), not in this schema.
 
 ### `requestdesk_blog_product`
 
@@ -457,6 +527,25 @@ Answer Engine Optimization (AEO) is the practice of structuring content so AI sy
 - Content not optimized for AI will become invisible
 
 ## Changelog
+
+### 1.2.0 (2026-07-17)
+- **Own frontend route** (`/blog`) with Luma templates: list, post, author, tag,
+  and category-filtered views
+- **Reuse-first taxonomy**: categories now reuse native Magento categories;
+  authors reuse native admin users with a public Author Profile extension
+- **Tags**: blog-owned entity with admin grid, archive pages, and schema keywords
+- **Comments**: guest form (form-key + honeypot), moderation grid, schema
+- **AEO by default**: `BlogPosting` on every post, `FAQPage` + visible FAQ for
+  posts with Q&A, powered by the shared `RequestDesk_Qa` library (new required
+  dependency)
+- **Widget**: recent / by-category / related-to-current-product cross-link
+- **Open Graph** head block (`og:title/description/image`)
+- **Import**: matches incoming author to a native admin user (else free-text);
+  auto-creates and links tags
+- **Fixes**: Active toggle now saves to and displays from the `status` column
+  correctly in both directions; deleting a post cleans up its Q&A links
+- **Optional companion**: `requestdesk/magento-aeo` declared via composer
+  `suggest` (recommended, not required)
 
 ### 1.1.0 (2025-12-29)
 - **Package renamed** from `requestdesk/module-blog` to `requestdesk/magento-blog`

@@ -3,7 +3,7 @@
     "description": "RequestDesk Blog Extension - Native blog functionality with RequestDesk API integration for Magento 2",
     "type": "magento2-module",
     "license": "OSL-3.0",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "require": {
         "php": "^8.1",
         "requestdesk/magento-qa": "^0.1",
