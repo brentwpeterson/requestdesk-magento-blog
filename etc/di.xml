@@ -109,4 +109,13 @@
         <plugin name="requestdesk_blog_post_qa_cleanup" type="RequestDesk\Blog\Plugin\PostRepositoryQaCleanup"/>
     </type>
 
+    <!-- Console commands -->
+    <type name="Magento\Framework\Console\CommandListInterface">
+        <arguments>
+            <argument name="commands" xsi:type="array">
+                <item name="requestdesk_blog_migrate_amasty" xsi:type="object">RequestDesk\Blog\Console\Command\MigrateAmastyCommand</item>
+            </argument>
+        </arguments>
+    </type>
+
 </config>
