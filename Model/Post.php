@@ -71,6 +71,36 @@ class Post extends AbstractModel implements PostInterface
     /**
      * @inheritdoc
      */
+    public function getAuthorId(): ?int
+    {
+        $value = $this->getData(self::AUTHOR_ID);
+        return $value === null ? null : (int) $value;
+    }
+
+    public function setAuthorId(?int $authorId): PostInterface
+    {
+        return $this->setData(self::AUTHOR_ID, $authorId);
+    }
+
+    /**
+     * The "Active" toggle maps to the status column (1 = published, 0 = draft).
+     *
+     * @return int
+     */
+    public function getIsActive(): int
+    {
+        return (int) $this->getData(self::STATUS);
+    }
+
+    /**
+     * @param int|bool $isActive
+     * @return PostInterface
+     */
+    public function setIsActive($isActive): PostInterface
+    {
+        return $this->setData(self::STATUS, (int) $isActive);
+    }
+
     public function getContent(): ?string
     {
         return $this->getData(self::CONTENT);

@@ -19,7 +19,10 @@ namespace RequestDesk\Blog\Controller\Adminhtml\Post;
 use Magento\Backend\App\Action;
 use Magento\Backend\App\Action\Context;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
+use RequestDesk\Blog\Model\PostCategoryResolver;
 use RequestDesk\Blog\Model\PostFactory;
+use RequestDesk\Blog\Model\TagResolver;
+use RequestDesk\Qa\Model\QaLinkResolver;
 use Magento\Framework\Exception\LocalizedException;
 
 class Save extends Action
@@ -44,10 +47,21 @@ class Save extends Action
      * @param PostRepositoryInterface $postRepository
      * @param PostFactory $postFactory
      */
+    /**
+     * @param Context $context
+     * @param PostRepositoryInterface $postRepository
+     * @param PostFactory $postFactory
+     * @param PostCategoryResolver $categoryResolver
+     * @param TagResolver $tagResolver
+     * @param QaLinkResolver $qaLinkResolver
+     */
     public function __construct(
         Context $context,
         PostRepositoryInterface $postRepository,
-        PostFactory $postFactory
+        PostFactory $postFactory,
+        private readonly PostCategoryResolver $categoryResolver,
+        private readonly TagResolver $tagResolver,
+        private readonly QaLinkResolver $qaLinkResolver
     ) {
         parent::__construct($context);
         $this->postRepository = $postRepository;
@@ -83,9 +97,20 @@ class Save extends Action
             $post->setMetaTitle($data['meta_title'] ?? '');
             $post->setMetaDescription($data['meta_description'] ?? '');
             $post->setAuthor($data['author'] ?? '');
+            $post->setAuthorId(!empty($data['author_id']) ? (int)$data['author_id'] : null);
             $post->setIsActive(isset($data['is_active']) ? (int)$data['is_active'] : 0);
 
             $this->postRepository->save($post);
+
+            $savedId = (int)$post->getId();
+            $this->categoryResolver->syncForPost($savedId, (array)($data['category_ids'] ?? []));
+            $this->tagResolver->syncForPost($savedId, (array)($data['tag_ids'] ?? []));
+            $this->qaLinkResolver->syncForEntity(
+                QaLinkResolver::ENTITY_BLOG_POST,
+                $savedId,
+                (array)($data['qa_ids'] ?? [])
+            );
+
             $this->messageManager->addSuccessMessage(__('The post has been saved.'));
 
             if ($this->getRequest()->getParam('back')) {

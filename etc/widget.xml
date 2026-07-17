@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+/**
+ * RequestDesk Blog - Widget Declaration (native Magento widget)
+ *
+ * @category  RequestDesk
+ * @package   RequestDesk_Blog
+ */
+-->
+<widgets xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Widget:etc/widget.xsd">
+    <widget id="requestdesk_blog_posts"
+            class="RequestDesk\Blog\Block\Widget\PostsWidget"
+            is_email_compatible="false"
+            placeholder_image="RequestDesk_Blog::images/widget.png">
+        <label translate="true">RequestDesk Blog Posts</label>
+        <description translate="true">Show recent, category, or product-related blog posts anywhere widgets are allowed.</description>
+        <parameters>
+            <parameter name="title" xsi:type="text" visible="true" sort_order="10">
+                <label translate="true">Heading</label>
+            </parameter>
+            <parameter name="mode" xsi:type="select" visible="true" required="true" sort_order="20">
+                <label translate="true">Mode</label>
+                <options>
+                    <option name="recent" value="recent" selected="true">
+                        <label translate="true">Recent Posts</label>
+                    </option>
+                    <option name="category" value="category">
+                        <label translate="true">By Category</label>
+                    </option>
+                    <option name="related" value="related">
+                        <label translate="true">Related to Current Product (PDP)</label>
+                    </option>
+                </options>
+            </parameter>
+            <parameter name="posts_count" xsi:type="text" visible="true" sort_order="30">
+                <label translate="true">Number of Posts</label>
+                <value>3</value>
+            </parameter>
+            <parameter name="category_id" xsi:type="block" visible="true" sort_order="40">
+                <label translate="true">Category (for "By Category" mode)</label>
+                <block class="Magento\Catalog\Block\Adminhtml\Category\Widget\Chooser">
+                    <data>
+                        <item name="button" xsi:type="array">
+                            <item name="open" xsi:type="string" translate="true">Choose Category</item>
+                        </item>
+                    </data>
+                </block>
+            </parameter>
+        </parameters>
+    </widget>
+</widgets>

@@ -1,0 +1,48 @@
+<?php
+/**
+ * RequestDesk Blog - Post List Template (default / Luma)
+ *
+ * @var \RequestDesk\Blog\Block\PostList $block
+ * @var \Magento\Framework\Escaper $escaper
+ */
+
+$posts = $block->getPosts();
+?>
+<div class="requestdesk-blog-list">
+    <h1 class="page-title"><?= $escaper->escapeHtml(__('Blog')) ?></h1>
+
+    <?php if (empty($posts)): ?>
+        <p><?= $escaper->escapeHtml(__('No posts yet.')) ?></p>
+    <?php else: ?>
+        <ul class="rd-blog-grid" style="list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:24px;">
+            <?php foreach ($posts as $post): ?>
+                <?php
+                $url = $block->getPostUrl($post);
+                $img = $block->getImageUrl($post->getFeaturedImage());
+                ?>
+                <li class="rd-blog-card" style="border:1px solid #e5e5e5;border-radius:6px;overflow:hidden;">
+                    <?php if ($img !== ''): ?>
+                        <a href="<?= $escaper->escapeUrl($url) ?>">
+                            <img src="<?= $escaper->escapeUrl($img) ?>"
+                                 alt="<?= $escaper->escapeHtmlAttr($post->getTitle()) ?>"
+                                 style="width:100%;height:170px;object-fit:cover;display:block;" />
+                        </a>
+                    <?php endif; ?>
+                    <div style="padding:16px;">
+                        <h2 style="font-size:18px;margin:0 0 8px;">
+                            <a href="<?= $escaper->escapeUrl($url) ?>"><?= $escaper->escapeHtml($post->getTitle()) ?></a>
+                        </h2>
+                        <p style="color:#777;font-size:13px;margin:0 0 8px;">
+                            <?php $authorName = $block->getAuthorName($post); ?>
+                            <?php if ($authorName !== ''): ?>
+                                <?= $escaper->escapeHtml($authorName) ?> &middot;
+                            <?php endif; ?>
+                            <?= $escaper->escapeHtml($post->getCreatedAt()) ?>
+                        </p>
+                        <p style="margin:0;"><?= $escaper->escapeHtml($block->getExcerpt($post)) ?></p>
+                    </div>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    <?php endif; ?>
+</div>

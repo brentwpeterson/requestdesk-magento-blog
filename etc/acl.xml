@@ -20,6 +20,9 @@
                         <resource id="RequestDesk_Blog::manage" title="Manage Blog Posts" sortOrder="20"/>
                         <resource id="RequestDesk_Blog::sync" title="Sync Products to RequestDesk" sortOrder="25"/>
                         <resource id="RequestDesk_Blog::import" title="Import Posts from RequestDesk" sortOrder="26"/>
+                        <resource id="RequestDesk_Blog::comments" title="Manage Comments" sortOrder="27"/>
+                        <resource id="RequestDesk_Blog::tags" title="Manage Tags" sortOrder="28"/>
+                        <resource id="RequestDesk_Blog::authors" title="Manage Author Profiles" sortOrder="29"/>
                         <resource id="RequestDesk_Blog::config" title="Configuration" sortOrder="30"/>
                     </resource>
                 </resource>

@@ -1,0 +1,117 @@
+<?php
+/**
+ * RequestDesk Blog - Post View Template (default / Luma)
+ *
+ * @var \RequestDesk\Blog\Block\PostView $block
+ * @var \Magento\Framework\Escaper $escaper
+ */
+
+$post = $block->getPost();
+/** @var \RequestDesk\Blog\ViewModel\BlogSchema|null $schema */
+$schema = $block->getData('schema_view_model');
+$jsonLd = ($schema && $post) ? $schema->getJsonLd($post) : '';
+$faqPairs = ($schema && $post) ? $schema->getFaqPairs($post) : [];
+?>
+<?php if ($post): ?>
+    <?php if ($jsonLd !== ''): ?>
+        <script type="application/ld+json"><?= /* @noEscape */ $jsonLd ?></script>
+    <?php endif; ?>
+
+    <?php $img = $block->getFeaturedImageUrl(); ?>
+    <article class="requestdesk-blog-post" style="max-width:820px;margin:0 auto;">
+        <p style="margin:0 0 16px;">
+            <a href="<?= $escaper->escapeUrl($block->getBackUrl()) ?>">&larr; <?= $escaper->escapeHtml(__('Back to Blog')) ?></a>
+        </p>
+
+        <h1 class="page-title" style="margin-bottom:8px;"><?= $escaper->escapeHtml($post->getTitle()) ?></h1>
+
+        <?php $author = $block->getAuthorData(); ?>
+        <p style="color:#777;font-size:14px;margin:0 0 12px;">
+            <?php if ($author): ?>
+                <?php if ($author['page_url'] !== ''): ?>
+                    <a href="<?= $escaper->escapeUrl($author['page_url']) ?>"><?= $escaper->escapeHtml($author['name']) ?></a>
+                <?php else: ?>
+                    <?= $escaper->escapeHtml($author['name']) ?>
+                <?php endif; ?>
+                &middot;
+            <?php endif; ?>
+            <?= $escaper->escapeHtml($post->getCreatedAt()) ?>
+        </p>
+
+        <?php $categories = $block->getCategories(); ?>
+        <?php if (!empty($categories)): ?>
+            <p style="font-size:13px;margin:0 0 20px;">
+                <?= $escaper->escapeHtml(__('In:')) ?>
+                <?php foreach ($categories as $i => $cat): ?><?= $i ? ', ' : ' ' ?><a href="<?= $escaper->escapeUrl($cat['url']) ?>"><?= $escaper->escapeHtml($cat['name']) ?></a><?php endforeach; ?>
+            </p>
+        <?php endif; ?>
+
+        <?php if ($img !== ''): ?>
+            <img src="<?= $escaper->escapeUrl($img) ?>"
+                 alt="<?= $escaper->escapeHtmlAttr($post->getTitle()) ?>"
+                 style="width:100%;height:auto;border-radius:6px;margin-bottom:24px;" />
+        <?php endif; ?>
+
+        <div class="rd-blog-content">
+            <?= /* @noEscape */ $post->getContent() ?>
+        </div>
+
+        <?php $tags = $block->getTags(); ?>
+        <?php if (!empty($tags)): ?>
+            <p class="rd-blog-tags" style="margin:20px 0;font-size:13px;">
+                <?= $escaper->escapeHtml(__('Tags:')) ?>
+                <?php foreach ($tags as $i => $tag): ?><?= $i ? ', ' : ' ' ?><a href="<?= $escaper->escapeUrl($tag['url']) ?>"><?= $escaper->escapeHtml($tag['name']) ?></a><?php endforeach; ?>
+            </p>
+        <?php endif; ?>
+
+        <?php if (!empty($faqPairs)): ?>
+            <section class="rd-blog-faq" style="margin-top:36px;border-top:1px solid #e5e5e5;padding-top:24px;">
+                <h2><?= $escaper->escapeHtml(__('Frequently Asked Questions')) ?></h2>
+                <?php foreach ($faqPairs as $pair): ?>
+                    <div class="rd-blog-faq-item" style="margin-bottom:18px;">
+                        <h3 style="margin:0 0 6px;font-size:17px;"><?= $escaper->escapeHtml($pair['question']) ?></h3>
+                        <p style="margin:0;"><?= $escaper->escapeHtml($pair['answer']) ?></p>
+                    </div>
+                <?php endforeach; ?>
+            </section>
+        <?php endif; ?>
+
+        <?php $comments = $block->getComments(); ?>
+        <section class="rd-blog-comments" style="margin-top:36px;border-top:1px solid #e5e5e5;padding-top:24px;">
+            <h2><?= $escaper->escapeHtml(__('Comments')) ?></h2>
+            <?php if (empty($comments)): ?>
+                <p><?= $escaper->escapeHtml(__('No comments yet. Be the first.')) ?></p>
+            <?php else: ?>
+                <?php foreach ($comments as $comment): ?>
+                    <div class="rd-blog-comment" style="margin-bottom:16px;">
+                        <p style="margin:0;font-weight:600;"><?= $escaper->escapeHtml($comment->getAuthorName()) ?></p>
+                        <p style="margin:2px 0 0;color:#555;"><?= /* @noEscape */ nl2br($escaper->escapeHtml($comment->getContent())) ?></p>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+
+            <h3 style="margin-top:24px;"><?= $escaper->escapeHtml(__('Leave a Comment')) ?></h3>
+            <form action="<?= $escaper->escapeUrl($block->getCommentActionUrl()) ?>" method="post" style="max-width:520px;">
+                <input type="hidden" name="form_key" value="<?= $escaper->escapeHtmlAttr($block->getFormKey()) ?>" />
+                <input type="hidden" name="post_id" value="<?= (int) $post->getPostId() ?>" />
+                <div style="position:absolute;left:-9999px;" aria-hidden="true">
+                    <label><?= $escaper->escapeHtml(__('Website')) ?>
+                        <input type="text" name="website" tabindex="-1" autocomplete="off" />
+                    </label>
+                </div>
+                <p style="margin:0 0 10px;">
+                    <input type="text" name="author_name" placeholder="<?= $escaper->escapeHtmlAttr(__('Your name')) ?>" required style="width:100%;padding:8px;" />
+                </p>
+                <p style="margin:0 0 10px;">
+                    <input type="email" name="author_email" placeholder="<?= $escaper->escapeHtmlAttr(__('Your email (optional)')) ?>" style="width:100%;padding:8px;" />
+                </p>
+                <p style="margin:0 0 10px;">
+                    <textarea name="content" rows="4" placeholder="<?= $escaper->escapeHtmlAttr(__('Your comment')) ?>" required style="width:100%;padding:8px;"></textarea>
+                </p>
+                <button type="submit" class="action primary"><?= $escaper->escapeHtml(__('Post Comment')) ?></button>
+            </form>
+        </section>
+    </article>
+<?php else: ?>
+    <p><?= $escaper->escapeHtml(__('Post not found.')) ?></p>
+<?php endif; ?>

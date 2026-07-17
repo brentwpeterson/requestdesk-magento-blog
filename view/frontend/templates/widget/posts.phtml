@@ -1,0 +1,39 @@
+<?php
+/**
+ * RequestDesk Blog - Posts Widget Template
+ *
+ * @var \RequestDesk\Blog\Block\Widget\PostsWidget $block
+ * @var \Magento\Framework\Escaper $escaper
+ */
+
+$posts = $block->getPosts();
+$title = $block->getTitle();
+?>
+<?php if (!empty($posts)): ?>
+    <div class="requestdesk-blog-widget" style="margin:24px 0;">
+        <?php if ($title !== ''): ?>
+            <h3 style="margin:0 0 14px;"><?= $escaper->escapeHtml($title) ?></h3>
+        <?php endif; ?>
+
+        <ul style="list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;">
+            <?php foreach ($posts as $post): ?>
+                <?php $url = $block->getPostUrl($post); $img = $block->getImageUrl($post); ?>
+                <li style="border:1px solid #e5e5e5;border-radius:6px;overflow:hidden;">
+                    <?php if ($img !== ''): ?>
+                        <a href="<?= $escaper->escapeUrl($url) ?>">
+                            <img src="<?= $escaper->escapeUrl($img) ?>"
+                                 alt="<?= $escaper->escapeHtmlAttr($post->getTitle()) ?>"
+                                 style="width:100%;height:110px;object-fit:cover;display:block;" />
+                        </a>
+                    <?php endif; ?>
+                    <div style="padding:10px;">
+                        <a href="<?= $escaper->escapeUrl($url) ?>" style="font-weight:600;display:block;margin-bottom:4px;">
+                            <?= $escaper->escapeHtml($post->getTitle()) ?>
+                        </a>
+                        <span style="color:#777;font-size:12px;"><?= $escaper->escapeHtml($block->getExcerpt($post)) ?></span>
+                    </div>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+    </div>
+<?php endif; ?>

@@ -1,0 +1,48 @@
+<?php
+/**
+ * RequestDesk Blog - Author Page Template (default / Luma)
+ *
+ * @var \RequestDesk\Blog\Block\AuthorView $block
+ * @var \Magento\Framework\Escaper $escaper
+ */
+
+$author = $block->getAuthor();
+$posts = $block->getPosts();
+?>
+<?php if ($author): ?>
+    <div class="requestdesk-blog-author" style="max-width:820px;margin:0 auto;">
+        <header style="display:flex;align-items:center;gap:16px;margin-bottom:24px;">
+            <?php if ($author['avatar'] !== ''): ?>
+                <img src="<?= $escaper->escapeUrl($author['avatar']) ?>"
+                     alt="<?= $escaper->escapeHtmlAttr($author['name']) ?>"
+                     style="width:72px;height:72px;border-radius:50%;object-fit:cover;" />
+            <?php endif; ?>
+            <div>
+                <h1 class="page-title" style="margin:0;"><?= $escaper->escapeHtml($author['name']) ?></h1>
+                <?php if ($author['link'] !== ''): ?>
+                    <a href="<?= $escaper->escapeUrl($author['link']) ?>" rel="nofollow"><?= $escaper->escapeHtml($author['link']) ?></a>
+                <?php endif; ?>
+            </div>
+        </header>
+
+        <?php if ($author['bio'] !== ''): ?>
+            <p style="margin:0 0 28px;"><?= $escaper->escapeHtml($author['bio']) ?></p>
+        <?php endif; ?>
+
+        <h2><?= $escaper->escapeHtml(__('Posts by %1', $author['name'])) ?></h2>
+        <?php if (empty($posts)): ?>
+            <p><?= $escaper->escapeHtml(__('No posts yet.')) ?></p>
+        <?php else: ?>
+            <ul>
+                <?php foreach ($posts as $post): ?>
+                    <li style="margin-bottom:8px;">
+                        <a href="<?= $escaper->escapeUrl($block->getPostUrl($post)) ?>"><?= $escaper->escapeHtml($post->getTitle()) ?></a>
+                        <span style="color:#777;font-size:13px;"> &middot; <?= $escaper->escapeHtml($post->getCreatedAt()) ?></span>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
+    </div>
+<?php else: ?>
+    <p><?= $escaper->escapeHtml(__('Author not found.')) ?></p>
+<?php endif; ?>

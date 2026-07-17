@@ -1,0 +1,22 @@
+<?php
+/**
+ * RequestDesk Blog - Open Graph tags
+ *
+ * @var \RequestDesk\Blog\Block\Head\OpenGraph $block
+ * @var \Magento\Framework\Escaper $escaper
+ */
+
+$title = $block->getOgTitle();
+$description = $block->getOgDescription();
+$image = $block->getOgImageUrl();
+?>
+<?php if ($title !== ''): ?>
+<meta property="og:type" content="article" />
+<meta property="og:title" content="<?= $escaper->escapeHtmlAttr($title) ?>" />
+<?php if ($description !== ''): ?>
+<meta property="og:description" content="<?= $escaper->escapeHtmlAttr($description) ?>" />
+<?php endif; ?>
+<?php if ($image !== ''): ?>
+<meta property="og:image" content="<?= $escaper->escapeUrl($image) ?>" />
+<?php endif; ?>
+<?php endif; ?>

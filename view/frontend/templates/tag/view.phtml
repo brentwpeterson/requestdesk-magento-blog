@@ -1,0 +1,31 @@
+<?php
+/**
+ * RequestDesk Blog - Tag Archive Template (default / Luma)
+ *
+ * @var \RequestDesk\Blog\Block\TagView $block
+ * @var \Magento\Framework\Escaper $escaper
+ */
+
+$tag = $block->getTag();
+$posts = $block->getPosts();
+?>
+<?php if ($tag): ?>
+    <div class="requestdesk-blog-tag" style="max-width:820px;margin:0 auto;">
+        <h1 class="page-title"><?= $escaper->escapeHtml(__('Tag: %1', $tag['name'])) ?></h1>
+
+        <?php if (empty($posts)): ?>
+            <p><?= $escaper->escapeHtml(__('No posts with this tag yet.')) ?></p>
+        <?php else: ?>
+            <ul>
+                <?php foreach ($posts as $post): ?>
+                    <li style="margin-bottom:8px;">
+                        <a href="<?= $escaper->escapeUrl($block->getPostUrl($post)) ?>"><?= $escaper->escapeHtml($post->getTitle()) ?></a>
+                        <span style="color:#777;font-size:13px;"> &middot; <?= $escaper->escapeHtml($post->getCreatedAt()) ?></span>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
+    </div>
+<?php else: ?>
+    <p><?= $escaper->escapeHtml(__('Tag not found.')) ?></p>
+<?php endif; ?>

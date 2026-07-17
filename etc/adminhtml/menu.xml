@@ -48,5 +48,35 @@
              sortOrder="15"
              action="requestdesk_blog/import/index"
              resource="RequestDesk_Blog::import"/>
+
+        <!-- Comments Submenu -->
+        <add id="RequestDesk_Blog::comments_menu"
+             title="Comments"
+             translate="title"
+             module="RequestDesk_Blog"
+             parent="RequestDesk_Blog::blog"
+             sortOrder="12"
+             action="requestdesk_blog/comment/index"
+             resource="RequestDesk_Blog::comments"/>
+
+        <!-- Tags Submenu -->
+        <add id="RequestDesk_Blog::tags_menu"
+             title="Tags"
+             translate="title"
+             module="RequestDesk_Blog"
+             parent="RequestDesk_Blog::blog"
+             sortOrder="13"
+             action="requestdesk_blog/tag/index"
+             resource="RequestDesk_Blog::tags"/>
+
+        <!-- Author Profiles Submenu -->
+        <add id="RequestDesk_Blog::authors_menu"
+             title="Authors"
+             translate="title"
+             module="RequestDesk_Blog"
+             parent="RequestDesk_Blog::blog"
+             sortOrder="14"
+             action="requestdesk_blog/author/index"
+             resource="RequestDesk_Blog::authors"/>
     </menu>
 </config>

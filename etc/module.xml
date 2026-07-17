@@ -11,9 +11,11 @@
         xsi:noNamespaceSchemaLocation="urn:magento:framework:Module/etc/module.xsd">
     <module name="RequestDesk_Blog">
         <sequence>
+            <module name="RequestDesk_Qa"/>
             <module name="Magento_Store"/>
             <module name="Magento_Catalog"/>
             <module name="Magento_Cms"/>
+            <module name="Magento_User"/>
         </sequence>
     </module>
 </config>

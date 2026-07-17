@@ -27,6 +27,7 @@ interface PostInterface
     public const FEATURED_IMAGE = 'featured_image';
     public const STATUS = 'status';
     public const AUTHOR = 'author';
+    public const AUTHOR_ID = 'author_id';
     public const STORE_ID = 'store_id';
     public const REQUESTDESK_POST_ID = 'requestdesk_post_id';
     public const REQUESTDESK_SYNC_STATUS = 'requestdesk_sync_status';
@@ -67,6 +68,21 @@ interface PostInterface
      * @return string|null
      */
     public function getContent(): ?string;
+
+    /**
+     * Get the author's native admin_user id, or null.
+     *
+     * @return int|null
+     */
+    public function getAuthorId(): ?int;
+
+    /**
+     * Set the author's native admin_user id.
+     *
+     * @param int|null $authorId
+     * @return self
+     */
+    public function setAuthorId(?int $authorId): self;
 
     /**
      * @param string|null $content

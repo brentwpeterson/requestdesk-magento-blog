@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * RequestDesk Blog - Frontend Route
+ *
+ * Gives the blog its OWN storefront route (frontName "blog") so it is a
+ * standalone module and no longer depends on Hyva's blog ecosystem to own the
+ * URL. Renders on any theme.
+ *
+ * @category  RequestDesk
+ * @package   RequestDesk_Blog
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:App/etc/routes.xsd">
+    <router id="standard">
+        <route id="blog" frontName="blog">
+            <module name="RequestDesk_Blog"/>
+        </route>
+    </router>
+</config>

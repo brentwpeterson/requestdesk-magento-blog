@@ -61,4 +61,52 @@
         </arguments>
     </type>
 
+    <!-- Comment Grid Data Source -->
+    <type name="Magento\Framework\View\Element\UiComponent\DataProvider\CollectionFactory">
+        <arguments>
+            <argument name="collections" xsi:type="array">
+                <item name="requestdesk_blog_comment_listing_data_source" xsi:type="string">RequestDesk\Blog\Model\ResourceModel\Comment\Grid\Collection</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <virtualType name="RequestDesk\Blog\Model\ResourceModel\Comment\Grid\Collection"
+                 type="Magento\Framework\View\Element\UiComponent\DataProvider\SearchResult">
+        <arguments>
+            <argument name="mainTable" xsi:type="string">requestdesk_blog_comment</argument>
+            <argument name="resourceModel" xsi:type="string">RequestDesk\Blog\Model\ResourceModel\Comment</argument>
+        </arguments>
+    </virtualType>
+
+    <!-- Tag Grid Data Source -->
+    <type name="Magento\Framework\View\Element\UiComponent\DataProvider\CollectionFactory">
+        <arguments>
+            <argument name="collections" xsi:type="array">
+                <item name="requestdesk_blog_tag_listing_data_source" xsi:type="string">RequestDesk\Blog\Model\ResourceModel\Tag\Grid\Collection</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <virtualType name="RequestDesk\Blog\Model\ResourceModel\Tag\Grid\Collection"
+                 type="Magento\Framework\View\Element\UiComponent\DataProvider\SearchResult">
+        <arguments>
+            <argument name="mainTable" xsi:type="string">requestdesk_blog_tag</argument>
+            <argument name="resourceModel" xsi:type="string">RequestDesk\Blog\Model\ResourceModel\Tag</argument>
+        </arguments>
+    </virtualType>
+
+    <!-- Author Profile Grid Data Source (concrete class adds the admin_user join) -->
+    <type name="Magento\Framework\View\Element\UiComponent\DataProvider\CollectionFactory">
+        <arguments>
+            <argument name="collections" xsi:type="array">
+                <item name="requestdesk_blog_author_listing_data_source" xsi:type="string">RequestDesk\Blog\Model\ResourceModel\AuthorProfile\Grid\Collection</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <!-- Clean up polymorphic Q&A links when a post is deleted -->
+    <type name="RequestDesk\Blog\Api\PostRepositoryInterface">
+        <plugin name="requestdesk_blog_post_qa_cleanup" type="RequestDesk\Blog\Plugin\PostRepositoryQaCleanup"/>
+    </type>
+
 </config>

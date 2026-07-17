@@ -16,9 +16,12 @@ declare(strict_types=1);
 
 namespace RequestDesk\Blog\Model\Post;
 
-use Magento\Ui\DataProvider\AbstractDataProvider;
-use RequestDesk\Blog\Model\ResourceModel\Post\CollectionFactory;
 use Magento\Framework\App\Request\DataPersistorInterface;
+use Magento\Ui\DataProvider\AbstractDataProvider;
+use RequestDesk\Blog\Model\PostCategoryResolver;
+use RequestDesk\Blog\Model\ResourceModel\Post\CollectionFactory;
+use RequestDesk\Blog\Model\TagResolver;
+use RequestDesk\Qa\Model\QaLinkResolver;
 
 class DataProvider extends AbstractDataProvider
 {
@@ -38,6 +41,9 @@ class DataProvider extends AbstractDataProvider
      * @param string $requestFieldName
      * @param CollectionFactory $collectionFactory
      * @param DataPersistorInterface $dataPersistor
+     * @param PostCategoryResolver $categoryResolver
+     * @param TagResolver $tagResolver
+     * @param QaLinkResolver $qaLinkResolver
      * @param array $meta
      * @param array $data
      */
@@ -47,6 +53,9 @@ class DataProvider extends AbstractDataProvider
         $requestFieldName,
         CollectionFactory $collectionFactory,
         DataPersistorInterface $dataPersistor,
+        private readonly PostCategoryResolver $categoryResolver,
+        private readonly TagResolver $tagResolver,
+        private readonly QaLinkResolver $qaLinkResolver,
         array $meta = [],
         array $data = []
     ) {
@@ -66,9 +75,17 @@ class DataProvider extends AbstractDataProvider
             return $this->loadedData;
         }
 
-        $items = $this->collection->getItems();
-        foreach ($items as $post) {
-            $this->loadedData[$post->getId()] = $post->getData();
+        foreach ($this->collection->getItems() as $post) {
+            $postId = (int) $post->getId();
+            $this->loadedData[$postId] = $post->getData();
+            // Provide is_active as a STRING so it strict-equals the checkbox
+            // valueMap ("0"/"1"). An int here makes the toggle's `value === map`
+            // comparison fail (1 !== "1") and a published post renders as "No".
+            $this->loadedData[$postId]['is_active'] = (string) (int) $post->getData('status');
+            $this->loadedData[$postId]['category_ids'] = $this->categoryResolver->getCategoryIdsForPost($postId);
+            $this->loadedData[$postId]['tag_ids'] = $this->tagResolver->getTagIdsForPost($postId);
+            $this->loadedData[$postId]['qa_ids'] =
+                $this->qaLinkResolver->getQaIdsFor(QaLinkResolver::ENTITY_BLOG_POST, $postId);
         }
 
         $data = $this->dataPersistor->get('requestdesk_blog_post');

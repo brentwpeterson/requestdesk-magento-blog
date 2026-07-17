@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+/**
+ * RequestDesk Blog Tag Form UI Component
+ *
+ * @category  RequestDesk
+ * @package   RequestDesk_Blog
+ */
+-->
+<form xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Ui:etc/ui_configuration.xsd">
+    <argument name="data" xsi:type="array">
+        <item name="js_config" xsi:type="array">
+            <item name="provider" xsi:type="string">requestdesk_blog_tag_form.requestdesk_blog_tag_form_data_source</item>
+        </item>
+        <item name="label" xsi:type="string" translate="true">Tag Information</item>
+        <item name="template" xsi:type="string">templates/form/collapsible</item>
+    </argument>
+
+    <settings>
+        <buttons>
+            <button name="back" class="RequestDesk\Blog\Block\Adminhtml\Tag\Edit\BackButton"/>
+            <button name="delete" class="RequestDesk\Blog\Block\Adminhtml\Tag\Edit\DeleteButton"/>
+            <button name="save" class="RequestDesk\Blog\Block\Adminhtml\Tag\Edit\SaveButton"/>
+            <button name="save_and_continue" class="RequestDesk\Blog\Block\Adminhtml\Tag\Edit\SaveAndContinueButton"/>
+        </buttons>
+        <namespace>requestdesk_blog_tag_form</namespace>
+        <dataScope>data</dataScope>
+        <deps>
+            <dep>requestdesk_blog_tag_form.requestdesk_blog_tag_form_data_source</dep>
+        </deps>
+    </settings>
+
+    <dataSource name="requestdesk_blog_tag_form_data_source">
+        <argument name="data" xsi:type="array">
+            <item name="js_config" xsi:type="array">
+                <item name="component" xsi:type="string">Magento_Ui/js/form/provider</item>
+            </item>
+        </argument>
+        <settings>
+            <submitUrl path="requestdesk_blog/tag/save"/>
+        </settings>
+        <dataProvider class="RequestDesk\Blog\Model\Tag\DataProvider"
+                      name="requestdesk_blog_tag_form_data_source">
+            <settings>
+                <requestFieldName>tag_id</requestFieldName>
+                <primaryFieldName>tag_id</primaryFieldName>
+            </settings>
+        </dataProvider>
+    </dataSource>
+
+    <fieldset name="general">
+        <settings>
+            <label translate="true">General</label>
+        </settings>
+
+        <field name="tag_id" formElement="input">
+            <settings>
+                <dataType>text</dataType>
+                <visible>false</visible>
+            </settings>
+        </field>
+
+        <field name="name" sortOrder="10" formElement="input">
+            <settings>
+                <validation>
+                    <rule name="required-entry" xsi:type="boolean">true</rule>
+                </validation>
+                <dataType>text</dataType>
+                <label translate="true">Name</label>
+            </settings>
+        </field>
+
+        <field name="url_key" sortOrder="20" formElement="input">
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">URL Key</label>
+                <notice translate="true">Leave blank to generate from the name. Used in the tag archive URL.</notice>
+            </settings>
+        </field>
+    </fieldset>
+</form>

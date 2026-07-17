@@ -17,6 +17,7 @@ declare(strict_types=1);
 namespace RequestDesk\Blog\Service;
 
 use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\Encryption\EncryptorInterface;
 use Magento\Framework\HTTP\Client\Curl;
 use Magento\Store\Model\StoreManagerInterface;
@@ -24,6 +25,7 @@ use Psr\Log\LoggerInterface;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
 use RequestDesk\Blog\Api\Data\PostInterface;
 use RequestDesk\Blog\Model\PostFactory;
+use RequestDesk\Blog\Model\TagResolver;
 
 class PostImportService
 {
@@ -73,6 +75,8 @@ class PostImportService
      * @param LoggerInterface $logger
      * @param PostRepositoryInterface $postRepository
      * @param PostFactory $postFactory
+     * @param ResourceConnection $resource
+     * @param TagResolver $tagResolver
      */
     public function __construct(
         ScopeConfigInterface $scopeConfig,
@@ -81,7 +85,9 @@ class PostImportService
         Curl $curl,
         LoggerInterface $logger,
         PostRepositoryInterface $postRepository,
-        PostFactory $postFactory
+        PostFactory $postFactory,
+        private readonly ResourceConnection $resource,
+        private readonly TagResolver $tagResolver
     ) {
         $this->scopeConfig = $scopeConfig;
         $this->encryptor = $encryptor;
@@ -291,7 +297,14 @@ class PostImportService
         $post->setMetaTitle($postData['seo_title'] ?? $postData['title']);
         $post->setMetaDescription($postData['seo_description'] ?? substr(strip_tags($postData['content'] ?? ''), 0, 160));
         $post->setFeaturedImage($postData['featured_image'] ?? null);
-        $post->setAuthor($postData['author'] ?? 'RequestDesk');
+
+        // Author: keep the incoming name as the free-text byline (fallback),
+        // and additionally resolve it to a native admin_user when one matches
+        // so the imported post gets the author page + profile.
+        $authorName = (string) ($postData['author'] ?? 'RequestDesk');
+        $post->setAuthor($authorName);
+        $post->setAuthorId($this->resolveAuthorId($authorName));
+
         $post->setStoreId((int) $this->storeManager->getStore()->getId());
 
         // Set status based on RequestDesk status
@@ -307,11 +320,57 @@ class PostImportService
 
         // Save the post
         $savedPost = $this->postRepository->save($post);
+        $savedId = (int) $savedPost->getPostId();
+
+        // Tags: incoming tag names become real tag entities (auto-create) and
+        // are linked to the post. Only touch links when the payload carries a
+        // tags array, so re-imports of tag-less posts don't wipe manual tags.
+        if (isset($postData['tags']) && is_array($postData['tags'])) {
+            $tagIds = [];
+            foreach ($postData['tags'] as $tagName) {
+                if (!is_string($tagName)) {
+                    continue;
+                }
+                $tagId = $this->tagResolver->getOrCreateByName($tagName);
+                if ($tagId) {
+                    $tagIds[] = $tagId;
+                }
+            }
+            $this->tagResolver->syncForPost($savedId, $tagIds);
+        }
 
         return [
             'created' => $created,
             'magento_post_id' => $savedPost->getPostId()
         ];
+    }
+
+    /**
+     * Resolve an incoming author name to a native admin_user id by matching the
+     * full name ("First Last") or username, case-insensitively. Returns null
+     * when there is no match, in which case the free-text byline stands.
+     *
+     * @param string $name
+     * @return int|null
+     */
+    private function resolveAuthorId(string $name): ?int
+    {
+        $name = trim($name);
+        if ($name === '') {
+            return null;
+        }
+
+        $connection = $this->resource->getConnection();
+        $table = $this->resource->getTableName('admin_user');
+        $fullName = new \Zend_Db_Expr("TRIM(CONCAT(COALESCE(firstname,''),' ',COALESCE(lastname,'')))");
+        $select = $connection->select()
+            ->from($table, ['user_id'])
+            ->where('LOWER(' . $fullName . ') = ?', mb_strtolower($name))
+            ->orWhere('LOWER(username) = ?', mb_strtolower($name))
+            ->limit(1);
+
+        $userId = (int) $connection->fetchOne($select);
+        return $userId ?: null;
     }
 
     /**

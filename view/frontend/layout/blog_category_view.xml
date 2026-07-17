@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * RequestDesk Blog - Category Filter Layout (default / Luma)
+ *
+ * @category  RequestDesk
+ * @package   RequestDesk_Blog
+ */
+-->
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      layout="1column"
+      xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <body>
+        <referenceContainer name="content">
+            <block class="RequestDesk\Blog\Block\CategoryView"
+                   name="requestdesk.blog.category"
+                   template="RequestDesk_Blog::category/view.phtml"/>
+        </referenceContainer>
+    </body>
+</page>

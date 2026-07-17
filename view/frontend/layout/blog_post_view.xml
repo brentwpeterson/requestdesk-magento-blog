@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * RequestDesk Blog - Post View Layout (default / Luma)
+ *
+ * @category  RequestDesk
+ * @package   RequestDesk_Blog
+ */
+-->
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      layout="1column"
+      xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <body>
+        <referenceContainer name="head.additional">
+            <block class="RequestDesk\Blog\Block\Head\OpenGraph"
+                   name="requestdesk.blog.opengraph"
+                   template="RequestDesk_Blog::head/opengraph.phtml"/>
+        </referenceContainer>
+        <referenceContainer name="content">
+            <block class="RequestDesk\Blog\Block\PostView"
+                   name="requestdesk.blog.post"
+                   template="RequestDesk_Blog::post/view.phtml">
+                <arguments>
+                    <argument name="schema_view_model" xsi:type="object">RequestDesk\Blog\ViewModel\BlogSchema</argument>
+                </arguments>
+            </block>
+        </referenceContainer>
+    </body>
+</page>

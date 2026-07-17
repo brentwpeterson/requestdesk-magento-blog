@@ -1,0 +1,5 @@
+# Tooling caches / local artifacts — never part of the module
+.impeccable/
+**/.impeccable/
+node_modules/
+*.log
