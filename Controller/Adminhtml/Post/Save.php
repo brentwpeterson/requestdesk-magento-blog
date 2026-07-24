@@ -19,10 +19,10 @@ namespace RequestDesk\Blog\Controller\Adminhtml\Post;
 use Magento\Backend\App\Action;
 use Magento\Backend\App\Action\Context;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
+use RequestDesk\Blog\Api\QaLinkResolverInterface;
 use RequestDesk\Blog\Model\PostCategoryResolver;
 use RequestDesk\Blog\Model\PostFactory;
 use RequestDesk\Blog\Model\TagResolver;
-use RequestDesk\Qa\Model\QaLinkResolver;
 use Magento\Framework\Exception\LocalizedException;
 
 class Save extends Action
@@ -53,7 +53,7 @@ class Save extends Action
      * @param PostFactory $postFactory
      * @param PostCategoryResolver $categoryResolver
      * @param TagResolver $tagResolver
-     * @param QaLinkResolver $qaLinkResolver
+     * @param QaLinkResolverInterface $qaLinkResolver
      */
     public function __construct(
         Context $context,
@@ -61,7 +61,7 @@ class Save extends Action
         PostFactory $postFactory,
         private readonly PostCategoryResolver $categoryResolver,
         private readonly TagResolver $tagResolver,
-        private readonly QaLinkResolver $qaLinkResolver
+        private readonly QaLinkResolverInterface $qaLinkResolver
     ) {
         parent::__construct($context);
         $this->postRepository = $postRepository;
@@ -106,7 +106,7 @@ class Save extends Action
             $this->categoryResolver->syncForPost($savedId, (array)($data['category_ids'] ?? []));
             $this->tagResolver->syncForPost($savedId, (array)($data['tag_ids'] ?? []));
             $this->qaLinkResolver->syncForEntity(
-                QaLinkResolver::ENTITY_BLOG_POST,
+                QaLinkResolverInterface::ENTITY_BLOG_POST,
                 $savedId,
                 (array)($data['qa_ids'] ?? [])
             );

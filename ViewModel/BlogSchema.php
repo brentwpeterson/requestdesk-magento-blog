@@ -16,12 +16,12 @@ use Magento\Framework\View\Element\Block\ArgumentInterface;
 use Magento\Store\Model\StoreManagerInterface;
 use Psr\Log\LoggerInterface;
 use RequestDesk\Blog\Api\Data\PostInterface;
+use RequestDesk\Blog\Api\FaqSchemaBuilderInterface;
+use RequestDesk\Blog\Api\QaLinkResolverInterface;
 use RequestDesk\Blog\Block\ImageUrl;
 use RequestDesk\Blog\Model\AuthorResolver;
 use RequestDesk\Blog\Model\CommentManager;
 use RequestDesk\Blog\Model\TagResolver;
-use RequestDesk\Qa\Model\FaqSchemaBuilder;
-use RequestDesk\Qa\Model\QaLinkResolver;
 
 /**
  * Builds the answer-engine JSON-LD for a blog post — a BlogPosting node on every
@@ -41,8 +41,8 @@ class BlogSchema implements ArgumentInterface
         private readonly StoreManagerInterface $storeManager,
         private readonly Json $json,
         private readonly LoggerInterface $logger,
-        private readonly QaLinkResolver $qaLinkResolver,
-        private readonly FaqSchemaBuilder $faqSchemaBuilder,
+        private readonly QaLinkResolverInterface $qaLinkResolver,
+        private readonly FaqSchemaBuilderInterface $faqSchemaBuilder,
         private readonly AuthorResolver $authorResolver,
         private readonly TagResolver $tagResolver,
         private readonly CommentManager $commentManager
@@ -88,7 +88,7 @@ class BlogSchema implements ArgumentInterface
     public function getFaqPairs(PostInterface $post): array
     {
         return $this->qaLinkResolver->getPairsFor(
-            QaLinkResolver::ENTITY_BLOG_POST,
+            QaLinkResolverInterface::ENTITY_BLOG_POST,
             (int) $post->getPostId()
         );
     }

@@ -29,6 +29,20 @@
     <preference for="RequestDesk\Blog\Api\ExternalBlogInterface"
                 type="RequestDesk\Blog\Model\ExternalBlog"/>
 
+    <!--
+        Optional Q&A integration seam. The free blog binds no-op defaults so it
+        runs standalone; the paid RequestDesk Q&A bridge overrides these to attach
+        the shared Q&A library to blog posts.
+    -->
+    <preference for="RequestDesk\Blog\Api\QaLinkResolverInterface"
+                type="RequestDesk\Blog\Model\Qa\NullQaLinkResolver"/>
+
+    <preference for="RequestDesk\Blog\Api\FaqSchemaBuilderInterface"
+                type="RequestDesk\Blog\Model\Qa\NullFaqSchemaBuilder"/>
+
+    <preference for="RequestDesk\Blog\Api\QaPairOptionsInterface"
+                type="RequestDesk\Blog\Model\Qa\NullQaPairOptions"/>
+
     <!-- Admin Grid Data Provider -->
     <type name="Magento\Framework\View\Element\UiComponent\DataProvider\CollectionFactory">
         <arguments>

@@ -14,6 +14,14 @@
         <item name="js_config" xsi:type="array">
             <item name="provider" xsi:type="string">requestdesk_blog_post_listing.requestdesk_blog_post_listing_data_source</item>
         </item>
+        <item name="buttons" xsi:type="array">
+            <item name="add" xsi:type="array">
+                <item name="name" xsi:type="string">add</item>
+                <item name="label" xsi:type="string" translate="true">Add New Post</item>
+                <item name="class" xsi:type="string">primary</item>
+                <item name="url" xsi:type="string">*/*/edit</item>
+            </item>
+        </item>
     </argument>
 
     <settings>

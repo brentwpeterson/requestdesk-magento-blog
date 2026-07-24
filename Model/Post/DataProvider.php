@@ -18,10 +18,10 @@ namespace RequestDesk\Blog\Model\Post;
 
 use Magento\Framework\App\Request\DataPersistorInterface;
 use Magento\Ui\DataProvider\AbstractDataProvider;
+use RequestDesk\Blog\Api\QaLinkResolverInterface;
 use RequestDesk\Blog\Model\PostCategoryResolver;
 use RequestDesk\Blog\Model\ResourceModel\Post\CollectionFactory;
 use RequestDesk\Blog\Model\TagResolver;
-use RequestDesk\Qa\Model\QaLinkResolver;
 
 class DataProvider extends AbstractDataProvider
 {
@@ -43,7 +43,7 @@ class DataProvider extends AbstractDataProvider
      * @param DataPersistorInterface $dataPersistor
      * @param PostCategoryResolver $categoryResolver
      * @param TagResolver $tagResolver
-     * @param QaLinkResolver $qaLinkResolver
+     * @param QaLinkResolverInterface $qaLinkResolver
      * @param array $meta
      * @param array $data
      */
@@ -55,7 +55,7 @@ class DataProvider extends AbstractDataProvider
         DataPersistorInterface $dataPersistor,
         private readonly PostCategoryResolver $categoryResolver,
         private readonly TagResolver $tagResolver,
-        private readonly QaLinkResolver $qaLinkResolver,
+        private readonly QaLinkResolverInterface $qaLinkResolver,
         array $meta = [],
         array $data = []
     ) {
@@ -85,7 +85,7 @@ class DataProvider extends AbstractDataProvider
             $this->loadedData[$postId]['category_ids'] = $this->categoryResolver->getCategoryIdsForPost($postId);
             $this->loadedData[$postId]['tag_ids'] = $this->tagResolver->getTagIdsForPost($postId);
             $this->loadedData[$postId]['qa_ids'] =
-                $this->qaLinkResolver->getQaIdsFor(QaLinkResolver::ENTITY_BLOG_POST, $postId);
+                $this->qaLinkResolver->getQaIdsFor(QaLinkResolverInterface::ENTITY_BLOG_POST, $postId);
         }
 
         $data = $this->dataPersistor->get('requestdesk_blog_post');
