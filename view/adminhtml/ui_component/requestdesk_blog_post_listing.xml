@@ -121,7 +121,10 @@
             </settings>
         </column>
 
-        <column name="is_active" component="Magento_Ui/js/grid/columns/select" sortOrder="60">
+        <!-- Column names must match the requestdesk_blog_post columns the grid
+             collection selects. They previously read is_active / sync_status /
+             requestdesk_id, none of which exist, so all three rendered blank. -->
+        <column name="status" component="Magento_Ui/js/grid/columns/select" sortOrder="60">
             <settings>
                 <options class="RequestDesk\Blog\Model\Post\Source\IsActive"/>
                 <filter>select</filter>
@@ -130,7 +133,7 @@
             </settings>
         </column>
 
-        <column name="sync_status" component="Magento_Ui/js/grid/columns/select" sortOrder="70">
+        <column name="requestdesk_sync_status" component="Magento_Ui/js/grid/columns/select" sortOrder="70">
             <settings>
                 <options class="RequestDesk\Blog\Model\Post\Source\SyncStatus"/>
                 <filter>select</filter>
@@ -139,7 +142,7 @@
             </settings>
         </column>
 
-        <column name="requestdesk_id" sortOrder="80">
+        <column name="requestdesk_post_id" sortOrder="80">
             <settings>
                 <filter>text</filter>
                 <label translate="true">RequestDesk ID</label>

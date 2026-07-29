@@ -8,7 +8,7 @@
       xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
     <body>
         <referenceContainer name="content">
-            <block class="RequestDesk\Blog\Block\ListPosts"
+            <block class="RequestDesk\Blog\Block\PostList"
                    name="blog.list"
                    template="RequestDesk_Blog::hyva/list.phtml"
                    cacheable="false"/>

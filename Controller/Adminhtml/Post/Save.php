@@ -24,6 +24,7 @@ use RequestDesk\Blog\Model\PostCategoryResolver;
 use RequestDesk\Blog\Model\PostFactory;
 use RequestDesk\Blog\Model\TagResolver;
 use Magento\Framework\Exception\LocalizedException;
+use Psr\Log\LoggerInterface;
 
 class Save extends Action
 {
@@ -46,14 +47,10 @@ class Save extends Action
      * @param Context $context
      * @param PostRepositoryInterface $postRepository
      * @param PostFactory $postFactory
-     */
-    /**
-     * @param Context $context
-     * @param PostRepositoryInterface $postRepository
-     * @param PostFactory $postFactory
      * @param PostCategoryResolver $categoryResolver
      * @param TagResolver $tagResolver
      * @param QaLinkResolverInterface $qaLinkResolver
+     * @param LoggerInterface $logger
      */
     public function __construct(
         Context $context,
@@ -61,7 +58,8 @@ class Save extends Action
         PostFactory $postFactory,
         private readonly PostCategoryResolver $categoryResolver,
         private readonly TagResolver $tagResolver,
-        private readonly QaLinkResolverInterface $qaLinkResolver
+        private readonly QaLinkResolverInterface $qaLinkResolver,
+        private readonly LoggerInterface $logger
     ) {
         parent::__construct($context);
         $this->postRepository = $postRepository;
@@ -96,22 +94,31 @@ class Save extends Action
             $post->setUrlKey($data['url_key'] ?? '');
             $post->setMetaTitle($data['meta_title'] ?? '');
             $post->setMetaDescription($data['meta_description'] ?? '');
-            $post->setAuthor($data['author'] ?? '');
+            // The byline is now the author_id select. "author" is the legacy
+            // free-text column, no longer on the form — only write it when it was
+            // actually posted, or every save would erase the imported name that
+            // still backs posts with no author record.
+            if (array_key_exists('author', $data)) {
+                $post->setAuthor((string)$data['author']);
+            }
             $post->setAuthorId(!empty($data['author_id']) ? (int)$data['author_id'] : null);
             $post->setIsActive(isset($data['is_active']) ? (int)$data['is_active'] : 0);
 
             $this->postRepository->save($post);
 
             $savedId = (int)$post->getId();
-            $this->categoryResolver->syncForPost($savedId, (array)($data['category_ids'] ?? []));
-            $this->tagResolver->syncForPost($savedId, (array)($data['tag_ids'] ?? []));
-            $this->qaLinkResolver->syncForEntity(
-                QaLinkResolverInterface::ENTITY_BLOG_POST,
-                $savedId,
-                (array)($data['qa_ids'] ?? [])
-            );
+            $failed = $this->syncAssociations($savedId, $data);
 
-            $this->messageManager->addSuccessMessage(__('The post has been saved.'));
+            if ($failed === []) {
+                $this->messageManager->addSuccessMessage(__('The post has been saved.'));
+            } else {
+                // The post itself saved. Say so, and name what did not, instead of
+                // reporting a bare failure on a save that partly succeeded.
+                $this->messageManager->addSuccessMessage(__('The post has been saved.'));
+                $this->messageManager->addErrorMessage(
+                    __('The post saved, but these could not be updated: %1.', implode(', ', $failed))
+                );
+            }
 
             if ($this->getRequest()->getParam('back')) {
                 return $resultRedirect->setPath('*/*/edit', ['post_id' => $post->getId()]);
@@ -121,9 +128,56 @@ class Save extends Action
         } catch (LocalizedException $e) {
             $this->messageManager->addErrorMessage($e->getMessage());
         } catch (\Exception $e) {
+            $this->logger->error('RequestDesk Blog: failed to save post', ['exception' => $e]);
             $this->messageManager->addErrorMessage(__('An error occurred while saving the post.'));
         }
 
         return $resultRedirect->setPath('*/*/edit', ['post_id' => $postId]);
+    }
+
+    /**
+     * Sync categories, tags and Q&A pairs onto a saved post.
+     *
+     * Each association is isolated: a failure in one used to abort the rest, so
+     * selecting a category silently discarded the tags and Q&A pairs chosen in the
+     * same save. The real exception is logged and the caller gets the labels of
+     * whatever failed.
+     *
+     * @param int $postId
+     * @param array $data
+     * @return string[] Labels of the associations that could not be saved
+     */
+    private function syncAssociations(int $postId, array $data): array
+    {
+        $syncs = [
+            'Categories' => fn () => $this->categoryResolver->syncForPost(
+                $postId,
+                (array)($data['category_ids'] ?? [])
+            ),
+            'Tags' => fn () => $this->tagResolver->syncForPost(
+                $postId,
+                (array)($data['tag_ids'] ?? [])
+            ),
+            'Q&A pairs' => fn () => $this->qaLinkResolver->syncForEntity(
+                QaLinkResolverInterface::ENTITY_BLOG_POST,
+                $postId,
+                (array)($data['qa_ids'] ?? [])
+            ),
+        ];
+
+        $failed = [];
+        foreach ($syncs as $label => $sync) {
+            try {
+                $sync();
+            } catch (\Throwable $e) {
+                $failed[] = $label;
+                $this->logger->error(
+                    'RequestDesk Blog: failed to sync ' . $label . ' for post ' . $postId,
+                    ['exception' => $e]
+                );
+            }
+        }
+
+        return $failed;
     }
 }

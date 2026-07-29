@@ -48,9 +48,21 @@ class PostView extends Template
         private readonly TagResolver $tagResolver,
         private readonly CommentManager $commentManager,
         private readonly FormKey $formKey,
+        private readonly \RequestDesk\Blog\Model\PostContent $postContent,
         array $data = []
     ) {
         parent::__construct($context, $data);
+    }
+
+    /**
+     * The post body, unescaped and with directives resolved, ready to echo.
+     *
+     * @return string
+     */
+    public function getRenderedContent(): string
+    {
+        $post = $this->getPost();
+        return $post !== null ? $this->postContent->render($post->getContent()) : '';
     }
 
     /**

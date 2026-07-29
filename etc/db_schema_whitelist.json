@@ -32,26 +32,6 @@
             "REQUESTDESK_BLOG_POST_AUTHOR_ID_ADMIN_USER_USER_ID": true
         }
     },
-    "requestdesk_blog_category": {
-        "column": {
-            "category_id": true,
-            "name": true,
-            "url_key": true,
-            "description": true,
-            "status": true,
-            "sort_order": true,
-            "store_id": true,
-            "created_at": true,
-            "updated_at": true
-        },
-        "index": {
-            "REQUESTDESK_BLOG_CATEGORY_STATUS": true
-        },
-        "constraint": {
-            "PRIMARY": true,
-            "REQUESTDESK_BLOG_CATEGORY_URL_KEY_STORE_ID": true
-        }
-    },
     "requestdesk_blog_post_category": {
         "column": {
             "post_id": true,
@@ -63,7 +43,6 @@
         "constraint": {
             "PRIMARY": true,
             "REQUESTDESK_BLOG_POST_CAT_POST_ID_BLOG_POST_POST_ID": true,
-            "REQUESTDESK_BLOG_POST_CAT_CAT_ID_BLOG_CAT_CAT_ID": true,
             "REQUESTDESK_BLOG_POST_CAT_CAT_ID_CAT_CATEGORY_ENTITY_ID": true,
             "REQUESTDESK_BLOG_POST_CTGR_POST_ID_REQUESTDESK_BLOG_POST_POST_ID": true,
             "REQUESTDESK_BLOG_POST_CTGR_CTGR_ID_CAT_CTGR_ENTT_ENTT_ID": true
@@ -148,6 +127,25 @@
         "constraint": {
             "PRIMARY": true,
             "REQUESTDESK_BLOG_COMMENT_POST_ID_REQUESTDESK_BLOG_POST_POST_ID": true
+        }
+    },
+    "requestdesk_blog_author": {
+        "column": {
+            "author_id": true,
+            "admin_user_id": true,
+            "name": true,
+            "url_key": true,
+            "bio": true,
+            "avatar": true,
+            "url": true,
+            "created_at": true,
+            "updated_at": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "REQUESTDESK_BLOG_AUTHOR_URL_KEY": true,
+            "REQUESTDESK_BLOG_AUTHOR_ADMIN_USER_ID": true,
+            "REQUESTDESK_BLOG_AUTHOR_ADMIN_USER_ID_ADMIN_USER_USER_ID": true
         }
     }
 }

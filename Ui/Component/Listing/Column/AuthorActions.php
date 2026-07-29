@@ -56,24 +56,24 @@ class AuthorActions extends Column
     {
         if (isset($dataSource['data']['items'])) {
             foreach ($dataSource['data']['items'] as & $item) {
-                if (isset($item['admin_user_id'])) {
+                if (isset($item['author_id'])) {
                     $item[$this->getData('name')] = [
                         'edit' => [
                             'href' => $this->urlBuilder->getUrl(
                                 static::URL_PATH_EDIT,
-                                ['admin_user_id' => $item['admin_user_id']]
+                                ['author_id' => $item['author_id']]
                             ),
                             'label' => __('Edit')
                         ],
                         'delete' => [
                             'href' => $this->urlBuilder->getUrl(
                                 static::URL_PATH_DELETE,
-                                ['admin_user_id' => $item['admin_user_id']]
+                                ['author_id' => $item['author_id']]
                             ),
                             'label' => __('Delete'),
                             'confirm' => [
-                                'title' => __('Delete Author Profile'),
-                                'message' => __('Delete this author profile? The admin user account itself is not affected.')
+                                'title' => __('Delete Author'),
+                                'message' => __('Delete this author? Posts keep their byline text, and any linked admin account is not affected.')
                             ],
                             'post' => true
                         ]

@@ -53,7 +53,7 @@ $faqPairs = ($schema && $post) ? $schema->getFaqPairs($post) : [];
         <?php endif; ?>
 
         <div class="rd-blog-content">
-            <?= /* @noEscape */ $post->getContent() ?>
+            <?= /* @noEscape */ $block->getRenderedContent() ?>
         </div>
 
         <?php $tags = $block->getTags(); ?>

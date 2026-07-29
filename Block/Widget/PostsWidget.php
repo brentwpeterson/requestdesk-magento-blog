@@ -45,6 +45,7 @@ class PostsWidget extends Template implements BlockInterface
      * @param StoreManagerInterface $storeManager
      * @param PostCategoryResolver $categoryResolver
      * @param Registry $registry
+     * @param \RequestDesk\Blog\Model\PostContent $postContent
      * @param array $data
      */
     public function __construct(
@@ -55,6 +56,7 @@ class PostsWidget extends Template implements BlockInterface
         private readonly StoreManagerInterface $storeManager,
         private readonly PostCategoryResolver $categoryResolver,
         private readonly Registry $registry,
+        private readonly \RequestDesk\Blog\Model\PostContent $postContent,
         array $data = []
     ) {
         parent::__construct($context, $data);
@@ -171,7 +173,6 @@ class PostsWidget extends Template implements BlockInterface
      */
     public function getExcerpt(PostInterface $post, int $length = 120): string
     {
-        $text = trim((string) preg_replace('/\s+/', ' ', strip_tags((string) $post->getContent())));
-        return mb_strlen($text) <= $length ? $text : mb_substr($text, 0, $length) . '…';
+        return $this->postContent->excerpt($post->getContent(), $length);
     }
 }

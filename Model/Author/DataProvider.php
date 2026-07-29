@@ -1,10 +1,9 @@
 <?php
 /**
- * RequestDesk Blog - Author Profile Form Data Provider
+ * RequestDesk Blog - Author Form Data Provider
  *
- * The form is keyed by admin_user_id. Editing an existing profile loads its
- * public fields; a new profile starts empty and the admin user is chosen in
- * the form.
+ * The form is keyed by author_id. Authors are independent records: the admin
+ * user link is optional, so a new author starts empty with no account attached.
  *
  * @category  RequestDesk
  * @package   RequestDesk_Blog
@@ -15,8 +14,10 @@ declare(strict_types=1);
 namespace RequestDesk\Blog\Model\Author;
 
 use Magento\Framework\App\Request\DataPersistorInterface;
+use Magento\Store\Model\StoreManagerInterface;
 use Magento\Ui\DataProvider\AbstractDataProvider;
-use RequestDesk\Blog\Model\ResourceModel\AuthorProfile\CollectionFactory;
+use RequestDesk\Blog\Block\ImageUrl;
+use RequestDesk\Blog\Model\ResourceModel\Author\CollectionFactory;
 
 class DataProvider extends AbstractDataProvider
 {
@@ -36,6 +37,7 @@ class DataProvider extends AbstractDataProvider
      * @param string $requestFieldName
      * @param CollectionFactory $collectionFactory
      * @param DataPersistorInterface $dataPersistor
+     * @param StoreManagerInterface $storeManager
      * @param array $meta
      * @param array $data
      */
@@ -45,6 +47,7 @@ class DataProvider extends AbstractDataProvider
         $requestFieldName,
         CollectionFactory $collectionFactory,
         DataPersistorInterface $dataPersistor,
+        private readonly StoreManagerInterface $storeManager,
         array $meta = [],
         array $data = []
     ) {
@@ -64,18 +67,38 @@ class DataProvider extends AbstractDataProvider
             return $this->loadedData;
         }
 
-        foreach ($this->collection->getItems() as $profile) {
-            $id = (int)$profile->getData('admin_user_id');
-            $this->loadedData[$id] = $profile->getData();
+        foreach ($this->collection->getItems() as $author) {
+            $id = (int)$author->getData('author_id');
+            $values = $author->getData();
+            $values['avatar'] = $this->avatarForUploader((string)($values['avatar'] ?? ''));
+            $this->loadedData[$id] = $values;
         }
 
-        $data = $this->dataPersistor->get('requestdesk_blog_author_profile');
+        $data = $this->dataPersistor->get('requestdesk_blog_author');
         if (!empty($data)) {
-            $id = isset($data['admin_user_id']) ? (int)$data['admin_user_id'] : 0;
+            $id = isset($data['author_id']) ? (int)$data['author_id'] : 0;
             $this->loadedData[$id] = $data;
-            $this->dataPersistor->clear('requestdesk_blog_author_profile');
+            $this->dataPersistor->clear('requestdesk_blog_author');
         }
 
         return $this->loadedData ?? [];
+    }
+
+    /**
+     * The image uploader expects a list of files carrying a url, not a bare path.
+     *
+     * @param string $path
+     * @return array<int, array{name:string, url:string}>
+     */
+    private function avatarForUploader(string $path): array
+    {
+        if (trim($path) === '') {
+            return [];
+        }
+
+        return [[
+            'name' => basename($path),
+            'url' => ImageUrl::resolve($path, $this->storeManager),
+        ]];
     }
 }

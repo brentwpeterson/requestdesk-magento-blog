@@ -30,18 +30,23 @@
                 type="RequestDesk\Blog\Model\ExternalBlog"/>
 
     <!--
-        Optional Q&A integration seam. The free blog binds no-op defaults so it
-        runs standalone; the paid RequestDesk Q&A bridge overrides these to attach
-        the shared Q&A library to blog posts.
+        Optional Q&A integration seam.
+
+        These bind to adapters, not to the no-op defaults, because RequestDesk_Blog
+        is sequenced AFTER RequestDesk_Qa: this file always loads last, so a
+        preference declared by the Q&A module could never win, and Qa cannot
+        sequence Blog back without a circular dependency. The adapters resolve the
+        real Q&A services at runtime and degrade to no-ops when Q&A is absent, so
+        the blog still runs standalone.
     -->
     <preference for="RequestDesk\Blog\Api\QaLinkResolverInterface"
-                type="RequestDesk\Blog\Model\Qa\NullQaLinkResolver"/>
+                type="RequestDesk\Blog\Model\Qa\QaLinkResolverAdapter"/>
 
     <preference for="RequestDesk\Blog\Api\FaqSchemaBuilderInterface"
-                type="RequestDesk\Blog\Model\Qa\NullFaqSchemaBuilder"/>
+                type="RequestDesk\Blog\Model\Qa\FaqSchemaBuilderAdapter"/>
 
     <preference for="RequestDesk\Blog\Api\QaPairOptionsInterface"
-                type="RequestDesk\Blog\Model\Qa\NullQaPairOptions"/>
+                type="RequestDesk\Blog\Model\Qa\QaPairOptionsAdapter"/>
 
     <!-- Admin Grid Data Provider -->
     <type name="Magento\Framework\View\Element\UiComponent\DataProvider\CollectionFactory">
@@ -60,6 +65,41 @@
             <argument name="resourceModel" xsi:type="string">RequestDesk\Blog\Model\ResourceModel\Post</argument>
         </arguments>
     </virtualType>
+
+    <!-- Author avatar uploads. Files land in media/requestdesk/blog/author, via a
+         tmp folder that Magento sweeps if the form is never saved. -->
+    <virtualType name="RequestDeskBlogAuthorImageUploader" type="Magento\Catalog\Model\ImageUploader">
+        <arguments>
+            <argument name="baseTmpPath" xsi:type="string">requestdesk/blog/author/tmp</argument>
+            <argument name="basePath" xsi:type="string">requestdesk/blog/author</argument>
+            <argument name="allowedExtensions" xsi:type="array">
+                <item name="jpg" xsi:type="string">jpg</item>
+                <item name="jpeg" xsi:type="string">jpeg</item>
+                <item name="png" xsi:type="string">png</item>
+                <item name="gif" xsi:type="string">gif</item>
+                <item name="webp" xsi:type="string">webp</item>
+            </argument>
+            <argument name="allowedMimeTypes" xsi:type="array">
+                <item name="jpg" xsi:type="string">image/jpg</item>
+                <item name="jpeg" xsi:type="string">image/jpeg</item>
+                <item name="png" xsi:type="string">image/png</item>
+                <item name="gif" xsi:type="string">image/gif</item>
+                <item name="webp" xsi:type="string">image/webp</item>
+            </argument>
+        </arguments>
+    </virtualType>
+
+    <type name="RequestDesk\Blog\Controller\Adminhtml\Author\Upload">
+        <arguments>
+            <argument name="imageUploader" xsi:type="object">RequestDeskBlogAuthorImageUploader</argument>
+        </arguments>
+    </type>
+
+    <type name="RequestDesk\Blog\Controller\Adminhtml\Author\Save">
+        <arguments>
+            <argument name="imageUploader" xsi:type="object">RequestDeskBlogAuthorImageUploader</argument>
+        </arguments>
+    </type>
 
     <!-- Product Export Service -->
     <type name="RequestDesk\Blog\Service\ProductExportService">
@@ -113,7 +153,7 @@
     <type name="Magento\Framework\View\Element\UiComponent\DataProvider\CollectionFactory">
         <arguments>
             <argument name="collections" xsi:type="array">
-                <item name="requestdesk_blog_author_listing_data_source" xsi:type="string">RequestDesk\Blog\Model\ResourceModel\AuthorProfile\Grid\Collection</item>
+                <item name="requestdesk_blog_author_listing_data_source" xsi:type="string">RequestDesk\Blog\Model\ResourceModel\Author\Grid\Collection</item>
             </argument>
         </arguments>
     </type>
@@ -128,6 +168,7 @@
         <arguments>
             <argument name="commands" xsi:type="array">
                 <item name="requestdesk_blog_migrate_amasty" xsi:type="object">RequestDesk\Blog\Console\Command\MigrateAmastyCommand</item>
+                <item name="requestdesk_blog_repair_schema" xsi:type="object">RequestDesk\Blog\Console\Command\RepairSchemaCommand</item>
             </argument>
         </arguments>
     </type>

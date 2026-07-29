@@ -11,7 +11,7 @@
 
 declare(strict_types=1);
 
-namespace RequestDesk\Blog\Model\ResourceModel\AuthorProfile\Grid;
+namespace RequestDesk\Blog\Model\ResourceModel\Author\Grid;
 
 use Magento\Framework\Api\Search\SearchResultInterface;
 use Magento\Framework\Data\Collection\Db\FetchStrategyInterface;
@@ -21,7 +21,7 @@ use Magento\Framework\View\Element\UiComponent\DataProvider\SearchResult;
 use Psr\Log\LoggerInterface;
 
 /**
- * Grid collection for author profiles with admin_user join.
+ * Grid collection for blog authors. The admin_user join is a LEFT join because the link is optional.
  */
 class Collection extends SearchResult implements SearchResultInterface
 {
@@ -38,14 +38,14 @@ class Collection extends SearchResult implements SearchResultInterface
         LoggerInterface $logger,
         FetchStrategyInterface $fetchStrategy,
         ManagerInterface $eventManager,
-        $mainTable = 'requestdesk_blog_author_profile',
-        $resourceModel = \RequestDesk\Blog\Model\ResourceModel\AuthorProfile::class
+        $mainTable = 'requestdesk_blog_author',
+        $resourceModel = \RequestDesk\Blog\Model\ResourceModel\Author::class
     ) {
         parent::__construct($entityFactory, $logger, $fetchStrategy, $eventManager, $mainTable, $resourceModel);
     }
 
     /**
-     * Join the native admin_user for name/username display.
+     * Join the optionally-linked admin_user for username display.
      *
      * @return $this
      */

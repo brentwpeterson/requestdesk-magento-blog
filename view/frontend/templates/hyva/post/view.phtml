@@ -69,7 +69,7 @@ $post = $block->getPost();
                 prose-blockquote:border-l-4 prose-blockquote:border-primary prose-blockquote:bg-gray-50 prose-blockquote:py-2 prose-blockquote:px-4
                 prose-code:bg-gray-100 prose-code:px-1 prose-code:py-0.5 prose-code:rounded
                 prose-pre:bg-gray-900 prose-pre:text-gray-100">
-        <?= /* @noEscape */ $post->getContent() ?>
+        <?= /* @noEscape */ $block->getRenderedContent() ?>
     </div>
 
     <!-- Post Footer -->

@@ -17,7 +17,7 @@
         <item name="buttons" xsi:type="array">
             <item name="add" xsi:type="array">
                 <item name="name" xsi:type="string">add</item>
-                <item name="label" xsi:type="string" translate="true">Add New Author Profile</item>
+                <item name="label" xsi:type="string" translate="true">Add New Author</item>
                 <item name="class" xsi:type="string">primary</item>
                 <item name="url" xsi:type="string">*/*/edit</item>
             </item>
@@ -62,36 +62,38 @@
     <columns name="requestdesk_blog_author_columns">
         <selectionsColumn name="ids" sortOrder="10">
             <settings>
-                <indexField>admin_user_id</indexField>
+                <indexField>author_id</indexField>
             </settings>
         </selectionsColumn>
 
-        <column name="admin_user_id" sortOrder="20">
+        <column name="author_id" sortOrder="20">
             <settings>
                 <filter>textRange</filter>
-                <label translate="true">User ID</label>
+                <label translate="true">ID</label>
                 <sorting>asc</sorting>
             </settings>
         </column>
 
-        <column name="username" sortOrder="30">
+        <column name="name" sortOrder="30">
             <settings>
                 <filter>text</filter>
-                <label translate="true">Admin Username</label>
+                <label translate="true">Name</label>
             </settings>
         </column>
 
-        <column name="admin_name" sortOrder="40">
+        <column name="url_key" sortOrder="40">
             <settings>
                 <filter>text</filter>
-                <label translate="true">Admin Name</label>
+                <label translate="true">URL Key</label>
             </settings>
         </column>
 
-        <column name="display_name" sortOrder="50">
+        <!-- Blank for authors with no Magento account, which is the normal case
+             for guest and freelance writers. -->
+        <column name="username" sortOrder="50">
             <settings>
                 <filter>text</filter>
-                <label translate="true">Public Display Name</label>
+                <label translate="true">Linked Admin User</label>
             </settings>
         </column>
 
@@ -113,7 +115,7 @@
 
         <actionsColumn name="actions" class="RequestDesk\Blog\Ui\Component\Listing\Column\AuthorActions" sortOrder="200">
             <settings>
-                <indexField>admin_user_id</indexField>
+                <indexField>author_id</indexField>
             </settings>
         </actionsColumn>
     </columns>

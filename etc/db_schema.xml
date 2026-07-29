@@ -56,16 +56,52 @@
             <column name="title"/>
             <column name="content"/>
         </index>
-        <constraint xsi:type="foreign" referenceId="REQUESTDESK_BLOG_POST_AUTHOR_ID_ADMIN_USER_USER_ID"
-                    table="requestdesk_blog_post" column="author_id"
-                    referenceTable="admin_user" referenceColumn="user_id" onDelete="SET NULL"/>
+        <!-- author_id now points at requestdesk_blog_author, not admin_user, so that
+             a post can be written by someone with no Magento account. The foreign
+             key is deliberately absent for this release: declarative schema runs
+             BEFORE data patches, so the constraint cannot be added until
+             MigrateAuthorProfiles has remapped the existing admin-user ids. It is
+             added in the follow-up release, together with dropping the retired
+             requestdesk_blog_author_profile table below. -->
         <index referenceId="REQUESTDESK_BLOG_POST_AUTHOR_ID" indexType="btree">
             <column name="author_id"/>
         </index>
     </table>
 
-    <!-- Author profile — extends a NATIVE admin_user with public blog fields -->
-    <table name="requestdesk_blog_author_profile" resource="default" engine="innodb" comment="Blog Author Public Profile">
+    <!-- Blog authors — a first-class entity, NOT tied to a Magento admin account.
+         admin_user_id is an OPTIONAL link: set it to inherit an admin's identity,
+         leave it null for a guest or freelance writer. -->
+    <table name="requestdesk_blog_author" resource="default" engine="innodb" comment="RequestDesk Blog Authors">
+        <column xsi:type="int" name="author_id" unsigned="true" nullable="false" identity="true" comment="Author ID"/>
+        <column xsi:type="int" name="admin_user_id" unsigned="true" nullable="true" comment="Optional native admin_user.user_id"/>
+        <column xsi:type="varchar" name="name" nullable="false" length="255" comment="Public display name"/>
+        <column xsi:type="varchar" name="url_key" nullable="false" length="255" comment="URL Key"/>
+        <column xsi:type="text" name="bio" nullable="true" comment="Author Bio"/>
+        <column xsi:type="varchar" name="avatar" nullable="true" length="255" comment="Avatar image path"/>
+        <column xsi:type="varchar" name="url" nullable="true" length="255" comment="Author link (site/social)"/>
+        <column xsi:type="timestamp" name="created_at" nullable="false" default="CURRENT_TIMESTAMP" comment="Created At"/>
+        <column xsi:type="timestamp" name="updated_at" nullable="false" default="CURRENT_TIMESTAMP" on_update="true" comment="Updated At"/>
+
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="author_id"/>
+        </constraint>
+        <constraint xsi:type="unique" referenceId="REQUESTDESK_BLOG_AUTHOR_URL_KEY">
+            <column name="url_key"/>
+        </constraint>
+        <!-- One blog author per admin account, but many authors with none. -->
+        <constraint xsi:type="unique" referenceId="REQUESTDESK_BLOG_AUTHOR_ADMIN_USER_ID">
+            <column name="admin_user_id"/>
+        </constraint>
+        <constraint xsi:type="foreign" referenceId="REQUESTDESK_BLOG_AUTHOR_ADMIN_USER_ID_ADMIN_USER_USER_ID"
+                    table="requestdesk_blog_author" column="admin_user_id"
+                    referenceTable="admin_user" referenceColumn="user_id" onDelete="SET NULL"/>
+    </table>
+
+    <!-- DEPRECATED — superseded by requestdesk_blog_author. Kept declared for this
+         release only so MigrateAuthorProfiles can read it; declarative schema drops
+         tables before data patches run, so removing it here would destroy the data
+         the patch needs. Delete this table in the follow-up release. -->
+    <table name="requestdesk_blog_author_profile" resource="default" engine="innodb" comment="Blog Author Public Profile (deprecated)">
         <column xsi:type="int" name="admin_user_id" unsigned="true" nullable="false" comment="Native admin_user.user_id"/>
         <column xsi:type="varchar" name="display_name" nullable="true" length="255" comment="Public display name (overrides admin name)"/>
         <column xsi:type="text" name="bio" nullable="true" comment="Author Bio"/>

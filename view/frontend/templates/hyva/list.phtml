@@ -60,7 +60,7 @@ $posts = $block->getPosts();
                         </div>
 
                         <p class="text-gray-600 mb-4 line-clamp-3">
-                            <?= $escaper->escapeHtml(mb_substr(strip_tags($post->getContent()), 0, 150)) ?>...
+                            <?= $escaper->escapeHtml($block->getExcerpt($post, 150)) ?>
                         </p>
 
                         <a href="<?= $escaper->escapeUrl($block->getPostUrl($post)) ?>"

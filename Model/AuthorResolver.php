@@ -1,6 +1,6 @@
 <?php
 /**
- * RequestDesk Blog - Author Resolver (native admin_user + public profile)
+ * RequestDesk Blog - Author Resolver
  *
  * @category  RequestDesk
  * @package   RequestDesk_Blog
@@ -17,12 +17,15 @@ use RequestDesk\Blog\Api\Data\PostInterface;
 use RequestDesk\Blog\Block\ImageUrl;
 
 /**
- * Resolves a post's author by reusing the NATIVE Magento admin user, extended
- * with the public profile (bio/avatar) in requestdesk_blog_author_profile.
- * Falls back to the legacy free-text author name when no admin user is linked.
+ * Resolves a post's author from requestdesk_blog_author. An author is a
+ * first-class record: it may optionally be linked to a Magento admin account,
+ * but does not need one. Falls back to the legacy free-text author name on posts
+ * that were never assigned an author record.
  */
 class AuthorResolver
 {
+    private const AUTHOR_TABLE = 'requestdesk_blog_author';
+
     /**
      * @param ResourceConnection $resource
      * @param UrlInterface $urlBuilder
@@ -59,22 +62,20 @@ class AuthorResolver
     }
 
     /**
-     * Resolve an author by native admin_user id.
+     * Resolve an author by blog author id.
      *
-     * @param int $userId
+     * @param int $authorId
      * @return array{id:int, name:string, bio:string, avatar:string, page_url:string, link:string}|null
      */
-    public function getAuthor(int $userId): ?array
+    public function getAuthor(int $authorId): ?array
     {
         $connection = $this->resource->getConnection();
         $select = $connection->select()
-            ->from(['u' => $this->resource->getTableName('admin_user')], ['firstname', 'lastname', 'username'])
-            ->joinLeft(
-                ['p' => $this->resource->getTableName('requestdesk_blog_author_profile')],
-                'p.admin_user_id = u.user_id',
-                ['display_name', 'bio', 'avatar', 'url']
+            ->from(
+                $this->resource->getTableName(self::AUTHOR_TABLE),
+                ['author_id', 'name', 'bio', 'avatar', 'url']
             )
-            ->where('u.user_id = ?', $userId)
+            ->where('author_id = ?', $authorId)
             ->limit(1);
 
         $row = $connection->fetchRow($select);
@@ -82,20 +83,12 @@ class AuthorResolver
             return null;
         }
 
-        $name = trim((string) ($row['display_name'] ?? ''));
-        if ($name === '') {
-            $name = trim(($row['firstname'] ?? '') . ' ' . ($row['lastname'] ?? ''));
-        }
-        if ($name === '') {
-            $name = (string) ($row['username'] ?? '');
-        }
-
         return [
-            'id' => $userId,
-            'name' => $name,
+            'id' => (int) $row['author_id'],
+            'name' => (string) $row['name'],
             'bio' => (string) ($row['bio'] ?? ''),
             'avatar' => ImageUrl::resolve($row['avatar'] ?? null, $this->storeManager),
-            'page_url' => $this->urlBuilder->getUrl('blog/author/view', ['id' => $userId]),
+            'page_url' => $this->urlBuilder->getUrl('blog/author/view', ['id' => (int) $row['author_id']]),
             'link' => (string) ($row['url'] ?? ''),
         ];
     }
@@ -103,15 +96,15 @@ class AuthorResolver
     /**
      * Published post ids by this author, newest first.
      *
-     * @param int $userId
+     * @param int $authorId
      * @return int[]
      */
-    public function getPostIdsByAuthor(int $userId): array
+    public function getPostIdsByAuthor(int $authorId): array
     {
         $connection = $this->resource->getConnection();
         $select = $connection->select()
             ->from($this->resource->getTableName('requestdesk_blog_post'), ['post_id'])
-            ->where('author_id = ?', $userId)
+            ->where('author_id = ?', $authorId)
             ->where('status = ?', PostInterface::STATUS_PUBLISHED)
             ->order('created_at DESC');
         return array_map('intval', $connection->fetchCol($select));

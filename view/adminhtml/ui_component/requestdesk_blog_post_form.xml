@@ -85,11 +85,24 @@
             </settings>
         </field>
 
-        <field name="author" sortOrder="30" formElement="input">
+        <!-- Single source of truth for the byline. The old free-text "author"
+             column is still read as a fallback for posts imported before authors
+             became records, but it is no longer editable here: having both a
+             free-text name and a picker on one form meant two fields that
+             silently overrode each other. -->
+        <field name="author_id" sortOrder="30" formElement="select">
             <settings>
                 <dataType>text</dataType>
                 <label translate="true">Author</label>
+                <notice translate="true">Manage the list under Content &gt; RequestDesk Blog &gt; Authors.</notice>
             </settings>
+            <formElements>
+                <select>
+                    <settings>
+                        <options class="RequestDesk\Blog\Model\Source\BlogAuthors"/>
+                    </settings>
+                </select>
+            </formElements>
         </field>
 
         <field name="is_active" sortOrder="40" formElement="checkbox">
@@ -118,25 +131,10 @@
 
     <fieldset name="associations">
         <settings>
-            <label translate="true">Author, Categories, Tags &amp; Q&amp;A</label>
+            <label translate="true">Categories, Tags &amp; Q&amp;A</label>
             <collapsible>true</collapsible>
             <opened>true</opened>
         </settings>
-
-        <field name="author_id" sortOrder="10" formElement="select">
-            <settings>
-                <dataType>text</dataType>
-                <label translate="true">Author (Admin User)</label>
-                <notice translate="true">Overrides the free-text author name above. Pulls the public profile.</notice>
-            </settings>
-            <formElements>
-                <select>
-                    <settings>
-                        <options class="RequestDesk\Blog\Model\Source\AdminUsers"/>
-                    </settings>
-                </select>
-            </formElements>
-        </field>
 
         <field name="category_ids" sortOrder="20" formElement="multiselect">
             <settings>
@@ -189,7 +187,13 @@
             <collapsible>true</collapsible>
         </settings>
 
-        <field name="content" sortOrder="10" formElement="wysiwyg">
+        <!-- The class + <wysiwyg>true</wysiwyg> below are what bind this field to
+             Magento's editor (and to Page Builder when it is enabled). Without
+             them the field fell back to a bare textarea, and Page Builder stored
+             the markup HTML-escaped inside a data-content-type="html" wrapper —
+             so saved HTML came back as literal &lt;p&gt; text. -->
+        <field name="content" sortOrder="10" formElement="wysiwyg"
+               class="Magento\Cms\Ui\Component\Form\Element\Wysiwyg">
             <argument name="data" xsi:type="array">
                 <item name="config" xsi:type="array">
                     <item name="wysiwygConfigData" xsi:type="array">
@@ -204,6 +208,7 @@
             <settings>
                 <dataType>text</dataType>
                 <label translate="true">Content</label>
+                <wysiwyg>true</wysiwyg>
             </settings>
         </field>
     </fieldset>

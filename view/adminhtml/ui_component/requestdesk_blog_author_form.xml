@@ -13,7 +13,7 @@
         <item name="js_config" xsi:type="array">
             <item name="provider" xsi:type="string">requestdesk_blog_author_form.requestdesk_blog_author_form_data_source</item>
         </item>
-        <item name="label" xsi:type="string" translate="true">Author Profile</item>
+        <item name="label" xsi:type="string" translate="true">Author</item>
         <item name="template" xsi:type="string">templates/form/collapsible</item>
     </argument>
 
@@ -43,8 +43,8 @@
         <dataProvider class="RequestDesk\Blog\Model\Author\DataProvider"
                       name="requestdesk_blog_author_form_data_source">
             <settings>
-                <requestFieldName>admin_user_id</requestFieldName>
-                <primaryFieldName>admin_user_id</primaryFieldName>
+                <requestFieldName>author_id</requestFieldName>
+                <primaryFieldName>author_id</primaryFieldName>
             </settings>
         </dataProvider>
     </dataSource>
@@ -54,14 +54,39 @@
             <label translate="true">General</label>
         </settings>
 
-        <field name="admin_user_id" sortOrder="10" formElement="select">
+        <field name="author_id" formElement="input">
+            <settings>
+                <dataType>text</dataType>
+                <visible>false</visible>
+            </settings>
+        </field>
+
+        <field name="name" sortOrder="10" formElement="input">
             <settings>
                 <validation>
                     <rule name="required-entry" xsi:type="boolean">true</rule>
                 </validation>
                 <dataType>text</dataType>
-                <label translate="true">Admin User</label>
-                <notice translate="true">The native Magento admin account this public profile enriches.</notice>
+                <label translate="true">Name</label>
+                <notice translate="true">The byline shown on posts. No Magento account required.</notice>
+            </settings>
+        </field>
+
+        <field name="url_key" sortOrder="20" formElement="input">
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">URL Key</label>
+                <notice translate="true">Leave blank to generate one from the name.</notice>
+            </settings>
+        </field>
+
+        <!-- Optional, and deliberately NOT required: an author may be a freelance
+             or guest writer with no Magento login. -->
+        <field name="admin_user_id" sortOrder="30" formElement="select">
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">Linked Admin User</label>
+                <notice translate="true">Optional. Link this author to a Magento admin account, or leave as None.</notice>
             </settings>
             <formElements>
                 <select>
@@ -72,30 +97,32 @@
             </formElements>
         </field>
 
-        <field name="display_name" sortOrder="20" formElement="input">
-            <settings>
-                <dataType>text</dataType>
-                <label translate="true">Public Display Name</label>
-                <notice translate="true">Overrides the admin account name in bylines. Leave blank to use the admin name.</notice>
-            </settings>
-        </field>
-
-        <field name="bio" sortOrder="30" formElement="textarea">
+        <field name="bio" sortOrder="40" formElement="textarea">
             <settings>
                 <dataType>text</dataType>
                 <label translate="true">Bio</label>
             </settings>
         </field>
 
-        <field name="avatar" sortOrder="40" formElement="input">
-            <settings>
-                <dataType>text</dataType>
-                <label translate="true">Avatar Path</label>
-                <notice translate="true">Media path or URL to the author's avatar image.</notice>
-            </settings>
+        <field name="avatar" sortOrder="50">
+            <argument name="data" xsi:type="array">
+                <item name="config" xsi:type="array">
+                    <item name="label" xsi:type="string" translate="true">Avatar</item>
+                    <item name="formElement" xsi:type="string">imageUploader</item>
+                    <item name="componentType" xsi:type="string">imageUploader</item>
+                    <item name="dataScope" xsi:type="string">avatar</item>
+                    <item name="uploaderConfig" xsi:type="array">
+                        <item name="url" xsi:type="url" path="requestdesk_blog/author/upload"/>
+                    </item>
+                    <item name="previewTmpl" xsi:type="string">Magento_Catalog/image-preview</item>
+                    <item name="allowedExtensions" xsi:type="string">jpg jpeg png gif webp</item>
+                    <item name="maxFileSize" xsi:type="number">4194304</item>
+                    <item name="notice" xsi:type="string" translate="true">Upload a square image. JPG, PNG, GIF or WebP, up to 4 MB.</item>
+                </item>
+            </argument>
         </field>
 
-        <field name="url" sortOrder="50" formElement="input">
+        <field name="url" sortOrder="60" formElement="input">
             <settings>
                 <dataType>text</dataType>
                 <label translate="true">Link</label>

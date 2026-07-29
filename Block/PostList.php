@@ -30,6 +30,8 @@ class PostList extends Template
      * @param SearchCriteriaBuilder $searchCriteriaBuilder
      * @param SortOrderBuilder $sortOrderBuilder
      * @param StoreManagerInterface $storeManager
+     * @param \RequestDesk\Blog\Model\AuthorResolver $authorResolver
+     * @param \RequestDesk\Blog\Model\PostContent $postContent
      * @param array $data
      */
     public function __construct(
@@ -39,6 +41,7 @@ class PostList extends Template
         private readonly SortOrderBuilder $sortOrderBuilder,
         private readonly StoreManagerInterface $storeManager,
         private readonly \RequestDesk\Blog\Model\AuthorResolver $authorResolver,
+        private readonly \RequestDesk\Blog\Model\PostContent $postContent,
         array $data = []
     ) {
         parent::__construct($context, $data);
@@ -107,10 +110,6 @@ class PostList extends Template
      */
     public function getExcerpt(PostInterface $post, int $length = 180): string
     {
-        $text = trim((string) preg_replace('/\s+/', ' ', strip_tags((string) $post->getContent())));
-        if (mb_strlen($text) <= $length) {
-            return $text;
-        }
-        return mb_substr($text, 0, $length) . '…';
+        return $this->postContent->excerpt($post->getContent(), $length);
     }
 }
