@@ -20,6 +20,7 @@ use Magento\Catalog\Api\CategoryRepositoryInterface;
 use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\Catalog\Model\ResourceModel\Product\CollectionFactory as ProductCollectionFactory;
 use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Framework\Encryption\EncryptorInterface;
 use Magento\Framework\HTTP\Client\Curl;
 use Magento\Store\Model\StoreManagerInterface;
 use Magento\Catalog\Helper\Image as ImageHelper;
@@ -89,7 +90,8 @@ class ProductExportService
         ImageHelper $imageHelper,
         Curl $curl,
         LoggerInterface $logger,
-        CategoryRepositoryInterface $categoryRepository
+        CategoryRepositoryInterface $categoryRepository,
+        private readonly EncryptorInterface $encryptor
     ) {
         $this->productCollectionFactory = $productCollectionFactory;
         $this->productRepository = $productRepository;
@@ -381,7 +383,14 @@ class ProductExportService
 
         $syncUrl = $endpointUrl . '/api/public/magento/sync';
 
-        $this->logger->info("RequestDesk: Sending {count($documents)} documents to {$syncUrl}");
+        // "{count($documents)}" is not interpolation - PHP renders the literal
+        // "{count(" then casts the array, emitting an "Array to string conversion"
+        // warning on every sync and logging a useless count.
+        $this->logger->info(sprintf(
+            'RequestDesk: Sending %d documents to %s',
+            count($documents),
+            $syncUrl
+        ));
 
         try {
             $this->curl->setHeaders([
@@ -430,10 +439,21 @@ class ProductExportService
      */
     private function getApiKey(): ?string
     {
-        return $this->scopeConfig->getValue(
+        $encryptedKey = $this->scopeConfig->getValue(
             self::XML_PATH_API_KEY,
             \Magento\Store\Model\ScopeInterface::SCOPE_STORE
         );
+
+        if (empty($encryptedKey)) {
+            return null;
+        }
+
+        // The field is obscure/encrypted in system.xml, so the stored value is
+        // Magento ciphertext ("0:3:..."). This returned it raw and shipped that
+        // straight to RequestDesk as the API key, which of course never matched
+        // an agent - every product sync came back 401 while looking configured.
+        // PostImportService has always decrypted; this is the same treatment.
+        return $this->encryptor->decrypt($encryptedKey);
     }
 
     /**
