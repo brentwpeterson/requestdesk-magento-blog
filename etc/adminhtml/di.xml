@@ -14,18 +14,22 @@
         Keep Magento's category-image plugin off the author avatar uploader.
 
         Magento_MediaGalleryCatalogIntegration declares `save_category_image` on the
-        concrete Magento\Catalog\Model\ImageUploader. Plugins on a type also run for
-        every virtualType of that type, so a plugin written for catalog CATEGORY
-        images was firing on author avatars too. It pushes the file into the media
-        gallery, which throws for this path, and that exception surfaced on every
-        single avatar save - before the move was isolated in Author/Save.php it took
-        the whole author record down with it.
+        concrete Magento\Catalog\Model\ImageUploader. It pushes every upload into the
+        media gallery and its afterMoveFileFromTmp never consults
+        IsPathExcludedInterface, so it fires on author avatars and throws - which,
+        before the move was isolated in Author/Save.php, discarded the whole author.
 
-        Disabling it here is scoped to this virtualType only: category images keep
-        the plugin and keep appearing in the media gallery. Author avatars are
-        managed from the author form and were never meant to be gallery assets.
+        This MUST target the real subclass, not a virtualType. A virtualType has no
+        interceptor of its own; the instance is a ...\ImageUploader\Interceptor whose
+        subjectType is the concrete parent, so plugin lookup ignores the virtualType's
+        config entirely. Disabling it on a virtualType looks correct - getNext() even
+        reports no plugins - while the plugin carries on running. See the note in
+        Model/AuthorImageUploader.php.
+
+        Scoped to this class only: category images keep the plugin and keep appearing
+        in the media gallery.
     -->
-    <virtualType name="RequestDeskBlogAuthorImageUploader" type="Magento\Catalog\Model\ImageUploader">
+    <type name="RequestDesk\Blog\Model\AuthorImageUploader">
         <plugin name="save_category_image" disabled="true"/>
-    </virtualType>
+    </type>
 </config>

@@ -68,7 +68,7 @@
 
     <!-- Author avatar uploads. Files land in media/requestdesk/blog/author, via a
          tmp folder that Magento sweeps if the form is never saved. -->
-    <virtualType name="RequestDeskBlogAuthorImageUploader" type="Magento\Catalog\Model\ImageUploader">
+    <type name="RequestDesk\Blog\Model\AuthorImageUploader">
         <arguments>
             <argument name="baseTmpPath" xsi:type="string">requestdesk/blog/author/tmp</argument>
             <argument name="basePath" xsi:type="string">requestdesk/blog/author</argument>
@@ -87,17 +87,17 @@
                 <item name="webp" xsi:type="string">image/webp</item>
             </argument>
         </arguments>
-    </virtualType>
+    </type>
 
     <type name="RequestDesk\Blog\Controller\Adminhtml\Author\Upload">
         <arguments>
-            <argument name="imageUploader" xsi:type="object">RequestDeskBlogAuthorImageUploader</argument>
+            <argument name="imageUploader" xsi:type="object">RequestDesk\Blog\Model\AuthorImageUploader</argument>
         </arguments>
     </type>
 
     <type name="RequestDesk\Blog\Controller\Adminhtml\Author\Save">
         <arguments>
-            <argument name="imageUploader" xsi:type="object">RequestDeskBlogAuthorImageUploader</argument>
+            <argument name="imageUploader" xsi:type="object">RequestDesk\Blog\Model\AuthorImageUploader</argument>
         </arguments>
     </type>
 
@@ -169,6 +169,7 @@
             <argument name="commands" xsi:type="array">
                 <item name="requestdesk_blog_migrate_amasty" xsi:type="object">RequestDesk\Blog\Console\Command\MigrateAmastyCommand</item>
                 <item name="requestdesk_blog_repair_schema" xsi:type="object">RequestDesk\Blog\Console\Command\RepairSchemaCommand</item>
+                <item name="requestdesk_blog_repair_content" xsi:type="object">RequestDesk\Blog\Console\Command\RepairContentCommand</item>
             </argument>
         </arguments>
     </type>

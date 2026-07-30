@@ -109,6 +109,48 @@ class PostContent
      * @param string $content
      * @return string
      */
+    /**
+     * Content as it SHOULD be stored: real HTML, no escaping, no Page Builder shell.
+     *
+     * Reading is repaired on the fly by decodeEscapedMarkup(), which means a damaged
+     * row renders correctly while staying damaged in the database. This is the same
+     * repair applied for keeps, so a one-off cleanup and the read path can never
+     * disagree about what "repaired" means.
+     *
+     * Returns the input unchanged when there is nothing to fix, so a caller can use
+     * a strict comparison to decide whether a row needs writing at all.
+     *
+     * @param string|null $content
+     * @return string
+     */
+    public function normalizeForStorage(?string $content): string
+    {
+        $html = trim((string) $content);
+        if ($html === '') {
+            return '';
+        }
+
+        $decoded = $this->decodeEscapedMarkup($html);
+
+        // Unwrap a Page Builder html block that wraps the entire body. It only ever
+        // existed because the editor field was misconfigured; the payload inside is
+        // ordinary HTML and stands on its own.
+        if (preg_match(
+            '#^<div[^>]*data-content-type="html"[^>]*>(.*)</div>$#si',
+            trim($decoded),
+            $matches
+        )) {
+            $inner = trim($matches[1]);
+            // Only when the wrapper really is the outermost element - a body that
+            // merely starts and ends with different divs must be left alone.
+            if ($inner !== '' && !preg_match('#data-content-type="html"#i', $inner)) {
+                $decoded = $inner;
+            }
+        }
+
+        return trim($decoded);
+    }
+
     private function decodeEscapedMarkup(string $content): string
     {
         if ($content === '' || !str_contains($content, '&lt;')) {
