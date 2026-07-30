@@ -19,4 +19,24 @@
         </arguments>
     </type>
 
+    <!--
+        Pretty post URLs: /blog/<url-key> as well as /blog/post/view/id/N.
+
+        sortOrder 60 puts this AFTER Magento's standard router (10) and after the
+        CMS router (60 is the conventional slot for "tried everything else"), so a
+        real controller path always wins and this only ever picks up what would
+        otherwise 404. The id form keeps working, so no rewrites and no redirects.
+    -->
+    <type name="Magento\Framework\App\RouterList">
+        <arguments>
+            <argument name="routerList" xsi:type="array">
+                <item name="requestdesk_blog" xsi:type="array">
+                    <item name="class" xsi:type="string">RequestDesk\Blog\Controller\Router</item>
+                    <item name="disable" xsi:type="boolean">false</item>
+                    <item name="sortOrder" xsi:type="string">60</item>
+                </item>
+            </argument>
+        </arguments>
+    </type>
+
 </config>

@@ -56,16 +56,21 @@
             <column name="title"/>
             <column name="content"/>
         </index>
-        <!-- author_id now points at requestdesk_blog_author, not admin_user, so that
-             a post can be written by someone with no Magento account. The foreign
-             key is deliberately absent for this release: declarative schema runs
-             BEFORE data patches, so the constraint cannot be added until
-             MigrateAuthorProfiles has remapped the existing admin-user ids. It is
-             added in the follow-up release, together with dropping the retired
-             requestdesk_blog_author_profile table below. -->
+        <!-- author_id points at requestdesk_blog_author, not admin_user, so a post can
+             be written by someone with no Magento account. The FK was held back one
+             release because declarative schema runs BEFORE data patches, so the
+             constraint could not exist until MigrateAuthorProfiles and
+             BackfillAuthorsFromPosts had remapped the ids. Both have shipped, so it
+             lands here. ON DELETE SET NULL, not CASCADE: deleting an author must never
+             delete their posts, and the legacy `author` byline column survives as the
+             display fallback. -->
         <index referenceId="REQUESTDESK_BLOG_POST_AUTHOR_ID" indexType="btree">
             <column name="author_id"/>
         </index>
+        <constraint xsi:type="foreign" referenceId="REQUESTDESK_BLOG_POST_AUTHOR_ID_FK"
+                    table="requestdesk_blog_post" column="author_id"
+                    referenceTable="requestdesk_blog_author" referenceColumn="author_id"
+                    onDelete="SET NULL"/>
     </table>
 
     <!-- Blog authors — a first-class entity, NOT tied to a Magento admin account.
@@ -97,26 +102,13 @@
                     referenceTable="admin_user" referenceColumn="user_id" onDelete="SET NULL"/>
     </table>
 
-    <!-- DEPRECATED — superseded by requestdesk_blog_author. Kept declared for this
-         release only so MigrateAuthorProfiles can read it; declarative schema drops
-         tables before data patches run, so removing it here would destroy the data
-         the patch needs. Delete this table in the follow-up release. -->
-    <table name="requestdesk_blog_author_profile" resource="default" engine="innodb" comment="Blog Author Public Profile (deprecated)">
-        <column xsi:type="int" name="admin_user_id" unsigned="true" nullable="false" comment="Native admin_user.user_id"/>
-        <column xsi:type="varchar" name="display_name" nullable="true" length="255" comment="Public display name (overrides admin name)"/>
-        <column xsi:type="text" name="bio" nullable="true" comment="Author Bio"/>
-        <column xsi:type="varchar" name="avatar" nullable="true" length="255" comment="Avatar image path"/>
-        <column xsi:type="varchar" name="url" nullable="true" length="255" comment="Author link (site/social)"/>
-        <column xsi:type="timestamp" name="created_at" nullable="false" default="CURRENT_TIMESTAMP" comment="Created At"/>
-        <column xsi:type="timestamp" name="updated_at" nullable="false" default="CURRENT_TIMESTAMP" on_update="true" comment="Updated At"/>
-
-        <constraint xsi:type="primary" referenceId="PRIMARY">
-            <column name="admin_user_id"/>
-        </constraint>
-        <constraint xsi:type="foreign" referenceId="REQUESTDESK_BLOG_AUTHOR_PROFILE_USER_ID_ADMIN_USER_USER_ID"
-                    table="requestdesk_blog_author_profile" column="admin_user_id"
-                    referenceTable="admin_user" referenceColumn="user_id" onDelete="CASCADE"/>
-    </table>
+    <!-- requestdesk_blog_author_profile was removed here. It was superseded by
+         requestdesk_blog_author and was only still declared so MigrateAuthorProfiles
+         could read it. Both migration patches (MigrateAuthorProfiles and
+         BackfillAuthorsFromPosts) have shipped and are recorded in patch_list, so
+         nothing reads it any more and declarative schema will drop it on upgrade.
+         MigrateAuthorProfiles already guards with isTableExists(), so it stays a
+         no-op on installs that upgrade past this point. -->
 
     <!-- Post-Category link — references NATIVE Magento categories, not an invented blog taxonomy -->
     <table name="requestdesk_blog_post_category" resource="default" engine="innodb" comment="Blog Post to Native Category Link">
