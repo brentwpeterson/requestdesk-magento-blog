@@ -187,13 +187,14 @@
             <collapsible>true</collapsible>
         </settings>
 
-        <!-- The class + <wysiwyg>true</wysiwyg> below are what bind this field to
-             Magento's editor (and to Page Builder when it is enabled). Without
-             them the field fell back to a bare textarea, and Page Builder stored
-             the markup HTML-escaped inside a data-content-type="html" wrapper —
-             so saved HTML came back as literal &lt;p&gt; text. -->
-        <field name="content" sortOrder="10" formElement="wysiwyg"
-               class="Magento\Cms\Ui\Component\Form\Element\Wysiwyg">
+        <!-- formElement="wysiwyg" + <wysiwyg>true</wysiwyg> are what bind this field
+             to Magento's editor. Do NOT add a class="..." here: core's own
+             cms_page_form.xml declares no class, and Page Builder attaches itself
+             through a di preference on Magento\Ui\Component\Form\Element\Wysiwyg.
+             Naming a class explicitly bypasses that preference, and the class this
+             once pointed at (Magento\Cms\Ui\Component\Form\Element\Wysiwyg) does
+             not exist in 2.4.7 at all, which fataled the whole post form. -->
+        <field name="content" sortOrder="10" formElement="wysiwyg">
             <argument name="data" xsi:type="array">
                 <item name="config" xsi:type="array">
                     <item name="wysiwygConfigData" xsi:type="array">
