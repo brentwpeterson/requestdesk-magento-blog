@@ -33,6 +33,15 @@ class PostImportService
     private const XML_PATH_ENDPOINT_URL = 'requestdesk_blog/api/endpoint_url';
 
     /**
+     * RequestDesk moved this API. The posts router is mounted at /api/public-posts
+     * and authenticates with an X-API-Key header. This module was still calling
+     * /api/public/posts with an x-requestdesk-api-key header - both gone, which is
+     * why every call came back 404 and the integration was silently dead.
+     */
+    private const PATH_POSTS = '/api/public-posts/';
+    private const HEADER_API_KEY = 'X-API-Key';
+
+    /**
      * Seconds to wait for a connection, and for the whole request. Short enough
      * that an unreachable endpoint reports back long before PHP's own limit.
      */
@@ -233,7 +242,7 @@ class PostImportService
             $queryParams['sync_status'] = $syncStatus;
         }
 
-        $url = $endpointUrl . '/api/public/posts?' . http_build_query($queryParams);
+        $url = $endpointUrl . self::PATH_POSTS . '?' . http_build_query($queryParams);
 
         $this->logger->info("RequestDesk: Fetching posts from {$url}");
 
@@ -241,7 +250,7 @@ class PostImportService
             $this->applyTimeouts();
             $this->curl->setHeaders([
                 'Content-Type' => 'application/json',
-                'x-requestdesk-api-key' => $apiKey
+                self::HEADER_API_KEY => $apiKey
             ]);
 
             $this->curl->get($url);
@@ -422,44 +431,18 @@ class PostImportService
         string $status,
         ?string $errorMessage = null
     ): bool {
-        try {
-            $apiKey = $this->getApiKey();
-            $endpointUrl = rtrim($this->getEndpointUrl(), '/');
-            $storeUrl = $this->storeManager->getStore()->getBaseUrl();
+        // RequestDesk retired /api/public/posts/{id}/sync-status along with the rest
+        // of that route tree. Calling it now only ever 404s - and because this runs
+        // inside the per-post try block, that failure would mark a post which
+        // imported perfectly as failed. Reporting back is a nice-to-have; importing
+        // is the job. Restore this when RequestDesk offers a replacement route.
+        $this->logger->debug(sprintf(
+            'RequestDesk: sync-status not reported for post %s (%s) - endpoint retired upstream',
+            $requestdeskPostId,
+            $status
+        ));
 
-            $syncUrl = $endpointUrl . '/api/public/posts/' . $requestdeskPostId . '/sync-status';
-
-            $payload = [
-                'platform' => 'magento',
-                'platform_post_id' => $magentoPostId ? (string) $magentoPostId : null,
-                'sync_status' => $status,
-                'platform_url' => $magentoPostId ? $storeUrl . 'blog/post/view/id/' . $magentoPostId : null,
-                'platform_store_id' => (string) $this->storeManager->getStore()->getId(),
-                'error_message' => $errorMessage
-            ];
-
-            $this->applyTimeouts();
-            $this->curl->setHeaders([
-                'Content-Type' => 'application/json',
-                'x-requestdesk-api-key' => $apiKey
-            ]);
-
-            $this->curl->post($syncUrl, json_encode($payload));
-
-            $responseCode = $this->curl->getStatus();
-
-            if ($responseCode >= 200 && $responseCode < 300) {
-                $this->logger->info("RequestDesk: Reported sync status '{$status}' for post {$requestdeskPostId}");
-                return true;
-            } else {
-                $this->logger->warning("RequestDesk: Failed to report sync status for post {$requestdeskPostId} - HTTP {$responseCode}");
-                return false;
-            }
-
-        } catch (\Exception $e) {
-            $this->logger->warning("RequestDesk: Failed to report sync status - " . $e->getMessage());
-            return false;
-        }
+        return false;
     }
 
     /**
@@ -498,7 +481,7 @@ class PostImportService
             $this->applyTimeouts();
             $this->curl->setHeaders([
                 'Content-Type' => 'application/json',
-                'x-requestdesk-api-key' => $apiKey
+                self::HEADER_API_KEY => $apiKey
             ]);
 
             $this->curl->post($url, '{}');
@@ -558,15 +541,17 @@ class PostImportService
                 ];
             }
 
-            $testUrl = $endpointUrl . '/api/public/posts/test';
+            // There is no dedicated /test route any more. A cheap one-row list call
+            // proves the same three things: host reachable, key valid, agent resolved.
+            $testUrl = $endpointUrl . self::PATH_POSTS . '?per_page=1';
 
             $this->applyTimeouts();
             $this->curl->setHeaders([
                 'Content-Type' => 'application/json',
-                'x-requestdesk-api-key' => $apiKey
+                self::HEADER_API_KEY => $apiKey
             ]);
 
-            $this->curl->post($testUrl, '{}');
+            $this->curl->get($testUrl);
 
             $responseCode = $this->curl->getStatus();
             $responseBody = $this->curl->getBody();
