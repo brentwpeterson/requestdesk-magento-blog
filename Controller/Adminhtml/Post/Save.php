@@ -18,6 +18,7 @@ namespace RequestDesk\Blog\Controller\Adminhtml\Post;
 
 use Magento\Backend\App\Action;
 use Magento\Backend\App\Action\Context;
+use Magento\Framework\App\ResourceConnection;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
 use RequestDesk\Blog\Api\QaLinkResolverInterface;
 use RequestDesk\Blog\Model\PostCategoryResolver;
@@ -59,7 +60,8 @@ class Save extends Action
         private readonly PostCategoryResolver $categoryResolver,
         private readonly TagResolver $tagResolver,
         private readonly QaLinkResolverInterface $qaLinkResolver,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly ResourceConnection $resource
     ) {
         parent::__construct($context);
         $this->postRepository = $postRepository;
@@ -108,6 +110,7 @@ class Save extends Action
 
             $savedId = (int)$post->getId();
             $failed = $this->syncAssociations($savedId, $data);
+            $this->touch($savedId);
 
             if ($failed === []) {
                 $this->messageManager->addSuccessMessage(__('The post has been saved.'));
@@ -133,6 +136,41 @@ class Save extends Action
         }
 
         return $resultRedirect->setPath('*/*/edit', ['post_id' => $postId]);
+    }
+
+    /**
+     * Stamp updated_at so the grid reflects the edit.
+     *
+     * updated_at is ON UPDATE CURRENT_TIMESTAMP, which MySQL only fires when a
+     * column on the post row actually changes. Categories, tags and Q&A pairs all
+     * live in their own pivot tables, so editing only those left the post row
+     * untouched and the grid's Updated column stale — the post visibly changed but
+     * claimed it had not. Stamping it here keeps the column honest.
+     *
+     * Best-effort: never let a timestamp cost the caller a save that succeeded.
+     *
+     * @param int $postId
+     * @return void
+     */
+    private function touch(int $postId): void
+    {
+        if ($postId <= 0) {
+            return;
+        }
+
+        try {
+            $connection = $this->resource->getConnection();
+            $connection->update(
+                $this->resource->getTableName('requestdesk_blog_post'),
+                ['updated_at' => $connection->fetchOne('SELECT NOW()')],
+                ['post_id = ?' => $postId]
+            );
+        } catch (\Throwable $e) {
+            $this->logger->error(
+                'RequestDesk Blog: could not stamp updated_at for post ' . $postId,
+                ['exception' => $e]
+            );
+        }
     }
 
     /**

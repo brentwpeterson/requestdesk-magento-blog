@@ -127,6 +127,37 @@ bin/magento module:status RequestDesk_Blog
 # Should output: Module is enabled
 ```
 
+## Upgrading
+
+### If `setup:upgrade` aborts in SchemaBuilder, run the repair command first
+
+Installs created before 1.4.0 can carry an orphaned foreign key: the
+`requestdesk_blog_post_category` table holds an FK pointing at
+`requestdesk_blog_category`, a table that was dropped without removing the
+constraint. On an affected install two things happen — every category insert
+fails with MySQL error 1452, and `setup:upgrade` itself dies inside
+`SchemaBuilder` before any patch gets a chance to run.
+
+That last part is why the repair ships as a **console command** rather than a
+schema patch: on an affected install, patches never execute. Run it *before*
+`setup:upgrade`:
+
+```bash
+bin/magento requestdesk:blog:repair-schema
+bin/magento setup:upgrade
+```
+
+The command is safe to run on a healthy install — it inspects the constraint and
+exits without changing anything if there is nothing to repair.
+
+### Authors are backfilled automatically
+
+From 1.4.2 a data patch creates one author record per distinct byline found on
+your posts and points the posts at it. Before that, authors only existed if they
+were linked to a Magento admin account, so most installs showed an empty Author
+dropdown. Nothing is required of you; the legacy byline column is left in place
+as a fallback and is not dropped.
+
 ## Configuration
 
 Navigate to **Stores > Configuration > RequestDesk > Blog**

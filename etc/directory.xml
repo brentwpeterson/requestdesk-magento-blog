@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * RequestDesk Blog - Media Gallery exclusions
+ *
+ * Author avatars are managed entirely from the author form; they are not browsable
+ * assets and have no business showing up when someone opens the Media Gallery to
+ * pick an image. This keeps them out of that listing.
+ *
+ * Note this is NOT what stops the "could not be added to the media gallery" error
+ * on save - that came from Magento's `save_category_image` plugin firing on our
+ * uploader, and it is switched off for this virtualType in etc/adminhtml/di.xml.
+ * These two are complementary: di.xml stops the write attempt, this stops the
+ * browse listing.
+ *
+ * @category  RequestDesk
+ * @package   RequestDesk_Blog
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_MediaGalleryApi:etc/directory.xsd">
+    <exclude>
+        <patterns>
+            <pattern name="requestdesk_blog_author_avatars">/^requestdesk\/blog\/author/</pattern>
+        </patterns>
+    </exclude>
+</config>
