@@ -93,7 +93,7 @@ class Save extends Action
 
             $post->setTitle($data['title'] ?? '');
             $post->setContent($data['content'] ?? '');
-            $post->setUrlKey($data['url_key'] ?? '');
+            $post->setUrlKey($this->resolveUrlKey($data, $postId));
             $post->setMetaTitle($data['meta_title'] ?? '');
             $post->setMetaDescription($data['meta_description'] ?? '');
             // The byline is now the author_id select. "author" is the legacy
@@ -136,6 +136,80 @@ class Save extends Action
         }
 
         return $resultRedirect->setPath('*/*/edit', ['post_id' => $postId]);
+    }
+
+    /**
+     * The URL key to store, derived from the title when the field is left blank.
+     *
+     * Imported posts always arrive with a url_key, so nothing generated one and the
+     * gap went unnoticed: a post created by hand in the admin was saved with an
+     * empty url_key. That leaves a blank column in the grid and, now that
+     * /blog/<url-key> routes to posts, no pretty URL at all - the post is only
+     * reachable by id. The author form has generated its key from the name for a
+     * while; this brings posts in line.
+     *
+     * @param array $data
+     * @param int $postId Zero for a new post
+     * @return string
+     */
+    private function resolveUrlKey(array $data, int $postId): string
+    {
+        $urlKey = trim((string)($data['url_key'] ?? ''));
+
+        if ($urlKey === '') {
+            $urlKey = trim((string)($data['title'] ?? ''));
+        }
+
+        $slug = strtolower($urlKey);
+        $slug = (string)preg_replace('/[^a-z0-9]+/', '-', $slug);
+        $slug = trim($slug, '-');
+
+        if ($slug === '') {
+            return '';
+        }
+
+        return $this->uniqueUrlKey($slug, $postId);
+    }
+
+    /**
+     * Suffix -2, -3, ... until the key is free. url_key drives routing, so two
+     * posts sharing one would make the second unreachable.
+     *
+     * @param string $base
+     * @param int $postId
+     * @return string
+     */
+    private function uniqueUrlKey(string $base, int $postId): string
+    {
+        try {
+            $connection = $this->resource->getConnection();
+            $table = $this->resource->getTableName('requestdesk_blog_post');
+
+            $candidate = $base;
+            $i = 2;
+            while (true) {
+                $select = $connection->select()
+                    ->from($table, ['post_id'])
+                    ->where('url_key = ?', $candidate)
+                    ->limit(1);
+
+                if ($postId) {
+                    $select->where('post_id != ?', $postId);
+                }
+
+                if (!(int)$connection->fetchOne($select)) {
+                    return $candidate;
+                }
+
+                $candidate = $base . '-' . $i++;
+            }
+        } catch (\Throwable $e) {
+            $this->logger->error(
+                'RequestDesk Blog: could not check url_key uniqueness, using the raw slug',
+                ['exception' => $e]
+            );
+            return $base;
+        }
     }
 
     /**
