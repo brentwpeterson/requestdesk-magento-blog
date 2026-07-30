@@ -33,6 +33,13 @@ class PostImportService
     private const XML_PATH_ENDPOINT_URL = 'requestdesk_blog/api/endpoint_url';
 
     /**
+     * Seconds to wait for a connection, and for the whole request. Short enough
+     * that an unreachable endpoint reports back long before PHP's own limit.
+     */
+    private const CONNECT_TIMEOUT = 5;
+    private const REQUEST_TIMEOUT = 30;
+
+    /**
      * @var ScopeConfigInterface
      */
     private ScopeConfigInterface $scopeConfig;
@@ -231,6 +238,7 @@ class PostImportService
         $this->logger->info("RequestDesk: Fetching posts from {$url}");
 
         try {
+            $this->applyTimeouts();
             $this->curl->setHeaders([
                 'Content-Type' => 'application/json',
                 'x-requestdesk-api-key' => $apiKey
@@ -430,6 +438,7 @@ class PostImportService
                 'error_message' => $errorMessage
             ];
 
+            $this->applyTimeouts();
             $this->curl->setHeaders([
                 'Content-Type' => 'application/json',
                 'x-requestdesk-api-key' => $apiKey
@@ -486,6 +495,7 @@ class PostImportService
                 'max_results' => $maxResults
             ]);
 
+            $this->applyTimeouts();
             $this->curl->setHeaders([
                 'Content-Type' => 'application/json',
                 'x-requestdesk-api-key' => $apiKey
@@ -550,6 +560,7 @@ class PostImportService
 
             $testUrl = $endpointUrl . '/api/public/posts/test';
 
+            $this->applyTimeouts();
             $this->curl->setHeaders([
                 'Content-Type' => 'application/json',
                 'x-requestdesk-api-key' => $apiKey
@@ -620,5 +631,30 @@ class PostImportService
         }
 
         return $url;
+    }
+
+    /**
+     * Fail fast when RequestDesk is unreachable.
+     *
+     * Without these, an endpoint that never answers - a stopped container, a wrong
+     * hostname, a firewall - leaves curl waiting until PHP hits max_execution_time
+     * and dies. A fatal is not an \Exception, so it escapes the controllers'
+     * try/catch, Magento renders an HTML error page, and the admin's AJAX gets HTML
+     * where it expects JSON. The operator is then shown "Unexpected token '<'"
+     * instead of "could not connect", which says nothing about what is wrong.
+     *
+     * @return void
+     */
+    private function applyTimeouts(): void
+    {
+        try {
+            $this->curl->setOptions([
+                CURLOPT_CONNECTTIMEOUT => self::CONNECT_TIMEOUT,
+                CURLOPT_TIMEOUT => self::REQUEST_TIMEOUT,
+            ]);
+        } catch (\Throwable $e) {
+            // Never let tuning stop the call from being attempted.
+            $this->logger->warning('RequestDesk: could not apply curl timeouts - ' . $e->getMessage());
+        }
     }
 }

@@ -104,7 +104,7 @@ class Posts extends Action
 
             return $resultJson->setData($result);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->logger->error('RequestDesk: Post import failed - ' . $e->getMessage());
             $this->messageManager->addErrorMessage(__('Import failed: %1', $e->getMessage()));
 

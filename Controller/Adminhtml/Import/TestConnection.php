@@ -94,7 +94,7 @@ class TestConnection extends Action
 
             return $resultJson->setData($result);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->logger->error('RequestDesk: Posts API connection test failed - ' . $e->getMessage());
             $this->messageManager->addErrorMessage(__('Connection test failed: %1', $e->getMessage()));
 

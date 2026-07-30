@@ -88,7 +88,7 @@ class TestConnection extends Action
                     'message' => "Connection failed: {$errorMsg}"
                 ]);
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return $result->setData([
                 'success' => false,
                 'message' => 'Connection error: ' . $e->getMessage()
