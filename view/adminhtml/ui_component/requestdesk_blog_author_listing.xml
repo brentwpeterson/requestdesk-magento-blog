@@ -31,10 +31,14 @@
         </deps>
     </settings>
 
+    <!-- Key the grid on author_id, NOT admin_user_id. An author owns its own id and
+         admin_user_id is an optional, nullable link to a Magento account. Keying on
+         admin_user_id made every account-less author share the same (null) row key, so
+         the grid collapsed them and rendered one record repeated N times. -->
     <dataSource name="requestdesk_blog_author_listing_data_source" component="Magento_Ui/js/grid/provider">
         <settings>
             <storageConfig>
-                <param name="indexField" xsi:type="string">admin_user_id</param>
+                <param name="indexField" xsi:type="string">author_id</param>
             </storageConfig>
             <updateUrl path="mui/index/render"/>
         </settings>
@@ -43,7 +47,7 @@
                       name="requestdesk_blog_author_listing_data_source">
             <settings>
                 <requestFieldName>id</requestFieldName>
-                <primaryFieldName>admin_user_id</primaryFieldName>
+                <primaryFieldName>author_id</primaryFieldName>
             </settings>
         </dataProvider>
     </dataSource>

@@ -13,8 +13,10 @@ namespace RequestDesk\Blog\Controller\Adminhtml\Author;
 use Magento\Backend\App\Action;
 use Magento\Backend\App\Action\Context;
 use Magento\Catalog\Model\ImageUploader;
+use Magento\Framework\App\Filesystem\DirectoryList;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\Exception\LocalizedException;
+use Magento\Framework\Filesystem;
 use Psr\Log\LoggerInterface;
 use RequestDesk\Blog\Model\AuthorFactory;
 use RequestDesk\Blog\Model\ResourceModel\Author as AuthorResource;
@@ -33,6 +35,7 @@ class Save extends Action
      * @param ResourceConnection $resource
      * @param ImageUploader $imageUploader
      * @param LoggerInterface $logger
+     * @param Filesystem $filesystem
      */
     public function __construct(
         Context $context,
@@ -40,7 +43,8 @@ class Save extends Action
         private readonly AuthorResource $authorResource,
         private readonly ResourceConnection $resource,
         private readonly ImageUploader $imageUploader,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly Filesystem $filesystem
     ) {
         parent::__construct($context);
     }
@@ -91,7 +95,7 @@ class Save extends Action
             $author->setData('name', $name);
             $author->setData('admin_user_id', $adminUserId);
             $author->setData('bio', (string)($data['bio'] ?? ''));
-            $author->setData('avatar', $this->resolveAvatar($data));
+            $author->setData('avatar', $this->resolveAvatar($data, (string)$author->getData('avatar')));
             $author->setData('url', trim((string)($data['url'] ?? '')));
             $author->setData('url_key', $this->uniqueUrlKey(
                 trim((string)($data['url_key'] ?? '')) ?: $name,
@@ -129,10 +133,18 @@ class Save extends Action
      * retained one only echoes its stored name back. A bare string is a legacy
      * path typed into the old text field, which stays valid.
      *
+     * The move is ISOLATED on purpose. moveFileFromTmp() also drives Magento's
+     * media gallery synchronisation, which throws for reasons that have nothing
+     * to do with this author (a .thumbs directory it cannot create, an asset it
+     * cannot index). Letting that bubble used to abort the whole save, so a
+     * cosmetic avatar problem silently threw away the author record. Same
+     * un-isolated-dependency trap that Post/Save.php already had fixed.
+     *
      * @param array $data
+     * @param string $current Avatar already stored on the author, if any
      * @return string
      */
-    private function resolveAvatar(array $data): string
+    private function resolveAvatar(array $data, string $current = ''): string
     {
         $avatar = $data['avatar'] ?? '';
 
@@ -145,11 +157,51 @@ class Save extends Action
             return '';
         }
 
-        if (!empty($file['tmp_name'])) {
-            return $this->imageUploader->moveFileFromTmp((string)$file['name']);
+        $name = (string)$file['name'];
+
+        if (empty($file['tmp_name'])) {
+            return $name;
         }
 
-        return (string)$file['name'];
+        try {
+            return $this->imageUploader->moveFileFromTmp($name);
+        } catch (\Throwable $e) {
+            $this->logger->error(
+                'RequestDesk Blog: avatar move failed; saving the author without it',
+                ['exception' => $e, 'avatar' => $name]
+            );
+
+            // The move often succeeds and only the media-gallery step fails, so
+            // keep the file if it really did land in place; otherwise leave the
+            // stored value alone rather than pointing at an image that is gone.
+            if ($this->avatarLanded($name)) {
+                $this->messageManager->addWarningMessage(
+                    __('The avatar was uploaded but could not be added to the media gallery.')
+                );
+                return $name;
+            }
+
+            $this->messageManager->addWarningMessage(
+                __('The author was saved, but the avatar could not be uploaded.')
+            );
+            return $current;
+        }
+    }
+
+    /**
+     * Did the avatar actually reach its final media path?
+     *
+     * @param string $name
+     * @return bool
+     */
+    private function avatarLanded(string $name): bool
+    {
+        try {
+            $media = $this->filesystem->getDirectoryRead(DirectoryList::MEDIA);
+            return $media->isExist($this->imageUploader->getBasePath() . '/' . ltrim($name, '/'));
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 
     /**
