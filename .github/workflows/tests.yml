@@ -1,0 +1,53 @@
+name: tests
+
+# Runs the unit suite on every push and pull request. The suite mocks its
+# dependencies and needs no database, no Magento install and no store, so this
+# stays fast enough to be worth waiting for.
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # composer.json declares php ^8.1. Test the floor and the version the
+        # current Magento releases run on, so a lower-bound break is visible
+        # here rather than in somebody's store.
+        php: ['8.1', '8.3']
+
+    name: unit (php ${{ matrix.php }})
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, dom, libxml, intl
+          coverage: none
+          tools: composer:v2
+
+      # Magento packages are not on packagist.org. The Mage-OS mirror is a
+      # public read-only mirror, so this needs no credentials, unlike
+      # repo.magento.com.
+      - name: Add the Mage-OS mirror
+        run: composer config repositories.mage-os composer https://mirror.mage-os.org/
+
+      - name: Cache composer downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ matrix.php }}-${{ hashFiles('composer.json') }}
+          restore-keys: composer-${{ matrix.php }}-
+
+      - name: Install dependencies
+        run: composer update --no-interaction --no-progress --prefer-dist
+
+      - name: Run the unit suite
+        run: vendor/bin/phpunit --colors=always

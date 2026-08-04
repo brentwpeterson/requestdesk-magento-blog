@@ -3,3 +3,11 @@
 **/.impeccable/
 node_modules/
 *.log
+
+# Dev dependencies for the test suite. This is a library: the consuming store
+# resolves versions from its own lock, so committing one here would only
+# pretend to pin something. Ignored, not deleted — the suite needs it locally.
+/vendor/
+/composer.lock
+.phpunit.cache/
+.phpunit.result.cache

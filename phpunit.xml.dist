@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Unit tests only. These run without a Magento installation, a database or a
+  bootstrapped application: dependencies are mocked, so the suite is fast enough
+  to run on every commit and usable in CI without provisioning a store.
+
+  Integration tests, if they are ever added, belong in a separate suite with
+  Magento's own bootstrap and should not be mixed in here.
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true"
+         cacheDirectory=".phpunit.cache"
+         failOnWarning="true"
+         failOnRisky="true"
+         beStrictAboutOutputDuringTests="true">
+    <testsuites>
+        <testsuite name="unit">
+            <directory>Test/Unit</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory suffix=".php">Model</directory>
+            <directory suffix=".php">Service</directory>
+            <directory suffix=".php">ViewModel</directory>
+        </include>
+        <exclude>
+            <directory suffix=".php">Model/ResourceModel</directory>
+        </exclude>
+    </source>
+</phpunit>
