@@ -1,0 +1,21 @@
+# What ships to a store, and what stays here.
+#
+# composer builds a dist archive with `git archive`, so without this file every
+# path in the repo lands in somebody's vendor/ directory: the test suite, the CI
+# workflow, and internal planning notes included. None of that is runtime code,
+# and a merchant reading their vendor tree should not find our roadmap in it.
+#
+# export-ignore keeps these in the repository and out of the package.
+
+/Test/                      export-ignore
+/phpunit.xml.dist           export-ignore
+/.github/                   export-ignore
+/.gitattributes             export-ignore
+/.gitignore                 export-ignore
+
+# Internal planning, not documentation for the installer.
+/BLOG-BACKLOG.md            export-ignore
+/docs/PARITY-REQUIREMENTS.md export-ignore
+
+# README and LICENSE.txt deliberately stay: both are worth having beside the
+# code once it is installed.
