@@ -448,15 +448,55 @@ Admin URLs require form keys. Always navigate via the admin menu:
 
 ### Running Tests
 
-```bash
-# Unit tests
-vendor/bin/phpunit -c dev/tests/unit/phpunit.xml.dist \
-  app/code/RequestDesk/Blog/Test/Unit
+The unit suite runs standalone. It mocks its dependencies, so it needs no
+Magento installation, no database and no store, and finishes in well under a
+second.
 
-# Integration tests
-vendor/bin/phpunit -c dev/tests/integration/phpunit.xml.dist \
-  app/code/RequestDesk/Blog/Test/Integration
+```bash
+composer install
+vendor/bin/phpunit
 ```
+
+Magento packages are not published on packagist.org, so `composer.json` declares
+the public Mage-OS mirror as a repository. No credentials are needed. Composer
+ignores a `repositories` block in an installed dependency, so this affects local
+development and CI only, never a store that requires this module.
+
+CI runs the same suite on every push, pull request and tag, against PHP 8.1 (the
+floor `composer.json` declares) and PHP 8.3.
+
+**What is covered.** `Model/PostContent` — the class that turns stored content
+into something safe to render or excerpt. Each test is written against a defect
+seen in real data rather than against the implementation:
+
+- `<script>` and `<style>` elements dropped whole, because `strip_tags()` removes
+  the tag and keeps the text, which is how editor CSS such as `#html-body {...}`
+  used to appear inside excerpts
+- Page Builder markup stored HTML-escaped decoded before stripping
+- excerpts truncated on a word boundary, and the deliberate refusal to use one
+  before 60% of the limit so a single long token cannot collapse the excerpt
+- excerpt length counted in characters, not bytes
+- a Page Builder wrapper unwrapped, while unrelated sibling divs and nested
+  blocks are left alone
+- clean content returned byte-identical, so a caller can use a strict comparison
+  to decide whether a row needs writing at all
+- `normalizeForStorage()` idempotent, so the repair applied on read and the
+  repair written to the database cannot disagree
+- `render()` falling back to unfiltered content when the filter throws, so a
+  malformed directive cannot blank a whole post body
+
+The suite is verified by breaking the code, not only by watching it pass:
+removing the script/style strip reproduces the original defect and fails its
+test, and removing the `render()` fallback fails its own.
+
+Tests are not shipped. `.gitattributes` marks `Test/`, `phpunit.xml.dist` and
+the CI workflow `export-ignore`, so they stay in the repository and out of
+`vendor/`.
+
+Other classes are not covered yet. The `url_key` generation and API key
+decryption paths live in private methods behind config and database access;
+testing those means changing production code, which is a deliberate decision
+rather than an oversight.
 
 ### Code Quality
 
@@ -558,6 +598,60 @@ Answer Engine Optimization (AEO) is the practice of structuring content so AI sy
 - Content not optimized for AI will become invisible
 
 ## Changelog
+
+### 1.6.3 (2026-08-04)
+- **Unit test suite** covering `Model/PostContent`, running standalone with no
+  Magento install or database, plus GitHub Actions CI on PHP 8.1 and 8.3
+- **Mage-OS mirror declared** as a composer repository, so the module can be
+  installed and tested standalone. Magento packages are not on packagist.org,
+  and without this the package could not resolve its own requirements outside a
+  store
+- **Tests and internal notes no longer ship.** `.gitattributes` keeps `Test/`,
+  `phpunit.xml.dist`, the CI workflow and planning docs out of `vendor/`
+- Documentation: the previous "Running Tests" section described a suite that did
+  not exist, and the changelog stopped at 1.2.0 while five releases had shipped
+
+### 1.6.2 (2026-07-30)
+- **Fix:** product sync authenticated with Magento ciphertext. The `api_key`
+  field is `obscure` in `system.xml`, so `core_config_data` stores an encrypted
+  value; `ProductExportService` posted it raw and RequestDesk answered 401 while
+  the admin looked correctly configured
+
+### 1.6.1 (2026-07-30)
+- **Fix:** a post saved with an empty `url_key` now generates one from its
+  title, with a `-2`, `-3` suffix until it is unique. Imported posts always
+  arrived with a key, so nothing had ever generated one
+
+### 1.6.0 (2026-07-30)
+- Post import points at RequestDesk's current API
+
+### 1.5.2 (2026-07-30)
+- **Fix:** admin AJAX endpoints fail with a usable message instead of silently
+
+### 1.5.1 (2026-07-30)
+- **Fix:** the media gallery plugin no longer fires on avatars; stored post
+  content repaired
+
+### 1.5.0 (2026-07-30)
+- Pretty post URLs; the deprecated author profile table is retired
+
+### 1.4.3 (2026-07-30)
+- **Fix:** stale grid bookmarks cleared, `updated_at` stamped, upgrade path
+  documented
+
+### 1.4.2 (2026-07-30)
+- **Fix:** three author bugs found by an admin click-through
+
+### 1.4.1 (2026-07-30)
+- **Fix:** fatal in the post form from a nonexistent Cms Wysiwyg element class
+
+### 1.4.0 (2026-07-29)
+- Fixes for all nine issues on the blog module issue sheet
+
+### 1.3.0 (2026-07-24)
+- **Standalone free tier:** the blog runs without `RequestDesk_Qa`, which
+  becomes an optional companion rather than a hard dependency
+- Amasty Blog migration console command, reading the Amasty tables directly
 
 ### 1.2.0 (2026-07-17)
 - **Own frontend route** (`/blog`) with Luma templates: list, post, author, tag,
