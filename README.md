@@ -179,13 +179,41 @@ bin/magento setup:upgrade
 The command is safe to run on a healthy install — it inspects the constraint and
 exits without changing anything if there is nothing to repair.
 
-### Authors are backfilled automatically
+### Authors are backfilled automatically, once
 
 From 1.4.2 a data patch creates one author record per distinct byline found on
 your posts and points the posts at it. Before that, authors only existed if they
 were linked to a Magento admin account, so most installs showed an empty Author
 dropdown. Nothing is required of you; the legacy byline column is left in place
 as a fallback and is not dropped.
+
+### If you migrated from Amasty before 1.6.4, repair the author links
+
+The patch above runs **once** and is then recorded in `patch_list`, so it cannot
+help posts that arrived afterwards. Any post migrated from Amasty by a pre-1.6.4
+build carries a broken author link: that migration wrote an `admin_user.user_id`
+into `requestdesk_blog_post.author_id`, which is a foreign key onto
+`requestdesk_blog_author.author_id`. Posts end up either pointing at an author
+record that does not exist, or at nothing at all, and the Author grid stays
+empty.
+
+`setup:upgrade` will not tell you. Declarative schema runs its DDL with
+`foreign_key_checks` disabled, so it adds the author foreign key straight over
+the top of violating rows. The constraint ends up present while the data beneath
+it does not satisfy it.
+
+Run the repair, then upgrade:
+
+```bash
+bin/magento requestdesk:blog:repair-authors --dry-run   # report only
+bin/magento requestdesk:blog:repair-authors
+bin/magento setup:upgrade
+```
+
+It rebuilds each link from the post's byline, reusing an existing author of the
+same name rather than duplicating one, and clears the dangling id on any post
+that has no byline to rebuild from. Safe and idempotent on a healthy install:
+it reports nothing to repair and writes nothing.
 
 ## Configuration
 
@@ -655,6 +683,12 @@ Answer Engine Optimization (AEO) is the practice of structuring content so AI sy
 - **Comments on Hyvä.** The Hyvä post template had no comment markup at all —
   the list and form existed only in the Luma template. Ported against the same
   block API and POST contract, so the controller is unchanged
+- **New: `bin/magento requestdesk:blog:repair-authors`** rebuilds post-to-author
+  links for posts migrated by a pre-1.6.4 build. The 1.4.2 backfill patch runs
+  only once, so it cannot reach anything migrated after it. `setup:upgrade` does
+  not catch this either: declarative schema disables `foreign_key_checks`, so it
+  adds the author foreign key over the top of violating rows and the breakage
+  stays silent
 - Documented the real version support matrix (Magento 2.4.7 – 2.4.9, PHP
   8.1 – 8.5), marking which rows are runtime-tested and which are static only
 

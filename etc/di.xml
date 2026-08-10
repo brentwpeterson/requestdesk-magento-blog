@@ -165,6 +165,7 @@
                 <item name="requestdesk_blog_migrate_amasty" xsi:type="object">RequestDesk\Blog\Console\Command\MigrateAmastyCommand</item>
                 <item name="requestdesk_blog_repair_schema" xsi:type="object">RequestDesk\Blog\Console\Command\RepairSchemaCommand</item>
                 <item name="requestdesk_blog_repair_content" xsi:type="object">RequestDesk\Blog\Console\Command\RepairContentCommand</item>
+                <item name="requestdesk_blog_repair_authors" xsi:type="object">RequestDesk\Blog\Console\Command\RepairAuthorsCommand</item>
             </argument>
         </arguments>
     </type>
