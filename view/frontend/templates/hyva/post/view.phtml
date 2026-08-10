@@ -72,6 +72,102 @@ $post = $block->getPost();
         <?= /* @noEscape */ $block->getRenderedContent() ?>
     </div>
 
+    <!--
+        Comments. Same block API and same POST contract as the Luma template
+        (view/frontend/templates/post/view.phtml) - Controller\Comment\Save reads
+        post_id, author_name, author_email, content, and the "website" honeypot,
+        then redirects back here with a message. Only the markup differs.
+
+        Alpine here does nothing the form needs to work: it guards against a
+        double submit and shows a character count. With JS off, this is still a
+        plain HTML form that posts and succeeds.
+    -->
+    <?php $comments = $block->getComments(); ?>
+    <section class="mt-12 pt-8 border-t border-gray-200" id="comments">
+        <h2 class="text-2xl font-bold text-gray-900 mb-6">
+            <?= $escaper->escapeHtml(__('Comments')) ?>
+            <?php if (!empty($comments)): ?>
+                <span class="text-gray-400 font-normal">(<?= count($comments) ?>)</span>
+            <?php endif; ?>
+        </h2>
+
+        <?php if (empty($comments)): ?>
+            <p class="text-gray-500 mb-8"><?= $escaper->escapeHtml(__('No comments yet. Be the first.')) ?></p>
+        <?php else: ?>
+            <ul class="space-y-6 mb-10">
+                <?php foreach ($comments as $comment): ?>
+                    <li class="bg-gray-50 rounded-lg p-4">
+                        <p class="font-semibold text-gray-900 mb-1">
+                            <?= $escaper->escapeHtml($comment->getAuthorName()) ?>
+                        </p>
+                        <p class="text-gray-700 leading-relaxed">
+                            <?= /* @noEscape */ nl2br($escaper->escapeHtml($comment->getContent())) ?>
+                        </p>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        <?php endif; ?>
+
+        <h3 class="text-xl font-bold text-gray-900 mb-4">
+            <?= $escaper->escapeHtml(__('Leave a Comment')) ?>
+        </h3>
+
+        <form action="<?= $escaper->escapeUrl($block->getCommentActionUrl()) ?>"
+              method="post"
+              class="max-w-xl"
+              x-data="{ sending: false, body: '' }"
+              @submit="sending = true">
+            <input type="hidden" name="form_key" value="<?= $escaper->escapeHtmlAttr($block->getFormKey()) ?>"/>
+            <input type="hidden" name="post_id" value="<?= (int) $post->getPostId() ?>"/>
+
+            <!-- Honeypot: off-screen rather than hidden, so bots that skip
+                 display:none fields still fill it in. Any value rejects. -->
+            <div style="position:absolute;left:-9999px;" aria-hidden="true">
+                <label><?= $escaper->escapeHtml(__('Website')) ?>
+                    <input type="text" name="website" tabindex="-1" autocomplete="off"/>
+                </label>
+            </div>
+
+            <div class="mb-4">
+                <label for="rd-comment-name" class="block text-sm font-medium text-gray-700 mb-1">
+                    <?= $escaper->escapeHtml(__('Your name')) ?>
+                </label>
+                <input type="text" id="rd-comment-name" name="author_name" required
+                       class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-primary focus:ring-1 focus:ring-primary"/>
+            </div>
+
+            <div class="mb-4">
+                <label for="rd-comment-email" class="block text-sm font-medium text-gray-700 mb-1">
+                    <?= $escaper->escapeHtml(__('Your email (optional)')) ?>
+                </label>
+                <input type="email" id="rd-comment-email" name="author_email"
+                       class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-primary focus:ring-1 focus:ring-primary"/>
+            </div>
+
+            <div class="mb-4">
+                <label for="rd-comment-body" class="block text-sm font-medium text-gray-700 mb-1">
+                    <?= $escaper->escapeHtml(__('Your comment')) ?>
+                </label>
+                <textarea id="rd-comment-body" name="content" rows="4" required x-model="body"
+                          class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-primary focus:ring-1 focus:ring-primary"></textarea>
+                <p class="text-xs text-gray-400 mt-1" x-show="body.length > 0" x-cloak>
+                    <span x-text="body.length"></span> <?= $escaper->escapeHtml(__('characters')) ?>
+                </p>
+            </div>
+
+            <button type="submit"
+                    :disabled="sending"
+                    class="inline-flex items-center px-6 py-3 bg-primary text-white font-medium rounded-lg hover:bg-primary-darker transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                <span x-show="!sending"><?= $escaper->escapeHtml(__('Post Comment')) ?></span>
+                <span x-show="sending" x-cloak><?= $escaper->escapeHtml(__('Sending...')) ?></span>
+            </button>
+
+            <p class="text-xs text-gray-500 mt-3">
+                <?= $escaper->escapeHtml(__('Comments are reviewed before they appear.')) ?>
+            </p>
+        </form>
+    </section>
+
     <!-- Post Footer -->
     <footer class="mt-12 pt-8 border-t border-gray-200">
         <a href="<?= $escaper->escapeUrl($block->getBackUrl()) ?>"

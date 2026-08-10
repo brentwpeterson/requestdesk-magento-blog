@@ -1,7 +1,7 @@
 # RequestDesk Blog Extension for Magento 2
 
-[![Magento 2.4.7+](https://img.shields.io/badge/Magento-2.4.7+-orange.svg)](https://magento.com)
-[![PHP 8.1+](https://img.shields.io/badge/PHP-8.1+-blue.svg)](https://php.net)
+[![Magento 2.4.7 – 2.4.9](https://img.shields.io/badge/Magento-2.4.7%20–%202.4.9-orange.svg)](https://magento.com)
+[![PHP 8.1 – 8.5](https://img.shields.io/badge/PHP-8.1%20–%208.5-blue.svg)](https://php.net)
 [![License: OSL-3.0](https://img.shields.io/badge/License-OSL--3.0-green.svg)](https://opensource.org/licenses/OSL-3.0)
 
 A native blog extension for Magento 2 with full [RequestDesk](https://requestdesk.ai) integration. Create AI-powered blog content in RequestDesk and automatically sync it to your Magento store, or sync your product catalog to RequestDesk for AI-assisted content creation.
@@ -78,10 +78,39 @@ Complete API for headless/PWA implementations and RequestDesk communication.
 
 ## Requirements
 
-- Magento Open Source or Adobe Commerce 2.4.7+
-- PHP 8.1 or later
+- Magento Open Source or Adobe Commerce 2.4.7 – 2.4.9
+- PHP 8.1 – 8.5
 - **[`requestdesk/magento-qa`](https://github.com/brentwpeterson/requestdesk-magento-qa)** — required. The shared Q&A library that powers on-post FAQ + FAQPage schema. Composer pulls it automatically.
 - RequestDesk account with API key (only needed for the RequestDesk sync/import features)
+
+### Version support, and what has actually been tested
+
+The composer constraints (`php: ^8.1`, `magento/framework: ^103.0`) already
+resolve against every release below — nothing needs widening to install on the
+newest Magento.
+
+| Magento | ships framework | supported PHP (per Magento) | our status |
+|---|---|---|---|
+| 2.4.7-p3 | 103.0.7-p3 | 8.1 – 8.3 | **runtime-tested** — grids, post form, migration, config structure |
+| 2.4.8 | 103.0.8 | 8.2 – 8.4 | static only |
+| 2.4.9 | 103.0.9 | 8.3 – 8.5 | static only |
+
+PHP 8.5 is supported by Magento from **2.4.9** onward; 2.4.8 stops at 8.4. So a
+PHP 8.5 target means a 2.4.9 target — the two move together.
+
+"Static only" means: every `.php` and `.phtml` file compiles under a real PHP
+8.5 runtime, and the module is clean against the PHP 8.4 implicit-nullable
+deprecation and every statically-detectable deprecation in php-src's `UPGRADING`
+for PHP 8.5 (non-canonical casts, `case ...;`, backtick exec, `curl_close`,
+`finfo_close`, `DATE_RFC7231`, `__sleep`/`__wakeup`, `__debugInfo` returning
+null, `get_defined_functions($exclude_disabled)`). For scale, Magento 2.4.7's own
+`magento/framework` has 493 hits across those same checks.
+
+What static analysis cannot settle, and what a 2.4.9 + PHP 8.5 install still
+needs to confirm: output inside user output handlers, constant redeclaration,
+incrementing non-numeric strings, `null` used as an array offset, and closure
+binding/rebinding. Those are runtime-shaped. Do not read the table above as
+"certified on 2.4.9" until that install exists.
 
 ### Optional companion
 
@@ -150,13 +179,41 @@ bin/magento setup:upgrade
 The command is safe to run on a healthy install — it inspects the constraint and
 exits without changing anything if there is nothing to repair.
 
-### Authors are backfilled automatically
+### Authors are backfilled automatically, once
 
 From 1.4.2 a data patch creates one author record per distinct byline found on
 your posts and points the posts at it. Before that, authors only existed if they
 were linked to a Magento admin account, so most installs showed an empty Author
 dropdown. Nothing is required of you; the legacy byline column is left in place
 as a fallback and is not dropped.
+
+### If you migrated from Amasty before 1.6.4, repair the author links
+
+The patch above runs **once** and is then recorded in `patch_list`, so it cannot
+help posts that arrived afterwards. Any post migrated from Amasty by a pre-1.6.4
+build carries a broken author link: that migration wrote an `admin_user.user_id`
+into `requestdesk_blog_post.author_id`, which is a foreign key onto
+`requestdesk_blog_author.author_id`. Posts end up either pointing at an author
+record that does not exist, or at nothing at all, and the Author grid stays
+empty.
+
+`setup:upgrade` will not tell you. Declarative schema runs its DDL with
+`foreign_key_checks` disabled, so it adds the author foreign key straight over
+the top of violating rows. The constraint ends up present while the data beneath
+it does not satisfy it.
+
+Run the repair, then upgrade:
+
+```bash
+bin/magento requestdesk:blog:repair-authors --dry-run   # report only
+bin/magento requestdesk:blog:repair-authors
+bin/magento setup:upgrade
+```
+
+It rebuilds each link from the post's byline, reusing an existing author of the
+same name rather than duplicating one, and clears the dangling id on any post
+that has no byline to rebuild from. Safe and idempotent on a healthy install:
+it reports nothing to repair and writes nothing.
 
 ## Configuration
 
@@ -598,6 +655,42 @@ Answer Engine Optimization (AEO) is the practice of structuring content so AI sy
 - Content not optimized for AI will become invisible
 
 ## Changelog
+
+### 1.6.4 (2026-08-10)
+- **Fix: three of the four admin grids were never registered.** `etc/di.xml`
+  carried four separate `<type>` nodes for
+  `UiComponent\DataProvider\CollectionFactory`. The mapper that reads that file
+  assigns by type name, so the nodes replaced one another instead of merging and
+  only the last survived. The post, comment and tag grids failed with
+  "Not registered handle". Now one node with all four collections
+- **Fix: the post form failed XML validation.**
+  `requestdesk_blog_post_form.xml` declared `<wysiwyg>true</wysiwyg>` inside
+  `<settings>`, which is not in `ui_definition.xsd`
+  (*"Element 'wysiwyg': This element is not expected"*). `formElement="wysiwyg"`
+  already binds the field
+- **Fix: the Amasty migration created no authors.** It resolved the byline to an
+  `admin_user.user_id` and wrote that into `requestdesk_blog_post.author_id`, a
+  foreign key onto `requestdesk_blog_author.author_id` — so it either broke the
+  constraint or pointed at an unrelated author, and the Author grid stayed empty.
+  `AuthorResolver::getOrCreateByName()` now creates or reuses a real author,
+  carrying the bio and avatar over and linking the admin account through
+  `admin_user_id`, the column that actually means that
+- **Fix: `setup:upgrade` aborted with a duplicate foreign key.**
+  `db_schema_whitelist.json` still listed only the legacy
+  `..._AUTHOR_ID_ADMIN_USER_USER_ID` from when `author_id` pointed at
+  `admin_user`, so declarative schema did not know the current FK already existed
+  and re-emitted it inside the same `ALTER`
+- **Comments on Hyvä.** The Hyvä post template had no comment markup at all —
+  the list and form existed only in the Luma template. Ported against the same
+  block API and POST contract, so the controller is unchanged
+- **New: `bin/magento requestdesk:blog:repair-authors`** rebuilds post-to-author
+  links for posts migrated by a pre-1.6.4 build. The 1.4.2 backfill patch runs
+  only once, so it cannot reach anything migrated after it. `setup:upgrade` does
+  not catch this either: declarative schema disables `foreign_key_checks`, so it
+  adds the author foreign key over the top of violating rows and the breakage
+  stays silent
+- Documented the real version support matrix (Magento 2.4.7 – 2.4.9, PHP
+  8.1 – 8.5), marking which rows are runtime-tested and which are static only
 
 ### 1.6.3 (2026-08-04)
 - **Unit test suite** covering `Model/PostContent`, running standalone with no

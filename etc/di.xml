@@ -48,11 +48,26 @@
     <preference for="RequestDesk\Blog\Api\QaPairOptionsInterface"
                 type="RequestDesk\Blog\Model\Qa\QaPairOptionsAdapter"/>
 
-    <!-- Admin Grid Data Provider -->
+    <!--
+        Every admin grid data source registers here, in ONE type node.
+
+        This must stay a single node. The mapper that turns this file into DI
+        config walks the children and assigns by type name, so a second
+        <type name="...CollectionFactory"> does not merge with the first, it
+        replaces it. This file used to carry four of them (post, comment, tag,
+        author); only the last one survived, and the other three grids died with
+        "Not registered handle <name>" the moment they were opened. The XSD
+        catches it too - uniqueType - which is why the file failed validation.
+
+        Add a grid by adding an <item> below, never a second <type> node.
+    -->
     <type name="Magento\Framework\View\Element\UiComponent\DataProvider\CollectionFactory">
         <arguments>
             <argument name="collections" xsi:type="array">
                 <item name="requestdesk_blog_post_listing_data_source" xsi:type="string">RequestDesk\Blog\Model\ResourceModel\Post\Grid\Collection</item>
+                <item name="requestdesk_blog_comment_listing_data_source" xsi:type="string">RequestDesk\Blog\Model\ResourceModel\Comment\Grid\Collection</item>
+                <item name="requestdesk_blog_tag_listing_data_source" xsi:type="string">RequestDesk\Blog\Model\ResourceModel\Tag\Grid\Collection</item>
+                <item name="requestdesk_blog_author_listing_data_source" xsi:type="string">RequestDesk\Blog\Model\ResourceModel\Author\Grid\Collection</item>
             </argument>
         </arguments>
     </type>
@@ -115,15 +130,7 @@
         </arguments>
     </type>
 
-    <!-- Comment Grid Data Source -->
-    <type name="Magento\Framework\View\Element\UiComponent\DataProvider\CollectionFactory">
-        <arguments>
-            <argument name="collections" xsi:type="array">
-                <item name="requestdesk_blog_comment_listing_data_source" xsi:type="string">RequestDesk\Blog\Model\ResourceModel\Comment\Grid\Collection</item>
-            </argument>
-        </arguments>
-    </type>
-
+    <!-- Comment Grid Collection (registered in the CollectionFactory node above) -->
     <virtualType name="RequestDesk\Blog\Model\ResourceModel\Comment\Grid\Collection"
                  type="Magento\Framework\View\Element\UiComponent\DataProvider\SearchResult">
         <arguments>
@@ -132,15 +139,7 @@
         </arguments>
     </virtualType>
 
-    <!-- Tag Grid Data Source -->
-    <type name="Magento\Framework\View\Element\UiComponent\DataProvider\CollectionFactory">
-        <arguments>
-            <argument name="collections" xsi:type="array">
-                <item name="requestdesk_blog_tag_listing_data_source" xsi:type="string">RequestDesk\Blog\Model\ResourceModel\Tag\Grid\Collection</item>
-            </argument>
-        </arguments>
-    </type>
-
+    <!-- Tag Grid Collection (registered in the CollectionFactory node above) -->
     <virtualType name="RequestDesk\Blog\Model\ResourceModel\Tag\Grid\Collection"
                  type="Magento\Framework\View\Element\UiComponent\DataProvider\SearchResult">
         <arguments>
@@ -149,14 +148,10 @@
         </arguments>
     </virtualType>
 
-    <!-- Author Profile Grid Data Source (concrete class adds the admin_user join) -->
-    <type name="Magento\Framework\View\Element\UiComponent\DataProvider\CollectionFactory">
-        <arguments>
-            <argument name="collections" xsi:type="array">
-                <item name="requestdesk_blog_author_listing_data_source" xsi:type="string">RequestDesk\Blog\Model\ResourceModel\Author\Grid\Collection</item>
-            </argument>
-        </arguments>
-    </type>
+    <!--
+        The author grid has no virtualType: RequestDesk\Blog\Model\ResourceModel\Author\Grid\Collection
+        is a concrete class, because it adds the admin_user join.
+    -->
 
     <!-- Clean up polymorphic Q&A links when a post is deleted -->
     <type name="RequestDesk\Blog\Api\PostRepositoryInterface">
@@ -170,6 +165,7 @@
                 <item name="requestdesk_blog_migrate_amasty" xsi:type="object">RequestDesk\Blog\Console\Command\MigrateAmastyCommand</item>
                 <item name="requestdesk_blog_repair_schema" xsi:type="object">RequestDesk\Blog\Console\Command\RepairSchemaCommand</item>
                 <item name="requestdesk_blog_repair_content" xsi:type="object">RequestDesk\Blog\Console\Command\RepairContentCommand</item>
+                <item name="requestdesk_blog_repair_authors" xsi:type="object">RequestDesk\Blog\Console\Command\RepairAuthorsCommand</item>
             </argument>
         </arguments>
     </type>

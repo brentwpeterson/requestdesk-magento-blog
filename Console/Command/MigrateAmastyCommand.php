@@ -23,6 +23,7 @@ use Magento\Framework\App\Area;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\App\State;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
+use RequestDesk\Blog\Model\AuthorResolver;
 use RequestDesk\Blog\Model\PostFactory;
 use RequestDesk\Blog\Model\TagResolver;
 use Symfony\Component\Console\Command\Command;
@@ -47,13 +48,15 @@ class MigrateAmastyCommand extends Command
      * @param PostRepositoryInterface $postRepository
      * @param PostFactory $postFactory
      * @param TagResolver $tagResolver
+     * @param AuthorResolver $authorResolver
      */
     public function __construct(
         private readonly State $appState,
         private readonly ResourceConnection $resource,
         private readonly PostRepositoryInterface $postRepository,
         private readonly PostFactory $postFactory,
-        private readonly TagResolver $tagResolver
+        private readonly TagResolver $tagResolver,
+        private readonly AuthorResolver $authorResolver
     ) {
         parent::__construct();
     }
@@ -103,6 +106,8 @@ class MigrateAmastyCommand extends Command
         $skipped = 0;
         $tagLinks = 0;
         $categoriesSeen = 0;
+        /** @var array<int,true> $authorsSeen author_ids touched, for the summary count */
+        $authorsSeen = [];
 
         foreach ($rows as $row) {
             $urlKey = (string) ($row['url_key'] ?? '');
@@ -132,9 +137,17 @@ class MigrateAmastyCommand extends Command
                 $post->setMetaDescription((string) ($row['meta_description'] ?? ''));
                 $post->setFeaturedImage(!empty($row['post_thumbnail']) ? $row['post_thumbnail'] : null);
 
-                $authorName = $this->authorName((int) ($row['author_id'] ?? 0));
-                $post->setAuthor($authorName);
-                $post->setAuthorId($this->resolveAuthorId($authorName));
+                $amastyAuthor = $this->authorDetails((int) ($row['author_id'] ?? 0));
+                $post->setAuthor($amastyAuthor['name']);
+                $blogAuthorId = $this->authorResolver->getOrCreateByName(
+                    $amastyAuthor['name'],
+                    $amastyAuthor['bio'],
+                    $amastyAuthor['avatar']
+                );
+                if ($blogAuthorId && !isset($authorsSeen[$blogAuthorId])) {
+                    $authorsSeen[$blogAuthorId] = true;
+                }
+                $post->setAuthorId($blogAuthorId ?: null);
 
                 $post->setStatus(1); // published
                 $post->setStoreId(0);
@@ -167,29 +180,85 @@ class MigrateAmastyCommand extends Command
         $output->writeln("  posts migrated:  {$migrated}");
         $output->writeln("  posts skipped:   {$skipped}");
         $output->writeln("  tag links:       {$tagLinks}");
+        $output->writeln('  authors linked:  ' . count($authorsSeen));
         $output->writeln("  categories seen: {$categoriesSeen} (deferred — category mapping is phase 2)");
 
         return Command::SUCCESS;
     }
 
     /**
-     * Amasty author name for the default store scope.
+     * Amasty author name, bio and avatar for the default store scope.
+     *
+     * Columns are probed rather than assumed. We read Amasty's tables directly
+     * without its code installed, and the bio/avatar column names have moved
+     * between Amasty releases; a hard-coded SELECT would fatal the whole
+     * migration on a version that spells them differently. Anything we cannot
+     * find comes back empty and the author is still created from the name.
      *
      * @param int $authorId
-     * @return string
+     * @return array{name:string, bio:string, avatar:string}
      */
-    private function authorName(int $authorId): string
+    private function authorDetails(int $authorId): array
     {
+        $empty = ['name' => '', 'bio' => '', 'avatar' => ''];
         if (!$authorId) {
-            return '';
+            return $empty;
         }
+
         $connection = $this->resource->getConnection();
+        $storeTable = $this->resource->getTableName('amasty_blog_author_store');
+        if (!$connection->isTableExists($storeTable)) {
+            return $empty;
+        }
+
+        $storeColumns = array_keys($connection->describeTable($storeTable));
+        $bioColumn = $this->firstExisting($storeColumns, ['description', 'bio', 'content']);
+
         $select = $connection->select()
-            ->from($this->resource->getTableName('amasty_blog_author_store'), ['name'])
+            ->from($storeTable, array_values(array_filter(['name', $bioColumn])))
             ->where('author_id = ?', $authorId)
             ->where('store_id = ?', self::DEFAULT_STORE)
             ->limit(1);
-        return trim((string) $connection->fetchOne($select));
+        $row = $connection->fetchRow($select) ?: [];
+
+        $result = [
+            'name' => trim((string) ($row['name'] ?? '')),
+            'bio' => $bioColumn ? trim((string) ($row[$bioColumn] ?? '')) : '',
+            'avatar' => '',
+        ];
+
+        $authorTable = $this->resource->getTableName('amasty_blog_author');
+        if ($connection->isTableExists($authorTable)) {
+            $authorColumns = array_keys($connection->describeTable($authorTable));
+            $avatarColumn = $this->firstExisting($authorColumns, ['image', 'avatar', 'thumbnail']);
+            if ($avatarColumn) {
+                $result['avatar'] = trim((string) $connection->fetchOne(
+                    $connection->select()
+                        ->from($authorTable, [$avatarColumn])
+                        ->where('author_id = ?', $authorId)
+                        ->limit(1)
+                ));
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * First candidate column that actually exists on the table.
+     *
+     * @param string[] $available
+     * @param string[] $candidates
+     * @return string|null
+     */
+    private function firstExisting(array $available, array $candidates): ?string
+    {
+        foreach ($candidates as $candidate) {
+            if (in_array($candidate, $available, true)) {
+                return $candidate;
+            }
+        }
+        return null;
     }
 
     /**
@@ -247,27 +316,17 @@ class MigrateAmastyCommand extends Command
         return (bool) $connection->fetchOne($select);
     }
 
-    /**
-     * Match an author name to a native admin_user (full name or username),
-     * else null so the free-text byline stands.
+    /*
+     * resolveAuthorId() was removed here. It matched the Amasty byline against
+     * admin_user and wrote that user_id into requestdesk_blog_post.author_id -
+     * but that column is a foreign key onto requestdesk_blog_author.author_id,
+     * so the value was wrong in both directions: it either broke the constraint
+     * and failed the post save, or it pointed at whichever unrelated author held
+     * that id. Either way no author record was ever created, which is why the
+     * Author grid came up empty after a migration.
      *
-     * @param string $name
-     * @return int|null
+     * AuthorResolver::getOrCreateByName() replaces it, and still links the admin
+     * account when the names match - via requestdesk_blog_author.admin_user_id,
+     * which is the column that actually means that.
      */
-    private function resolveAuthorId(string $name): ?int
-    {
-        $name = trim($name);
-        if ($name === '') {
-            return null;
-        }
-        $connection = $this->resource->getConnection();
-        $fullName = new \Zend_Db_Expr("TRIM(CONCAT(COALESCE(firstname,''),' ',COALESCE(lastname,'')))");
-        $select = $connection->select()
-            ->from($this->resource->getTableName('admin_user'), ['user_id'])
-            ->where('LOWER(' . $fullName . ') = ?', mb_strtolower($name))
-            ->orWhere('LOWER(username) = ?', mb_strtolower($name))
-            ->limit(1);
-        $userId = (int) $connection->fetchOne($select);
-        return $userId ?: null;
-    }
 }
