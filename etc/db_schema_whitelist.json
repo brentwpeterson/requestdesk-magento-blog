@@ -29,7 +29,8 @@
         "constraint": {
             "PRIMARY": true,
             "REQUESTDESK_BLOG_POST_URL_KEY_STORE_ID": true,
-            "REQUESTDESK_BLOG_POST_AUTHOR_ID_ADMIN_USER_USER_ID": true
+            "REQUESTDESK_BLOG_POST_AUTHOR_ID_ADMIN_USER_USER_ID": true,
+            "FK_86003EBAE618D1AFB91B3A7F267CC9B9": true
         }
     },
     "requestdesk_blog_post_category": {

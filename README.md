@@ -1,7 +1,7 @@
 # RequestDesk Blog Extension for Magento 2
 
-[![Magento 2.4.7+](https://img.shields.io/badge/Magento-2.4.7+-orange.svg)](https://magento.com)
-[![PHP 8.1+](https://img.shields.io/badge/PHP-8.1+-blue.svg)](https://php.net)
+[![Magento 2.4.7 – 2.4.9](https://img.shields.io/badge/Magento-2.4.7%20–%202.4.9-orange.svg)](https://magento.com)
+[![PHP 8.1 – 8.5](https://img.shields.io/badge/PHP-8.1%20–%208.5-blue.svg)](https://php.net)
 [![License: OSL-3.0](https://img.shields.io/badge/License-OSL--3.0-green.svg)](https://opensource.org/licenses/OSL-3.0)
 
 A native blog extension for Magento 2 with full [RequestDesk](https://requestdesk.ai) integration. Create AI-powered blog content in RequestDesk and automatically sync it to your Magento store, or sync your product catalog to RequestDesk for AI-assisted content creation.
@@ -78,10 +78,39 @@ Complete API for headless/PWA implementations and RequestDesk communication.
 
 ## Requirements
 
-- Magento Open Source or Adobe Commerce 2.4.7+
-- PHP 8.1 or later
+- Magento Open Source or Adobe Commerce 2.4.7 – 2.4.9
+- PHP 8.1 – 8.5
 - **[`requestdesk/magento-qa`](https://github.com/brentwpeterson/requestdesk-magento-qa)** — required. The shared Q&A library that powers on-post FAQ + FAQPage schema. Composer pulls it automatically.
 - RequestDesk account with API key (only needed for the RequestDesk sync/import features)
+
+### Version support, and what has actually been tested
+
+The composer constraints (`php: ^8.1`, `magento/framework: ^103.0`) already
+resolve against every release below — nothing needs widening to install on the
+newest Magento.
+
+| Magento | ships framework | supported PHP (per Magento) | our status |
+|---|---|---|---|
+| 2.4.7-p3 | 103.0.7-p3 | 8.1 – 8.3 | **runtime-tested** — grids, post form, migration, config structure |
+| 2.4.8 | 103.0.8 | 8.2 – 8.4 | static only |
+| 2.4.9 | 103.0.9 | 8.3 – 8.5 | static only |
+
+PHP 8.5 is supported by Magento from **2.4.9** onward; 2.4.8 stops at 8.4. So a
+PHP 8.5 target means a 2.4.9 target — the two move together.
+
+"Static only" means: every `.php` and `.phtml` file compiles under a real PHP
+8.5 runtime, and the module is clean against the PHP 8.4 implicit-nullable
+deprecation and every statically-detectable deprecation in php-src's `UPGRADING`
+for PHP 8.5 (non-canonical casts, `case ...;`, backtick exec, `curl_close`,
+`finfo_close`, `DATE_RFC7231`, `__sleep`/`__wakeup`, `__debugInfo` returning
+null, `get_defined_functions($exclude_disabled)`). For scale, Magento 2.4.7's own
+`magento/framework` has 493 hits across those same checks.
+
+What static analysis cannot settle, and what a 2.4.9 + PHP 8.5 install still
+needs to confirm: output inside user output handlers, constant redeclaration,
+incrementing non-numeric strings, `null` used as an array offset, and closure
+binding/rebinding. Those are runtime-shaped. Do not read the table above as
+"certified on 2.4.9" until that install exists.
 
 ### Optional companion
 
