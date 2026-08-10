@@ -628,6 +628,36 @@ Answer Engine Optimization (AEO) is the practice of structuring content so AI sy
 
 ## Changelog
 
+### 1.6.4 (2026-08-10)
+- **Fix: three of the four admin grids were never registered.** `etc/di.xml`
+  carried four separate `<type>` nodes for
+  `UiComponent\DataProvider\CollectionFactory`. The mapper that reads that file
+  assigns by type name, so the nodes replaced one another instead of merging and
+  only the last survived. The post, comment and tag grids failed with
+  "Not registered handle". Now one node with all four collections
+- **Fix: the post form failed XML validation.**
+  `requestdesk_blog_post_form.xml` declared `<wysiwyg>true</wysiwyg>` inside
+  `<settings>`, which is not in `ui_definition.xsd`
+  (*"Element 'wysiwyg': This element is not expected"*). `formElement="wysiwyg"`
+  already binds the field
+- **Fix: the Amasty migration created no authors.** It resolved the byline to an
+  `admin_user.user_id` and wrote that into `requestdesk_blog_post.author_id`, a
+  foreign key onto `requestdesk_blog_author.author_id` — so it either broke the
+  constraint or pointed at an unrelated author, and the Author grid stayed empty.
+  `AuthorResolver::getOrCreateByName()` now creates or reuses a real author,
+  carrying the bio and avatar over and linking the admin account through
+  `admin_user_id`, the column that actually means that
+- **Fix: `setup:upgrade` aborted with a duplicate foreign key.**
+  `db_schema_whitelist.json` still listed only the legacy
+  `..._AUTHOR_ID_ADMIN_USER_USER_ID` from when `author_id` pointed at
+  `admin_user`, so declarative schema did not know the current FK already existed
+  and re-emitted it inside the same `ALTER`
+- **Comments on Hyvä.** The Hyvä post template had no comment markup at all —
+  the list and form existed only in the Luma template. Ported against the same
+  block API and POST contract, so the controller is unchanged
+- Documented the real version support matrix (Magento 2.4.7 – 2.4.9, PHP
+  8.1 – 8.5), marking which rows are runtime-tested and which are static only
+
 ### 1.6.3 (2026-08-04)
 - **Unit test suite** covering `Model/PostContent`, running standalone with no
   Magento install or database, plus GitHub Actions CI on PHP 8.1 and 8.3
