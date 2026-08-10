@@ -94,6 +94,123 @@ class AuthorResolver
     }
 
     /**
+     * Reuse the author with this name, or create one, and return its author_id.
+     *
+     * The counterpart to TagResolver::getOrCreateByName, and the only supported
+     * way to turn an imported byline into a real author record. Importers must
+     * go through here rather than writing requestdesk_blog_post.author_id
+     * themselves: that column is a foreign key onto requestdesk_blog_author, so
+     * putting any other id in it (an admin_user.user_id, say) either violates the
+     * constraint outright or silently attaches the post to whichever author
+     * happens to hold that id.
+     *
+     * @param string $name Display name; blank returns 0
+     * @param string|null $bio Optional bio, only used when creating
+     * @param string|null $avatar Optional avatar path, only used when creating
+     * @return int author_id, or 0 when the name is blank
+     */
+    public function getOrCreateByName(string $name, ?string $bio = null, ?string $avatar = null): int
+    {
+        $name = trim($name);
+        if ($name === '') {
+            return 0;
+        }
+
+        $connection = $this->resource->getConnection();
+        $table = $this->resource->getTableName(self::AUTHOR_TABLE);
+
+        $existing = (int) $connection->fetchOne(
+            $connection->select()
+                ->from($table, ['author_id'])
+                ->where('LOWER(name) = ?', mb_strtolower($name))
+                ->limit(1)
+        );
+        if ($existing) {
+            return $existing;
+        }
+
+        $connection->insert($table, [
+            'name' => $name,
+            'url_key' => $this->uniqueUrlKey($this->slugify($name)),
+            'bio' => $bio !== null && trim($bio) !== '' ? $bio : null,
+            'avatar' => $avatar !== null && trim($avatar) !== '' ? $avatar : null,
+            'admin_user_id' => $this->matchUnlinkedAdminUser($name),
+        ]);
+
+        return (int) $connection->lastInsertId($table);
+    }
+
+    /**
+     * Find the admin account that matches this name, if it is not already linked.
+     *
+     * The link is optional and the column is UNIQUE, so a second author with the
+     * same name as an already-linked admin gets null rather than a duplicate-key
+     * failure. Blog authors do not need Magento accounts.
+     *
+     * @param string $name
+     * @return int|null
+     */
+    private function matchUnlinkedAdminUser(string $name): ?int
+    {
+        $connection = $this->resource->getConnection();
+        $fullName = new \Zend_Db_Expr("TRIM(CONCAT(COALESCE(firstname,''),' ',COALESCE(lastname,'')))");
+
+        $userId = (int) $connection->fetchOne(
+            $connection->select()
+                ->from($this->resource->getTableName('admin_user'), ['user_id'])
+                ->where('LOWER(' . $fullName . ') = ?', mb_strtolower($name))
+                ->orWhere('LOWER(username) = ?', mb_strtolower($name))
+                ->limit(1)
+        );
+        if (!$userId) {
+            return null;
+        }
+
+        $alreadyLinked = (int) $connection->fetchOne(
+            $connection->select()
+                ->from($this->resource->getTableName(self::AUTHOR_TABLE), ['author_id'])
+                ->where('admin_user_id = ?', $userId)
+                ->limit(1)
+        );
+
+        return $alreadyLinked ? null : $userId;
+    }
+
+    /**
+     * Normalize a display name into a URL key.
+     *
+     * @param string $value
+     * @return string
+     */
+    private function slugify(string $value): string
+    {
+        $value = strtolower(trim($value));
+        $value = (string) preg_replace('/[^a-z0-9]+/', '-', $value);
+        $value = trim($value, '-');
+        return $value !== '' ? $value : 'author';
+    }
+
+    /**
+     * Suffix the slug until it clears the unique url_key constraint.
+     *
+     * @param string $base
+     * @return string
+     */
+    private function uniqueUrlKey(string $base): string
+    {
+        $connection = $this->resource->getConnection();
+        $table = $this->resource->getTableName(self::AUTHOR_TABLE);
+        $candidate = $base;
+        $i = 2;
+        while ((int) $connection->fetchOne(
+            $connection->select()->from($table, ['author_id'])->where('url_key = ?', $candidate)->limit(1)
+        )) {
+            $candidate = $base . '-' . $i++;
+        }
+        return $candidate;
+    }
+
+    /**
      * Published post ids by this author, newest first.
      *
      * @param int $authorId

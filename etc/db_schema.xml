@@ -26,7 +26,7 @@
         <column xsi:type="varchar" name="featured_image" nullable="true" length="255" comment="Featured Image Path"/>
         <column xsi:type="smallint" name="status" unsigned="true" nullable="false" default="0" comment="Status (0=Draft, 1=Published)"/>
         <column xsi:type="varchar" name="author" nullable="true" length="255" comment="Author Name (legacy free-text fallback)"/>
-        <column xsi:type="int" name="author_id" unsigned="true" nullable="true" comment="Author (native admin_user.user_id)"/>
+        <column xsi:type="int" name="author_id" unsigned="true" nullable="true" comment="Author (requestdesk_blog_author.author_id)"/>
         <column xsi:type="int" name="store_id" unsigned="true" nullable="false" default="0" comment="Store ID"/>
         <!-- RequestDesk Sync Fields -->
         <column xsi:type="varchar" name="requestdesk_post_id" nullable="true" length="50" comment="RequestDesk Post ID"/>

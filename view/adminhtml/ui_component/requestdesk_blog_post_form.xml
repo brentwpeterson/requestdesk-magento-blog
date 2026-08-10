@@ -187,13 +187,18 @@
             <collapsible>true</collapsible>
         </settings>
 
-        <!-- formElement="wysiwyg" + <wysiwyg>true</wysiwyg> are what bind this field
-             to Magento's editor. Do NOT add a class="..." here: core's own
-             cms_page_form.xml declares no class, and Page Builder attaches itself
-             through a di preference on Magento\Ui\Component\Form\Element\Wysiwyg.
-             Naming a class explicitly bypasses that preference, and the class this
-             once pointed at (Magento\Cms\Ui\Component\Form\Element\Wysiwyg) does
-             not exist in 2.4.7 at all, which fataled the whole post form. -->
+        <!-- formElement="wysiwyg" alone binds this field to Magento's editor, and
+             wysiwygConfigData below configures it. There is no <wysiwyg> element in
+             ui_definition.xsd; one used to sit in <settings> here and failed XML
+             validation ("Element 'wysiwyg': This element is not expected"), which
+             took the whole form down.
+
+             Do NOT add a class="..." here either: core's own cms_page_form.xml
+             declares no class, and Page Builder attaches itself through a di
+             preference on Magento\Ui\Component\Form\Element\Wysiwyg. Naming a class
+             explicitly bypasses that preference, and the class this once pointed at
+             (Magento\Cms\Ui\Component\Form\Element\Wysiwyg) does not exist in 2.4.7
+             at all, which fataled the form a different way. -->
         <field name="content" sortOrder="10" formElement="wysiwyg">
             <argument name="data" xsi:type="array">
                 <item name="config" xsi:type="array">
@@ -209,7 +214,6 @@
             <settings>
                 <dataType>text</dataType>
                 <label translate="true">Content</label>
-                <wysiwyg>true</wysiwyg>
             </settings>
         </field>
     </fieldset>
