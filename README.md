@@ -80,7 +80,7 @@ Complete API for headless/PWA implementations and RequestDesk communication.
 
 - Magento Open Source or Adobe Commerce 2.4.7 – 2.4.9
 - PHP 8.1 – 8.5
-- **[`requestdesk/magento-qa`](https://github.com/brentwpeterson/requestdesk-magento-qa)** — required. The shared Q&A library that powers on-post FAQ + FAQPage schema. Composer pulls it automatically.
+- **[`requestdesk/magento-qa`](https://github.com/brentwpeterson/requestdesk-magento-qa)** — optional. The shared Q&A library that powers on-post FAQ + FAQPage schema. It is declared under `suggest`, not `require`, so Composer does **not** pull it automatically: install it yourself with `composer require requestdesk/magento-qa` when you want on-post FAQs. The blog runs standalone without it.
 - RequestDesk account with API key (only needed for the RequestDesk sync/import features)
 
 ### Version support, and what has actually been tested
@@ -120,7 +120,7 @@ binding/rebinding. Those are runtime-shaped. Do not read the table above as
 
 ### Via Composer (Recommended)
 
-Composer resolves the required `requestdesk/magento-qa` dependency for you.
+`requestdesk/magento-qa` is optional and is **not** pulled in automatically. Add it separately if you want the on-post FAQ and FAQPage schema.
 
 ```bash
 composer require requestdesk/magento-blog

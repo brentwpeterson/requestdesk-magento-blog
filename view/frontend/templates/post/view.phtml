@@ -76,6 +76,7 @@ $faqPairs = ($schema && $post) ? $schema->getFaqPairs($post) : [];
             </section>
         <?php endif; ?>
 
+        <?php if ($post->getCommentsEnabled()): ?>
         <?php $comments = $block->getComments(); ?>
         <section class="rd-blog-comments" style="margin-top:36px;border-top:1px solid #e5e5e5;padding-top:24px;">
             <h2><?= $escaper->escapeHtml(__('Comments')) ?></h2>
@@ -111,6 +112,7 @@ $faqPairs = ($schema && $post) ? $schema->getFaqPairs($post) : [];
                 <button type="submit" class="action primary"><?= $escaper->escapeHtml(__('Post Comment')) ?></button>
             </form>
         </section>
+        <?php endif; ?>
     </article>
 <?php else: ?>
     <p><?= $escaper->escapeHtml(__('Post not found.')) ?></p>

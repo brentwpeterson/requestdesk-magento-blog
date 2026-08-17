@@ -196,6 +196,28 @@ class Post extends AbstractModel implements PostInterface
 
     /**
      * @inheritdoc
+     *
+     * Absent data reads as enabled. A post loaded from a row written before this
+     * column existed, or built in memory without it, keeps the old behaviour of
+     * comments being on rather than silently losing them.
+     */
+    public function getCommentsEnabled(): bool
+    {
+        $value = $this->getData(self::COMMENTS_ENABLED);
+
+        return $value === null ? true : (bool) $value;
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function setCommentsEnabled(bool $commentsEnabled): PostInterface
+    {
+        return $this->setData(self::COMMENTS_ENABLED, (int) $commentsEnabled);
+    }
+
+    /**
+     * @inheritdoc
      */
     public function getAuthor(): ?string
     {

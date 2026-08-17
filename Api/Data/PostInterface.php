@@ -26,6 +26,7 @@ interface PostInterface
     public const META_DESCRIPTION = 'meta_description';
     public const FEATURED_IMAGE = 'featured_image';
     public const STATUS = 'status';
+    public const COMMENTS_ENABLED = 'comments_enabled';
     public const AUTHOR = 'author';
     public const AUTHOR_ID = 'author_id';
     public const STORE_ID = 'store_id';
@@ -144,6 +145,17 @@ interface PostInterface
      * @return $this
      */
     public function setStatus(int $status): self;
+
+    /**
+     * @return bool
+     */
+    public function getCommentsEnabled(): bool;
+
+    /**
+     * @param bool $commentsEnabled
+     * @return $this
+     */
+    public function setCommentsEnabled(bool $commentsEnabled): self;
 
     /**
      * @return string|null

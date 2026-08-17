@@ -15,6 +15,7 @@ use Magento\Framework\App\RequestInterface;
 use Magento\Framework\Controller\Result\Redirect;
 use Magento\Framework\Controller\Result\RedirectFactory;
 use Magento\Framework\Message\ManagerInterface;
+use RequestDesk\Blog\Api\PostRepositoryInterface;
 use RequestDesk\Blog\Model\CommentManager;
 
 /**
@@ -34,7 +35,8 @@ class Save implements HttpPostActionInterface
         private readonly RequestInterface $request,
         private readonly RedirectFactory $redirectFactory,
         private readonly ManagerInterface $messageManager,
-        private readonly CommentManager $commentManager
+        private readonly CommentManager $commentManager,
+        private readonly PostRepositoryInterface $postRepository
     ) {
     }
 
@@ -62,6 +64,19 @@ class Save implements HttpPostActionInterface
         }
         if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $this->messageManager->addErrorMessage(__('Please enter a valid email address.'));
+            return $backToPost;
+        }
+
+        // Hiding the form is presentation, not enforcement. This endpoint is a
+        // plain POST, so a comment can still be submitted against a post with
+        // comments switched off unless the flag is checked server side too.
+        try {
+            if (!$this->postRepository->getById($postId)->getCommentsEnabled()) {
+                $this->messageManager->addErrorMessage(__('Comments are closed for this post.'));
+                return $backToPost;
+            }
+        } catch (\Throwable $e) {
+            $this->messageManager->addErrorMessage(__('Your comment could not be saved. Please try again.'));
             return $backToPost;
         }
 

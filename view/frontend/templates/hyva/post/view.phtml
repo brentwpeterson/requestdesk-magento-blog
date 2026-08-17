@@ -82,6 +82,7 @@ $post = $block->getPost();
         double submit and shows a character count. With JS off, this is still a
         plain HTML form that posts and succeeds.
     -->
+    <?php if ($post->getCommentsEnabled()): ?>
     <?php $comments = $block->getComments(); ?>
     <section class="mt-12 pt-8 border-t border-gray-200" id="comments">
         <h2 class="text-2xl font-bold text-gray-900 mb-6">
@@ -167,6 +168,7 @@ $post = $block->getPost();
             </p>
         </form>
     </section>
+    <?php endif; ?>
 
     <!-- Post Footer -->
     <footer class="mt-12 pt-8 border-t border-gray-200">
