@@ -1,5 +1,34 @@
 # RequestDesk_Blog — Feature Backlog (for Jeel)
 
+> **STALE AS OF 2026-08-18. Do not plan off the gap analysis below.**
+>
+> This document was written when the module had no frontend route and only Hyva
+> templates. Nearly all of it has since shipped, and reading it as current will
+> send you to build things that already exist. Verified against the code on
+> 2026-08-18:
+>
+> | This doc says | Actually on main |
+> |---|---|
+> | B1 no frontend route, nothing renders on Luma | `etc/frontend/routes.xml` + `Controller/Router.php`; Index, Post, Category, Author and Tag controllers; Luma templates for all five |
+> | B2 featured image never rendered | rendered on Luma and Hyva, resolved through `Block\ImageUrl` |
+> | B3 categories data-only | `Controller/Category/View.php`, admin CRUD, `category/view.phtml`. Native Magento categories, and that is a settled decision |
+> | B4 tags missing entirely | `Controller/Tag/View.php` + admin + `tag/view.phtml` |
+> | B5 authors missing entirely | full entity: `Model/Author.php`, `AuthorResolver`, image uploader, admin CRUD, two data patches |
+> | B6 comments missing entirely | `Controller/Comment/Save.php`, admin moderation with mass approve/spam/delete, honeypot, plus a per-post Allow Comment toggle (1.6.5) |
+> | B7 widget missing entirely | `view/frontend/templates/widget/posts.phtml` |
+>
+> **What is actually left** is the Hyva half of the frontend. Luma has five
+> templates; Hyva has two. Missing: category, author and tag. That is GitHub
+> issue #1 (B1b), and note its premise is also out of date — one of the two
+> Hyva templates that did exist was fatal on every request until 1.6.5.
+>
+> The other open item is an importer to bring existing Amasty blog categories
+> across to native Magento categories. Not a rebuild: the module is already
+> native.
+>
+> The cross-cutting requirements at the bottom of this file are still correct
+> and still worth following.
+
 Goal: build `RequestDesk_Blog` up to a full blog module — the feature set in the reference admin menu (Posts, Categories, Authors, Tags, Comments, Blog Blocks via Widget, Import) — **rendering on both Luma and Hyvä**.
 
 This is a separate work-stream from the AEO scoring module (`RequestDesk_Aeo`). They connect at one point: the blog is where "supporting content to enhance a product page" lives, and blog posts should emit clean schema and link to/from products.
