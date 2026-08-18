@@ -16,7 +16,13 @@
 -->
 <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
-    <update handle="styles"/>
+    <!-- "editor", not "styles". This page renders requestdesk_blog_post_form,
+         which has a formElement="wysiwyg" field. The editor handle is what
+         pulls in Page Builder's pagebuilder_modal_form, pagebuilder_stage_template
+         and WysiwygSetup. Under "styles" none of those render, so the settings
+         gear on a content type had no modal to open. Core's own cms_page_edit.xml
+         uses the editor handle for the same reason. Reported by Jeel. -->
+    <update handle="editor"/>
     <body>
         <referenceContainer name="content">
             <uiComponent name="requestdesk_blog_post_form"/>
