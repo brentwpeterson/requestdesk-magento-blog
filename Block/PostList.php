@@ -74,9 +74,32 @@ class PostList extends Template
         $criteria = $this->searchCriteriaBuilder
             ->addFilter(PostInterface::STATUS, PostInterface::STATUS_PUBLISHED)
             ->addSortOrder($sort)
+            ->setPageSize($this->getPostsPerPage())
+            ->setCurrentPage(1)
             ->create();
 
         return $this->postRepository->getList($criteria)->getItems();
+    }
+
+    /**
+     * Posts per page, from requestdesk_blog/general/posts_per_page.
+     *
+     * The admin field and its config.xml default of 10 both existed already, but
+     * nothing on the frontend ever read them, so the listing returned every
+     * published post regardless of what the setting said. A non-positive or
+     * missing value falls back to 10 rather than to "unlimited", because a
+     * blank field should not silently turn into a full table scan.
+     *
+     * @return int
+     */
+    public function getPostsPerPage(): int
+    {
+        $configured = (int) $this->_scopeConfig->getValue(
+            'requestdesk_blog/general/posts_per_page',
+            \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+        );
+
+        return $configured > 0 ? $configured : 10;
     }
 
     /**

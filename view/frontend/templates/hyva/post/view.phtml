@@ -51,9 +51,10 @@ $post = $block->getPost();
     </header>
 
     <!-- Featured Image -->
-    <?php if ($post->getFeaturedImage()): ?>
+    <?php $img = $block->getFeaturedImageUrl(); ?>
+    <?php if ($img !== ''): ?>
         <figure class="mb-8 rounded-lg overflow-hidden shadow-lg">
-            <img src="<?= $escaper->escapeUrl($post->getFeaturedImage()) ?>"
+            <img src="<?= $escaper->escapeUrl($img) ?>"
                  alt="<?= $escaper->escapeHtmlAttr($post->getTitle()) ?>"
                  class="w-full h-auto"
                  loading="eager"/>

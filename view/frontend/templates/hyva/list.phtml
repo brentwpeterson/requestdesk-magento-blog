@@ -24,10 +24,11 @@ $posts = $block->getPosts();
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <?php foreach ($posts as $post): ?>
                 <article class="card bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
-                    <?php if ($post->getFeaturedImage()): ?>
+                    <?php $img = $block->getImageUrl($post->getFeaturedImage()); ?>
+                    <?php if ($img !== ''): ?>
                         <a href="<?= $escaper->escapeUrl($block->getPostUrl($post)) ?>"
                            class="block aspect-video overflow-hidden">
-                            <img src="<?= $escaper->escapeUrl($post->getFeaturedImage()) ?>"
+                            <img src="<?= $escaper->escapeUrl($img) ?>"
                                  alt="<?= $escaper->escapeHtmlAttr($post->getTitle()) ?>"
                                  class="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                                  loading="lazy"/>

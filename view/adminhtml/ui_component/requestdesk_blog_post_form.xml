@@ -138,7 +138,7 @@
             </argument>
             <settings>
                 <dataType>boolean</dataType>
-                <label translate="true">Enable Comments</label>
+                <label translate="true">Allow Comment</label>
             </settings>
             <formElements>
                 <checkbox>
