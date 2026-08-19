@@ -8,8 +8,13 @@
  * migrate off Amasty and then remove it entirely.
  *
  * Source tables: amasty_blog_posts (+ _tag / _tags_store, _author_store,
- * _posts_category). Categories are counted but deferred (Amasty blog
- * categories vs native-category reuse is a separate decision).
+ * _posts_category, _categories, _categories_store).
+ *
+ * Categories map onto NATIVE Magento categories rather than arriving as a second
+ * taxonomy, so the blog reuses Magento's own admin, URL rewrites and store
+ * scoping. Everything imported hangs off one dedicated parent with
+ * include_in_menu and is_anchor off, so blog categories stay out of product
+ * navigation. See AmastyCategoryMapper.
  *
  * @category  RequestDesk
  * @package   RequestDesk_Blog
@@ -23,7 +28,9 @@ use Magento\Framework\App\Area;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\App\State;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
+use RequestDesk\Blog\Model\AmastyCategoryMapper;
 use RequestDesk\Blog\Model\AuthorResolver;
+use RequestDesk\Blog\Model\PostCategoryResolver;
 use RequestDesk\Blog\Model\PostFactory;
 use RequestDesk\Blog\Model\TagResolver;
 use Symfony\Component\Console\Command\Command;
@@ -35,6 +42,7 @@ class MigrateAmastyCommand extends Command
 {
     private const OPT_LIMIT = 'limit';
     private const OPT_DRY_RUN = 'dry-run';
+    private const OPT_PARENT = 'parent-category';
 
     /** Amasty status: 2 = published/enabled. */
     private const AMASTY_STATUS_PUBLISHED = 2;
@@ -56,7 +64,9 @@ class MigrateAmastyCommand extends Command
         private readonly PostRepositoryInterface $postRepository,
         private readonly PostFactory $postFactory,
         private readonly TagResolver $tagResolver,
-        private readonly AuthorResolver $authorResolver
+        private readonly AuthorResolver $authorResolver,
+        private readonly AmastyCategoryMapper $categoryMapper,
+        private readonly PostCategoryResolver $postCategoryResolver
     ) {
         parent::__construct();
     }
@@ -70,6 +80,12 @@ class MigrateAmastyCommand extends Command
         $this->setDescription('Migrate Amasty Blog posts into the RequestDesk blog (reads Amasty DB tables directly).');
         $this->addOption(self::OPT_LIMIT, 'l', InputOption::VALUE_REQUIRED, 'Max posts to migrate (default: all published)');
         $this->addOption(self::OPT_DRY_RUN, null, InputOption::VALUE_NONE, 'Report what would migrate without writing');
+        $this->addOption(
+            self::OPT_PARENT,
+            'p',
+            InputOption::VALUE_REQUIRED,
+            'Native category id to create imported blog categories under (default: find or create "Blog" under the store root)'
+        );
     }
 
     /**
@@ -93,6 +109,23 @@ class MigrateAmastyCommand extends Command
         $limit = $input->getOption(self::OPT_LIMIT) !== null ? (int) $input->getOption(self::OPT_LIMIT) : 0;
         $dryRun = (bool) $input->getOption(self::OPT_DRY_RUN);
 
+        // Resolve the one parent every imported blog category hangs under. Doing
+        // this up front means a bad --parent-category fails before anything is
+        // written, rather than half way through the run.
+        $parentOption = $input->getOption(self::OPT_PARENT);
+        $rootParentId = $parentOption !== null ? (int) $parentOption : 0;
+        $canMapCategories = $this->categoryMapper->sourceExists();
+        if ($canMapCategories && !$dryRun && $rootParentId <= 0) {
+            $rootParentId = (int) $this->categoryMapper->getOrCreateRootParent();
+            if ($rootParentId <= 0) {
+                $output->writeln('<error>Could not resolve or create the parent blog category.</error>');
+                return Command::FAILURE;
+            }
+        }
+        if (!$canMapCategories) {
+            $output->writeln('<comment>No amasty_blog_categories table — categories will be skipped.</comment>');
+        }
+
         $select = $connection->select()
             ->from($this->resource->getTableName('amasty_blog_posts'))
             ->where('status = ?', self::AMASTY_STATUS_PUBLISHED)
@@ -105,7 +138,7 @@ class MigrateAmastyCommand extends Command
         $migrated = 0;
         $skipped = 0;
         $tagLinks = 0;
-        $categoriesSeen = 0;
+        $categoryLinks = 0;
         /** @var array<int,true> $authorsSeen author_ids touched, for the summary count */
         $authorsSeen = [];
 
@@ -119,8 +152,6 @@ class MigrateAmastyCommand extends Command
                 $skipped++;
                 continue;
             }
-
-            $categoriesSeen += $this->countCategories($srcId);
 
             if ($dryRun) {
                 $output->writeln("  would migrate: {$title}  [{$urlKey}]");
@@ -167,6 +198,23 @@ class MigrateAmastyCommand extends Command
                     $tagLinks += count($tagIds);
                 }
 
+                if ($canMapCategories) {
+                    $categoryIds = [];
+                    foreach ($this->categoryMapper->getSourceCategoryIds($srcId) as $srcCategoryId) {
+                        $nativeId = $this->categoryMapper->mapCategory($srcCategoryId, $rootParentId);
+                        if ($nativeId) {
+                            $categoryIds[] = $nativeId;
+                        }
+                    }
+                    if ($categoryIds) {
+                        // syncForPost replaces rather than appends, which is the
+                        // agreed behaviour: the Amasty data is the source of truth
+                        // for a migrated post, not whatever was assigned before.
+                        $this->postCategoryResolver->syncForPost($savedId, $categoryIds);
+                        $categoryLinks += count($categoryIds);
+                    }
+                }
+
                 $output->writeln("  migrated: {$title}  [{$urlKey}]");
                 $migrated++;
             } catch (\Exception $e) {
@@ -181,7 +229,9 @@ class MigrateAmastyCommand extends Command
         $output->writeln("  posts skipped:   {$skipped}");
         $output->writeln("  tag links:       {$tagLinks}");
         $output->writeln('  authors linked:  ' . count($authorsSeen));
-        $output->writeln("  categories seen: {$categoriesSeen} (deferred — category mapping is phase 2)");
+        $output->writeln("  category links:  {$categoryLinks}");
+        $output->writeln('  categories made: ' . count($this->categoryMapper->getMapping())
+            . ($rootParentId > 0 ? " (under category {$rootParentId})" : ''));
 
         return Command::SUCCESS;
     }
@@ -281,20 +331,6 @@ class MigrateAmastyCommand extends Command
         return array_filter(array_map('trim', $connection->fetchCol($select)));
     }
 
-    /**
-     * How many Amasty categories a post is in (counted, not migrated yet).
-     *
-     * @param int $srcPostId
-     * @return int
-     */
-    private function countCategories(int $srcPostId): int
-    {
-        $connection = $this->resource->getConnection();
-        $select = $connection->select()
-            ->from($this->resource->getTableName('amasty_blog_posts_category'), ['COUNT(*)'])
-            ->where('post_id = ?', $srcPostId);
-        return (int) $connection->fetchOne($select);
-    }
 
     /**
      * Does a RequestDesk post already exist with this url_key? Keeps re-runs
