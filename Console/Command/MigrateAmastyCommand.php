@@ -137,6 +137,7 @@ class MigrateAmastyCommand extends Command
 
         $migrated = 0;
         $skipped = 0;
+        $failed = 0;
         $tagLinks = 0;
         $categoryLinks = 0;
         /** @var array<int,true> $authorsSeen author_ids touched, for the summary count */
@@ -159,6 +160,43 @@ class MigrateAmastyCommand extends Command
                 continue;
             }
 
+            // Resolve everything that CREATES shared records before the
+            // transaction opens: tags, authors and categories are all
+            // get-or-create keyed on name or url_key, so a leftover from a
+            // failed post is harmless and gets reused rather than duplicated.
+            // Holding them inside the transaction instead would drag catalog
+            // category writes into a rollback, which is not something the
+            // category repository is safe to be wrapped in.
+            $tagIds = [];
+            $categoryIds = [];
+            try {
+                foreach ($this->tagNames($srcId) as $name) {
+                    $ourTagId = $this->tagResolver->getOrCreateByName($name);
+                    if ($ourTagId) {
+                        $tagIds[] = $ourTagId;
+                    }
+                }
+                if ($canMapCategories) {
+                    foreach ($this->categoryMapper->getSourceCategoryIds($srcId) as $srcCategoryId) {
+                        $nativeId = $this->categoryMapper->mapCategory($srcCategoryId, $rootParentId);
+                        if ($nativeId) {
+                            $categoryIds[] = $nativeId;
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                $output->writeln("  <error>failed: {$urlKey} — {$e->getMessage()}</error>");
+                $failed++;
+                continue;
+            }
+
+            // The post and its links are one unit. Before this, a throw after
+            // the save left the post written but unlinked, and because the
+            // skip-if-exists check above then matched it, a re-run would pass
+            // over it forever - a post silently stranded with no tags and no
+            // categories. Rolling back means a failure leaves nothing behind
+            // and the next run genuinely retries it.
+            $connection->beginTransaction();
             try {
                 $post = $this->postFactory->create();
                 $post->setTitle($title !== '' ? $title : 'Untitled');
@@ -186,47 +224,37 @@ class MigrateAmastyCommand extends Command
                 $saved = $this->postRepository->save($post);
                 $savedId = (int) $saved->getPostId();
 
-                $tagIds = [];
-                foreach ($this->tagNames($srcId) as $name) {
-                    $ourTagId = $this->tagResolver->getOrCreateByName($name);
-                    if ($ourTagId) {
-                        $tagIds[] = $ourTagId;
-                    }
-                }
                 if ($tagIds) {
                     $this->tagResolver->syncForPost($savedId, $tagIds);
-                    $tagLinks += count($tagIds);
                 }
 
-                if ($canMapCategories) {
-                    $categoryIds = [];
-                    foreach ($this->categoryMapper->getSourceCategoryIds($srcId) as $srcCategoryId) {
-                        $nativeId = $this->categoryMapper->mapCategory($srcCategoryId, $rootParentId);
-                        if ($nativeId) {
-                            $categoryIds[] = $nativeId;
-                        }
-                    }
-                    if ($categoryIds) {
-                        // syncForPost replaces rather than appends, which is the
-                        // agreed behaviour: the Amasty data is the source of truth
-                        // for a migrated post, not whatever was assigned before.
-                        $this->postCategoryResolver->syncForPost($savedId, $categoryIds);
-                        $categoryLinks += count($categoryIds);
-                    }
+                if ($categoryIds) {
+                    // syncForPost replaces rather than appends, which is the
+                    // agreed behaviour: the Amasty data is the source of truth
+                    // for a migrated post, not whatever was assigned before.
+                    $this->postCategoryResolver->syncForPost($savedId, $categoryIds);
                 }
 
+                $connection->commit();
+
+                // Counted only after the commit, so the summary reports what is
+                // actually in the database rather than what was attempted.
+                $tagLinks += count($tagIds);
+                $categoryLinks += count($categoryIds);
                 $output->writeln("  migrated: {$title}  [{$urlKey}]");
                 $migrated++;
             } catch (\Exception $e) {
+                $connection->rollBack();
                 $output->writeln("  <error>failed: {$urlKey} — {$e->getMessage()}</error>");
-                $skipped++;
+                $failed++;
             }
         }
 
         $output->writeln('');
         $output->writeln($dryRun ? '<info>DRY RUN — nothing written.</info>' : '<info>Migration complete.</info>');
         $output->writeln("  posts migrated:  {$migrated}");
-        $output->writeln("  posts skipped:   {$skipped}");
+        $output->writeln("  posts skipped:   {$skipped}  (already present)");
+        $output->writeln("  posts failed:    {$failed}  (rolled back, safe to re-run)");
         $output->writeln("  tag links:       {$tagLinks}");
         $output->writeln('  authors linked:  ' . count($authorsSeen));
         $output->writeln("  category links:  {$categoryLinks}");

@@ -514,6 +514,18 @@ composer install
 vendor/bin/phpunit
 ```
 
+**Remove `vendor/` again before running `setup:di:compile`.** These dependencies
+install into the module's own directory, so when the module sits inside a
+Magento installation the compiler scans them as application code, finds a second
+copy of packages Magento already ships, and dies with `Cannot redeclare trait
+phpseclib3\Crypt\EC\Formats\Keys\Common`. Developer mode never compiles, so
+this only bites when you do:
+
+```bash
+rm -rf vendor
+bin/magento setup:di:compile
+```
+
 Magento packages are not published on packagist.org, so `composer.json` declares
 the public Mage-OS mirror as a repository. No credentials are needed. Composer
 ignores a `repositories` block in an installed dependency, so this affects local
