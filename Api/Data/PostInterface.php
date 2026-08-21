@@ -218,6 +218,18 @@ interface PostInterface
     public function getCreatedAt(): ?string;
 
     /**
+     * Set the creation date explicitly.
+     *
+     * Normally the database default handles this. It is settable because an
+     * imported or syndicated post has an original publish date worth keeping;
+     * without it every migrated post is stamped with the moment it arrived.
+     *
+     * @param string|null $createdAt
+     * @return $this
+     */
+    public function setCreatedAt(?string $createdAt): self;
+
+    /**
      * @return string|null
      */
     public function getUpdatedAt(): ?string;

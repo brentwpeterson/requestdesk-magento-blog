@@ -38,7 +38,8 @@ class PostManagement implements PostManagementInterface
         private readonly PostRepositoryInterface $postRepository,
         private readonly PostFactory $postFactory,
         private readonly ResourceConnection $resourceConnection,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly PostCategoryResolver $postCategoryResolver
     ) {
     }
 
@@ -104,7 +105,16 @@ class PostManagement implements PostManagementInterface
             $this->linkProducts((int) $savedPost->getPostId(), $productIds);
         }
 
-        // TODO: Handle category assignments when categories are implemented
+        // Categories were accepted and dropped here behind a TODO, so a caller
+        // that supplied them got a post with none and no error saying why.
+        // syncForPost replaces rather than appends: the caller's list is the
+        // post's categories, which is what an idempotent publish needs.
+        if ($categoryIds !== null) {
+            $this->postCategoryResolver->syncForPost(
+                (int) $savedPost->getPostId(),
+                array_values(array_filter(array_map('intval', $categoryIds)))
+            );
+        }
 
         return $savedPost;
     }

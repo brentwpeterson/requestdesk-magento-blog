@@ -52,7 +52,8 @@ class ExternalBlog implements ExternalBlogInterface
         private readonly SearchCriteriaBuilderFactory $searchCriteriaBuilderFactory,
         private readonly LoggerInterface $logger,
         private readonly ApiKeyValidator $apiKeyValidator,
-        private readonly TagResolver $tagResolver
+        private readonly TagResolver $tagResolver,
+        private readonly PostCategoryResolver $postCategoryResolver
     ) {
     }
 
@@ -154,7 +155,9 @@ class ExternalBlog implements ExternalBlogInterface
         ?string $featuredImage = null,
         ?array $tags = null,
         bool $published = false,
-        ?string $requestdeskPostId = null
+        ?string $requestdeskPostId = null,
+        ?array $categoryIds = null,
+        ?string $publishedAt = null
     ): array {
         $this->validateApiKey();
 
@@ -179,7 +182,9 @@ class ExternalBlog implements ExternalBlogInterface
                         'seo_description' => $seoDescription,
                         'featured_image' => $featuredImage,
                         'tags' => $tags,
-                        'published' => $published
+                        'published' => $published,
+                        'category_ids' => $categoryIds,
+                        'published_at' => $publishedAt
                     ]);
                 } catch (NoSuchEntityException $e) {
                     // Post doesn't exist, continue with creation
@@ -204,9 +209,12 @@ class ExternalBlog implements ExternalBlogInterface
                 ->setRequestdeskSyncStatus(PostInterface::SYNC_STATUS_SYNCED)
                 ->setRequestdeskLastSync(date('Y-m-d H:i:s'));
 
+            $this->applyPublishedAt($post, $publishedAt);
+
             $savedPost = $this->postRepository->save($post);
 
             $this->syncTags((int) $savedPost->getPostId(), $tags);
+            $this->syncCategories((int) $savedPost->getPostId(), $categoryIds);
 
             $this->logger->info('RequestDesk External Blog: Post created', [
                 'post_id' => $savedPost->getPostId(),
@@ -226,6 +234,59 @@ class ExternalBlog implements ExternalBlogInterface
                 'error' => $e->getMessage()
             ];
         }
+    }
+
+    /**
+     * File a post under native Magento categories.
+     *
+     * Replaces rather than appends, matching the tag behaviour: the caller's list
+     * is the post's categories, which is what makes a repeated publish idempotent.
+     * Null means "not supplied, leave alone".
+     *
+     * @param int $postId
+     * @param int[]|null $categoryIds
+     * @return void
+     */
+    private function syncCategories(int $postId, ?array $categoryIds): void
+    {
+        if ($categoryIds === null) {
+            return;
+        }
+
+        $this->postCategoryResolver->syncForPost(
+            $postId,
+            array_values(array_filter(array_map('intval', $categoryIds)))
+        );
+    }
+
+    /**
+     * Preserve an original publish date if the caller supplied one.
+     *
+     * Without this every migrated or syndicated post is stamped with the moment it
+     * arrived, which collapses years of archive into one day and makes the
+     * freshness signal meaningless. An unparsable date is ignored rather than
+     * fatal - a bad timestamp should not cost you the post.
+     *
+     * @param PostInterface $post
+     * @param string|null $publishedAt
+     * @return void
+     */
+    private function applyPublishedAt(PostInterface $post, ?string $publishedAt): void
+    {
+        if ($publishedAt === null || trim($publishedAt) === '') {
+            return;
+        }
+
+        $timestamp = strtotime($publishedAt);
+        if ($timestamp === false) {
+            $this->logger->warning(
+                'RequestDesk External Blog: unparsable publishedAt, ignoring',
+                ['value' => $publishedAt]
+            );
+            return;
+        }
+
+        $post->setCreatedAt(date('Y-m-d H:i:s', $timestamp));
     }
 
     /**
@@ -301,6 +362,7 @@ class ExternalBlog implements ExternalBlogInterface
         $savedPost = $this->postRepository->save($post);
 
         $this->syncTags((int) $savedPost->getPostId(), $data['tags'] ?? null);
+        $this->syncCategories((int) $savedPost->getPostId(), $data['category_ids'] ?? null);
 
         $this->logger->info('RequestDesk External Blog: Post updated', [
             'post_id' => $savedPost->getPostId()
@@ -327,7 +389,9 @@ class ExternalBlog implements ExternalBlogInterface
         ?string $seoDescription = null,
         ?string $featuredImage = null,
         ?array $tags = null,
-        ?bool $published = null
+        ?bool $published = null,
+        ?array $categoryIds = null,
+        ?string $publishedAt = null
     ): array {
         $this->validateApiKey();
 

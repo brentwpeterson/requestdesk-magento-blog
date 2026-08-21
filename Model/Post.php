@@ -307,6 +307,14 @@ class Post extends AbstractModel implements PostInterface
     /**
      * @inheritdoc
      */
+    public function setCreatedAt(?string $createdAt): PostInterface
+    {
+        return $this->setData(self::CREATED_AT, $createdAt);
+    }
+
+    /**
+     * @inheritdoc
+     */
     public function getUpdatedAt(): ?string
     {
         return $this->getData(self::UPDATED_AT);

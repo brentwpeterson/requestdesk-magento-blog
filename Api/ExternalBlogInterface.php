@@ -42,6 +42,10 @@ interface ExternalBlogInterface
      * @param string[]|null $tags Post tags
      * @param bool $published Whether to publish immediately (default: false = draft)
      * @param string|null $requestdeskPostId RequestDesk post ID for sync tracking
+     * @param int[]|null $categoryIds Native Magento category IDs to file the post under
+     * @param string|null $publishedAt Original publish date (any strtotime-parsable string).
+     *                                 Preserves the date on a migrated or syndicated post
+     *                                 instead of stamping it with the time it arrived.
      * @return mixed[]
      */
     public function createPost(
@@ -55,7 +59,9 @@ interface ExternalBlogInterface
         ?string $featuredImage = null,
         ?array $tags = null,
         bool $published = false,
-        ?string $requestdeskPostId = null
+        ?string $requestdeskPostId = null,
+        ?array $categoryIds = null,
+        ?string $publishedAt = null
     ): array;
 
     /**
@@ -85,7 +91,9 @@ interface ExternalBlogInterface
         ?string $seoDescription = null,
         ?string $featuredImage = null,
         ?array $tags = null,
-        ?bool $published = null
+        ?bool $published = null,
+        ?array $categoryIds = null,
+        ?string $publishedAt = null
     ): array;
 
     /**

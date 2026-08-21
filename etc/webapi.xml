@@ -19,7 +19,23 @@
 <routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Webapi:etc/webapi.xsd">
 
-    <!-- Create/Update Post (Main endpoint RequestDesk calls) -->
+    <!--
+        Create/Update Post, Magento-token path.
+
+        This is NOT redundant with /V1/requestdesk/external/blog/posts, despite
+        PARITY-REQUIREMENTS A2 proposing the two be collapsed. They differ in
+        capability, not just in auth:
+
+          this route            ACL token; can set storeId and link productIds
+          /external/blog/posts  header key; can set tags, categoryIds, publishedAt
+
+        It is also live: the RequestDesk backend calls it from
+        magento_blog_service.py (create at :631, list at :681, product linking at
+        :731), so retiring it would break the existing RD -> Magento publish path.
+
+        Consolidating means first giving one path every capability of the other.
+        Until then, both stay.
+    -->
     <route url="/V1/requestdesk/blog/posts" method="POST">
         <service class="RequestDesk\Blog\Api\PostManagementInterface" method="createOrUpdate"/>
         <resources>
