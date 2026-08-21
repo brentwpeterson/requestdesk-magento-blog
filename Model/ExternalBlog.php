@@ -50,38 +50,18 @@ class ExternalBlog implements ExternalBlogInterface
         private readonly Request $request,
         private readonly EncryptorInterface $encryptor,
         private readonly SearchCriteriaBuilderFactory $searchCriteriaBuilderFactory,
-        private readonly LoggerInterface $logger
+        private readonly LoggerInterface $logger,
+        private readonly ApiKeyValidator $apiKeyValidator,
+        private readonly TagResolver $tagResolver
     ) {
     }
 
     /**
-     * Validate the API key from request header
-     *
      * @throws AuthorizationException
      */
     private function validateApiKey(): void
     {
-        // Check both header variations for compatibility
-        $providedKey = $this->request->getHeader('X-RequestDesk-Key')
-            ?: $this->request->getHeader('x-requestdesk-api-key');
-
-        $encryptedKey = $this->scopeConfig->getValue(self::XML_PATH_API_KEY);
-
-        if (empty($encryptedKey)) {
-            throw new AuthorizationException(
-                __('RequestDesk API key not configured in Magento admin')
-            );
-        }
-
-        // Decrypt the stored API key
-        $configuredKey = $this->encryptor->decrypt($encryptedKey);
-
-        if (empty($configuredKey) || $providedKey !== $configuredKey) {
-            $this->logger->warning('RequestDesk External Blog: Invalid API key attempt');
-            throw new AuthorizationException(
-                __('Invalid RequestDesk API key')
-            );
-        }
+        $this->apiKeyValidator->validate('External Blog');
     }
 
     /**
@@ -226,6 +206,8 @@ class ExternalBlog implements ExternalBlogInterface
 
             $savedPost = $this->postRepository->save($post);
 
+            $this->syncTags((int) $savedPost->getPostId(), $tags);
+
             $this->logger->info('RequestDesk External Blog: Post created', [
                 'post_id' => $savedPost->getPostId(),
                 'requestdesk_post_id' => $requestdeskPostId
@@ -244,6 +226,39 @@ class ExternalBlog implements ExternalBlogInterface
                 'error' => $e->getMessage()
             ];
         }
+    }
+
+    /**
+     * Attach tags to a post, creating any that do not exist yet.
+     *
+     * The API has always accepted a tags array and, until now, thrown it away:
+     * neither create nor update persisted it, so every post published through
+     * RequestDesk arrived untagged with no error to explain why. Null means "not
+     * supplied, leave alone"; an empty array means "clear them".
+     *
+     * @param int $postId
+     * @param string[]|null $tags
+     * @return void
+     */
+    private function syncTags(int $postId, ?array $tags): void
+    {
+        if ($tags === null) {
+            return;
+        }
+
+        $tagIds = [];
+        foreach ($tags as $name) {
+            $name = trim((string) $name);
+            if ($name === '') {
+                continue;
+            }
+            $tagId = $this->tagResolver->getOrCreateByName($name);
+            if ($tagId) {
+                $tagIds[] = $tagId;
+            }
+        }
+
+        $this->tagResolver->syncForPost($postId, $tagIds);
     }
 
     /**
@@ -284,6 +299,8 @@ class ExternalBlog implements ExternalBlogInterface
         $post->setRequestdeskLastSync(date('Y-m-d H:i:s'));
 
         $savedPost = $this->postRepository->save($post);
+
+        $this->syncTags((int) $savedPost->getPostId(), $data['tags'] ?? null);
 
         $this->logger->info('RequestDesk External Blog: Post updated', [
             'post_id' => $savedPost->getPostId()

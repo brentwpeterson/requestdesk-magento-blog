@@ -72,6 +72,7 @@ class DataExport implements DataExportInterface
      * @var EncryptorInterface
      */
     private EncryptorInterface $encryptor;
+    private ApiKeyValidator $apiKeyValidator;
 
     /**
      * @param ProductCollectionFactory $productCollectionFactory
@@ -91,7 +92,8 @@ class DataExport implements DataExportInterface
         ScopeConfigInterface $scopeConfig,
         Request $request,
         LoggerInterface $logger,
-        EncryptorInterface $encryptor
+        EncryptorInterface $encryptor,
+        ApiKeyValidator $apiKeyValidator
     ) {
         $this->productCollectionFactory = $productCollectionFactory;
         $this->categoryCollectionFactory = $categoryCollectionFactory;
@@ -101,35 +103,15 @@ class DataExport implements DataExportInterface
         $this->request = $request;
         $this->logger = $logger;
         $this->encryptor = $encryptor;
+        $this->apiKeyValidator = $apiKeyValidator;
     }
 
     /**
-     * Validate the API key from request header
-     *
      * @throws AuthorizationException
      */
     private function validateApiKey(): void
     {
-        $providedKey = $this->request->getHeader('X-RequestDesk-Key');
-        $encryptedKey = $this->scopeConfig->getValue(
-            self::XML_PATH_API_KEY
-        );
-
-        // Decrypt the stored API key
-        $configuredKey = $this->encryptor->decrypt($encryptedKey);
-
-        if (empty($configuredKey)) {
-            throw new AuthorizationException(
-                __('RequestDesk API key not configured in Magento admin')
-            );
-        }
-
-        if ($providedKey !== $configuredKey) {
-            $this->logger->warning('RequestDesk: Invalid API key attempt');
-            throw new AuthorizationException(
-                __('Invalid RequestDesk API key')
-            );
-        }
+        $this->apiKeyValidator->validate('Data Export');
     }
 
     /**
