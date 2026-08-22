@@ -78,6 +78,8 @@ interface ExternalBlogInterface
      * @param string|null $featuredImage Featured image URL
      * @param string[]|null $tags Post tags
      * @param bool|null $published Whether post is published
+     * @param int[]|null $categoryIds Native Magento category IDs to file the post under
+     * @param string|null $publishedAt Original publish date (any strtotime-parsable string)
      * @return mixed[]
      */
     public function updatePost(
