@@ -140,6 +140,9 @@ class MigrateAmastyCommand extends Command
         $failed = 0;
         $tagLinks = 0;
         $categoryLinks = 0;
+        /** @var array<int,true> $previewCategoryIds distinct source categories a dry run would map */
+        $previewCategoryIds = [];
+        $previewCategoryLinks = 0;
         /** @var array<int,true> $authorsSeen author_ids touched, for the summary count */
         $authorsSeen = [];
 
@@ -155,7 +158,26 @@ class MigrateAmastyCommand extends Command
             }
 
             if ($dryRun) {
-                $output->writeln("  would migrate: {$title}  [{$urlKey}]");
+                // Report the category work rather than silently skipping it.
+                // This used to return here before categories were looked at,
+                // so a dry run always printed zero categories and read as
+                // "this will not migrate any" - which is not what it meant.
+                // Reading the source is safe; mapCategory is what creates, and
+                // it is deliberately not called here.
+                $srcCategoryIds = $canMapCategories
+                    ? $this->categoryMapper->getSourceCategoryIds($srcId)
+                    : [];
+                foreach ($srcCategoryIds as $srcCategoryId) {
+                    $previewCategoryIds[$srcCategoryId] = true;
+                }
+                $previewCategoryLinks += count($srcCategoryIds);
+
+                $output->writeln(sprintf(
+                    '  would migrate: %s  [%s]%s',
+                    $title,
+                    $urlKey,
+                    $srcCategoryIds === [] ? '' : sprintf('  (%d category link(s))', count($srcCategoryIds))
+                ));
                 $migrated++;
                 continue;
             }
@@ -257,9 +279,18 @@ class MigrateAmastyCommand extends Command
         $output->writeln("  posts failed:    {$failed}  (rolled back, safe to re-run)");
         $output->writeln("  tag links:       {$tagLinks}");
         $output->writeln('  authors linked:  ' . count($authorsSeen));
-        $output->writeln("  category links:  {$categoryLinks}");
-        $output->writeln('  categories made: ' . count($this->categoryMapper->getMapping())
-            . ($rootParentId > 0 ? " (under category {$rootParentId})" : ''));
+        if ($dryRun) {
+            $output->writeln("  category links:  {$previewCategoryLinks}  (would be created)");
+            $output->writeln(
+                '  categories:      ' . count($previewCategoryIds) . '  distinct Amasty category(ies) to map'
+            );
+        } else {
+            $output->writeln("  category links:  {$categoryLinks}");
+        }
+        if (!$dryRun) {
+            $output->writeln('  categories made: ' . count($this->categoryMapper->getMapping())
+                . ($rootParentId > 0 ? " (under category {$rootParentId})" : ''));
+        }
 
         return Command::SUCCESS;
     }
@@ -348,6 +379,17 @@ class MigrateAmastyCommand extends Command
     private function tagNames(int $srcPostId): array
     {
         $connection = $this->resource->getConnection();
+
+        // Amasty's tag tables are not guaranteed to be there. A store that never
+        // used tags, or a partial install, has the posts table without them, and
+        // an unguarded join fails EVERY post rather than the one feature - which
+        // is a whole migration lost to something nobody was even asking for.
+        foreach (['amasty_blog_posts_tag', 'amasty_blog_tags_store'] as $table) {
+            if (!$connection->isTableExists($this->resource->getTableName($table))) {
+                return [];
+            }
+        }
+
         $select = $connection->select()
             ->from(['pt' => $this->resource->getTableName('amasty_blog_posts_tag')], [])
             ->join(
