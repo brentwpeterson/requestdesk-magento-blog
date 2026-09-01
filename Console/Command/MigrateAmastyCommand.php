@@ -128,7 +128,24 @@ class MigrateAmastyCommand extends Command
         // this up front means a bad --parent-category fails before anything is
         // written, rather than half way through the run.
         $parentOption = $input->getOption(self::OPT_PARENT);
-        $rootParentId = $parentOption !== null ? (int) $parentOption : 0;
+        $rootParentId = 0;
+        if ($parentOption !== null) {
+            if (!is_numeric($parentOption) || (int) $parentOption <= 0) {
+                $output->writeln(sprintf(
+                    '<error>--parent-category must be a positive category id, got "%s".</error>',
+                    $parentOption
+                ));
+                return Command::FAILURE;
+            }
+            $rootParentId = (int) $parentOption;
+            if (!$this->categoryMapper->categoryExists($rootParentId)) {
+                $output->writeln(sprintf(
+                    '<error>--parent-category %d does not exist.</error>',
+                    $rootParentId
+                ));
+                return Command::FAILURE;
+            }
+        }
         $canMapCategories = $this->categoryMapper->sourceExists();
         if ($canMapCategories && !$dryRun && $rootParentId <= 0) {
             $rootParentId = (int) $this->categoryMapper->getOrCreateRootParent();

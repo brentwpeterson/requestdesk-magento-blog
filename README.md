@@ -741,6 +741,34 @@ Answer Engine Optimization (AEO) is the practice of structuring content so AI sy
 
 ## Changelog
 
+### 1.9.5 (2026-09-01)
+
+- **Fix: updating a post through the External Blog API silently dropped
+  `categoryIds` and `publishedAt`.** 1.9.0 added both parameters to
+  `updatePost()`, but the `$data` array handed to `updateExistingPost()`
+  never carried either key, so `updateExistingPost()` read `null` for both
+  and the request returned success while categories and the archive date
+  went untouched. Now passed through; `published_at` reuses the same
+  `applyPublishedAt()` helper `createPost()` already had
+- **Fix: `--parent-category` on `requestdesk:blog:migrate-amasty` was never
+  validated**, despite a comment claiming it fails up front. A non-numeric
+  value silently cast to `0` and fell through to auto-create-or-find instead
+  of failing; a nonexistent numeric id passed the guard and only surfaced
+  deep inside `mapCategory()`, where every failure is caught and logged
+  rather than surfaced — the run finished `SUCCESS` reporting `0` links with
+  nothing on stdout to say the categories were lost. The option is now
+  checked against `AmastyCategoryMapper::categoryExists()` and the command
+  refuses to run rather than silently discarding categories
+- **Fix: an Amasty category with no store-0 row broke re-runnability.**
+  `fetchSourceCategory()` only read the default (store 0) localization row;
+  an install that had only ever written per-store rows got a `null`
+  name/url_key back, `mapCategory()` fell back to an empty url_key, and
+  `findChildByUrlKey()` refuses to match an empty one on purpose — so a
+  second run could never find what the first run created and made a fresh
+  duplicate category instead. The fetch now falls back to any available
+  per-store row when the default one is missing, keeping the real url_key
+  and with it the whole point of matching on it
+
 ### 1.9.4 (2026-09-01)
 
 - **Fix: an out-of-range listing page stranded the visitor.** `hasPagination()`

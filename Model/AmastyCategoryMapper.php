@@ -77,6 +77,26 @@ class AmastyCategoryMapper
     }
 
     /**
+     * Whether a native category id is real, for validating --parent-category
+     * before anything is written rather than discovering it is not partway
+     * through the run, where every mapCategory() failure is swallowed and
+     * logged rather than surfaced.
+     *
+     * @param int $categoryId
+     * @return bool
+     */
+    public function categoryExists(int $categoryId): bool
+    {
+        try {
+            $this->categoryRepository->get($categoryId);
+
+            return true;
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    /**
      * Amasty category ids attached to one Amasty post.
      *
      * @param int $srcPostId
@@ -182,6 +202,15 @@ class AmastyCategoryMapper
      * Amasty splits a category across two tables: structure in _categories,
      * localized name and url_key in _categories_store.
      *
+     * Prefers the store-0 (default) row, but an install that only ever wrote
+     * per-store rows has none, and the LEFT JOIN alone would come back with a
+     * real category and a null name/url_key - which mapCategory() would then
+     * fall back to an empty url_key for, and findChildByUrlKey() refuses to
+     * match an empty url_key, so every re-run created a fresh duplicate
+     * category instead of finding the one from the run before. Falling back to
+     * any store's row keeps the real url_key, and with it the whole point of
+     * matching on it: idempotence.
+     *
      * @param int $srcCategoryId
      * @return array<string, mixed>|null
      */
@@ -203,7 +232,29 @@ class AmastyCategoryMapper
 
         $row = $connection->fetchRow($select);
 
-        return $row ?: null;
+        if ($row === false) {
+            return null;
+        }
+
+        if ((string) ($row['url_key'] ?? '') === '') {
+            $fallback = $connection->fetchRow(
+                $connection->select()
+                    ->from(
+                        $this->resource->getTableName(self::SRC_CATEGORIES_STORE),
+                        ['name', 'url_key']
+                    )
+                    ->where('category_id = ?', $srcCategoryId)
+                    ->order('store_id ASC')
+                    ->limit(1)
+            );
+
+            if ($fallback !== false) {
+                $row['name'] = $fallback['name'];
+                $row['url_key'] = $fallback['url_key'];
+            }
+        }
+
+        return $row;
     }
 
     /**

@@ -356,6 +356,9 @@ class ExternalBlog implements ExternalBlogInterface
         if (isset($data['published'])) {
             $post->setStatus($data['published'] ? PostInterface::STATUS_PUBLISHED : PostInterface::STATUS_DRAFT);
         }
+        if (array_key_exists('published_at', $data)) {
+            $this->applyPublishedAt($post, $data['published_at']);
+        }
 
         $post->setRequestdeskSyncStatus(PostInterface::SYNC_STATUS_SYNCED);
         $post->setRequestdeskLastSync(date('Y-m-d H:i:s'));
@@ -416,7 +419,9 @@ class ExternalBlog implements ExternalBlogInterface
                 'seo_description' => $seoDescription,
                 'featured_image' => $featuredImage,
                 'tags' => $tags,
-                'published' => $published
+                'published' => $published,
+                'category_ids' => $categoryIds,
+                'published_at' => $publishedAt
             ]);
 
         } catch (NoSuchEntityException $e) {

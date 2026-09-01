@@ -8,6 +8,7 @@ declare(strict_types=1);
 namespace RequestDesk\Blog\Test\Unit\Model;
 
 use Magento\Catalog\Api\CategoryRepositoryInterface;
+use Magento\Catalog\Model\Category;
 use Magento\Catalog\Model\CategoryFactory;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\DB\Adapter\AdapterInterface;
@@ -68,6 +69,7 @@ class AmastyCategoryMapperTest extends TestCase
         $select->method('from')->willReturnSelf();
         $select->method('joinLeft')->willReturnSelf();
         $select->method('where')->willReturnSelf();
+        $select->method('order')->willReturnSelf();
         $select->method('limit')->willReturnSelf();
 
         return $select;
@@ -155,5 +157,54 @@ class AmastyCategoryMapperTest extends TestCase
     public function testMappingStartsEmpty(): void
     {
         $this->assertSame([], $this->mapper->getMapping());
+    }
+
+    /**
+     * --parent-category validation (MigrateAmastyCommand) relies on this to
+     * fail before anything is written, rather than deep inside mapCategory()
+     * where every failure is caught and logged rather than surfaced.
+     */
+    public function testCategoryExistsTrueWhenRepositoryFindsIt(): void
+    {
+        $this->categoryRepository->method('get')->with(7)
+            ->willReturn($this->createMock(Category::class));
+
+        $this->assertTrue($this->mapper->categoryExists(7));
+    }
+
+    public function testCategoryExistsFalseWhenNotFound(): void
+    {
+        $this->categoryRepository->method('get')
+            ->willThrowException(new \RuntimeException('no such category'));
+
+        $this->assertFalse($this->mapper->categoryExists(999));
+    }
+
+    /**
+     * A store that only ever wrote per-store localization rows - no store_id=0
+     * row - used to lose the name and url_key entirely: the LEFT JOIN came back
+     * null, mapCategory() fell back to an empty url_key, and findChildByUrlKey()
+     * refuses to match an empty one. That made every re-run create a fresh
+     * duplicate instead of finding the category the first run made. The
+     * fallback query must recover the real url_key so matching - and therefore
+     * re-runnability - still works.
+     */
+    public function testMissingStoreZeroRowFallsBackToAnyStoreRow(): void
+    {
+        $this->connection->method('select')->willReturn($this->selectStub());
+        $this->connection->method('fetchRow')->willReturnOnConsecutiveCalls(
+            ['category_id' => 41, 'parent_id' => 0, 'level' => 2, 'name' => null, 'url_key' => null],
+            ['name' => 'Recipes', 'url_key' => 'recipes']
+        );
+
+        $child = $this->createMock(Category::class);
+        $child->method('getUrlKey')->willReturn('recipes');
+        $child->method('getId')->willReturn(88);
+
+        $parent = $this->createMock(Category::class);
+        $parent->method('getChildrenCategories')->willReturn([$child]);
+        $this->categoryRepository->method('get')->with(3)->willReturn($parent);
+
+        $this->assertSame(88, $this->mapper->mapCategory(41, 3));
     }
 }
