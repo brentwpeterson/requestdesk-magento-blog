@@ -89,6 +89,6 @@ class TagView extends Template
      */
     public function getPostUrl(PostInterface $post): string
     {
-        return $this->getUrl('blog/post/view', ['id' => $post->getPostId()]);
+        return PostUrl::resolve($post, $this->_urlBuilder);
     }
 }

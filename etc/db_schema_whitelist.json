@@ -17,7 +17,8 @@
             "created_at": true,
             "updated_at": true,
             "author_id": true,
-            "comments_enabled": true
+            "comments_enabled": true,
+            "short_description": true
         },
         "index": {
             "REQUESTDESK_BLOG_POST_STATUS": true,

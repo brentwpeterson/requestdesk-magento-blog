@@ -60,9 +60,15 @@ $posts = $block->getPosts();
                             </span>
                         </div>
 
-                        <p class="text-gray-600 mb-4 line-clamp-3">
-                            <?= $escaper->escapeHtml($block->getExcerpt($post, 150)) ?>
-                        </p>
+                        <!-- Emitted as markup, not escaped text, so that hiding an
+                             element in the editor takes effect here the same way it
+                             does on the post. A div rather than a p: the short
+                             description can contain block elements, and a <p> nested
+                             in a <p> is auto-closed by the browser, which would break
+                             both the clamp and the card. -->
+                        <div class="text-gray-600 mb-4 line-clamp-4">
+                            <?= /* @noEscape */ $block->getCardSummaryHtml($post, 220) ?>
+                        </div>
 
                         <a href="<?= $escaper->escapeUrl($block->getPostUrl($post)) ?>"
                            class="inline-flex items-center text-primary font-medium hover:underline">
@@ -75,6 +81,79 @@ $posts = $block->getPosts();
                 </article>
             <?php endforeach; ?>
         </div>
+
+        <?php if ($block->hasPagination()): ?>
+            <?php
+            $currentPage = $block->getCurrentPage();
+            $lastPage = $block->getLastPageNumber();
+            // Sliding window around the current page, so the pager keeps a fixed
+            // width whether the blog has 3 pages or 300.
+            $windowStart = max(1, $currentPage - 2);
+            $windowEnd = min($lastPage, $currentPage + 2);
+            $linkClass = 'px-3 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100 '
+                . 'transition-colors duration-200';
+            ?>
+            <nav class="flex justify-center mt-10"
+                 aria-label="<?= $escaper->escapeHtmlAttr(__('Blog pagination')) ?>">
+                <ul class="inline-flex flex-wrap items-center gap-1">
+                    <?php if ($currentPage > 1): ?>
+                        <li>
+                            <a href="<?= $escaper->escapeUrl($block->getPageUrl($currentPage - 1)) ?>"
+                               rel="prev" class="<?= $escaper->escapeHtmlAttr($linkClass) ?>">
+                                <?= $escaper->escapeHtml(__('Previous')) ?>
+                            </a>
+                        </li>
+                    <?php endif; ?>
+
+                    <?php if ($windowStart > 1): ?>
+                        <li>
+                            <a href="<?= $escaper->escapeUrl($block->getPageUrl(1)) ?>"
+                               class="<?= $escaper->escapeHtmlAttr($linkClass) ?>">1</a>
+                        </li>
+                        <?php if ($windowStart > 2): ?>
+                            <li><span class="px-2 text-gray-400">&hellip;</span></li>
+                        <?php endif; ?>
+                    <?php endif; ?>
+
+                    <?php for ($page = $windowStart; $page <= $windowEnd; $page++): ?>
+                        <li>
+                            <?php if ($page === $currentPage): ?>
+                                <span aria-current="page"
+                                      class="px-3 py-2 rounded-md bg-primary text-white font-semibold">
+                                    <?= $escaper->escapeHtml((string) $page) ?>
+                                </span>
+                            <?php else: ?>
+                                <a href="<?= $escaper->escapeUrl($block->getPageUrl($page)) ?>"
+                                   class="<?= $escaper->escapeHtmlAttr($linkClass) ?>">
+                                    <?= $escaper->escapeHtml((string) $page) ?>
+                                </a>
+                            <?php endif; ?>
+                        </li>
+                    <?php endfor; ?>
+
+                    <?php if ($windowEnd < $lastPage): ?>
+                        <?php if ($windowEnd < $lastPage - 1): ?>
+                            <li><span class="px-2 text-gray-400">&hellip;</span></li>
+                        <?php endif; ?>
+                        <li>
+                            <a href="<?= $escaper->escapeUrl($block->getPageUrl($lastPage)) ?>"
+                               class="<?= $escaper->escapeHtmlAttr($linkClass) ?>">
+                                <?= $escaper->escapeHtml((string) $lastPage) ?>
+                            </a>
+                        </li>
+                    <?php endif; ?>
+
+                    <?php if ($currentPage < $lastPage): ?>
+                        <li>
+                            <a href="<?= $escaper->escapeUrl($block->getPageUrl($currentPage + 1)) ?>"
+                               rel="next" class="<?= $escaper->escapeHtmlAttr($linkClass) ?>">
+                                <?= $escaper->escapeHtml(__('Next')) ?>
+                            </a>
+                        </li>
+                    <?php endif; ?>
+                </ul>
+            </nav>
+        <?php endif; ?>
     <?php else: ?>
         <div class="bg-gray-50 rounded-lg p-8 text-center">
             <svg class="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

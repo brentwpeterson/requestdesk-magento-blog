@@ -110,7 +110,7 @@ class ExternalBlog implements ExternalBlogInterface
             'last_sync' => $post->getRequestdeskLastSync(),
             'created_at' => $post->getCreatedAt(),
             'updated_at' => $post->getUpdatedAt(),
-            'url' => $store->getBaseUrl() . 'blog/post/' . $post->getUrlKey()
+            'url' => $store->getBaseUrl() . 'blog/' . $post->getUrlKey()
         ];
     }
 

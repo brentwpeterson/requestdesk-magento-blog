@@ -82,6 +82,9 @@ class DataProvider extends AbstractDataProvider
             // valueMap ("0"/"1"). An int here makes the toggle's `value === map`
             // comparison fail (1 !== "1") and a published post renders as "No".
             $this->loadedData[$postId]['is_active'] = (string) (int) $post->getData('status');
+            // Same string/int trap as is_active: without the cast a saved 0 fails
+            // the toggle's `value === map` check and renders as Allow Comment = on.
+            $this->loadedData[$postId]['comments_enabled'] = (string) (int) $post->getData('comments_enabled');
             $this->loadedData[$postId]['category_ids'] = $this->categoryResolver->getCategoryIdsForPost($postId);
             $this->loadedData[$postId]['tag_ids'] = $this->tagResolver->getTagIdsForPost($postId);
             $this->loadedData[$postId]['qa_ids'] =
