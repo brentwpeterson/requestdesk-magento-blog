@@ -51,6 +51,21 @@ class MigrateAmastyCommand extends Command
     private const DEFAULT_STORE = 0;
 
     /**
+     * Candidate names for Amasty's teaser column, most likely first. Probed the
+     * same way as the author bio/avatar columns, and for the same reason: we read
+     * Amasty's tables without its code installed and the spelling has moved
+     * between releases, so a hard-coded name would fatal the whole migration on
+     * a version that calls it something else.
+     */
+    private const AMASTY_SHORT_COLUMNS = ['short_content', 'short_description', 'post_teaser', 'teaser', 'excerpt'];
+
+    /** Resolved once per run; null means the source has no such column. */
+    private ?string $amastyShortColumn = null;
+
+    /** Separate flag, because null is a real answer and not "not looked yet". */
+    private bool $amastyShortColumnResolved = false;
+
+    /**
      * @param State $appState
      * @param ResourceConnection $resource
      * @param PostRepositoryInterface $postRepository
@@ -137,6 +152,7 @@ class MigrateAmastyCommand extends Command
 
         $migrated = 0;
         $skipped = 0;
+        $backfilled = 0;
         $failed = 0;
         $tagLinks = 0;
         $categoryLinks = 0;
@@ -151,9 +167,27 @@ class MigrateAmastyCommand extends Command
             $title = (string) ($row['title'] ?? '');
             $srcId = (int) ($row['post_id'] ?? 0);
 
-            if ($this->postExistsByUrlKey($urlKey)) {
-                $output->writeln("  skip (exists): {$urlKey}");
-                $skipped++;
+            // A post migrated before short_description existed is already here but
+            // has that column empty, and the old unconditional skip meant no
+            // re-run could ever fill it - the only way to get the field was to
+            // delete the post and import it again. So an existing post is now
+            // examined rather than passed over: if the source has a teaser and
+            // ours does not, that one column is filled in place. Everything else
+            // about the post is left exactly as it is.
+            $existingId = $this->findPostIdByUrlKey($urlKey);
+            if ($existingId > 0) {
+                $sourceShort = $this->shortDescriptionFrom($row);
+                if ($sourceShort !== null && $this->backfillShortDescription($existingId, $sourceShort, $dryRun)) {
+                    $output->writeln(
+                        $dryRun
+                            ? "  would backfill short description: {$urlKey}"
+                            : "  backfilled short description: {$urlKey}"
+                    );
+                    $backfilled++;
+                } else {
+                    $output->writeln("  skip (exists): {$urlKey}");
+                    $skipped++;
+                }
                 continue;
             }
 
@@ -223,6 +257,7 @@ class MigrateAmastyCommand extends Command
                 $post = $this->postFactory->create();
                 $post->setTitle($title !== '' ? $title : 'Untitled');
                 $post->setContent((string) ($row['full_content'] ?? ''));
+                $post->setShortDescription($this->shortDescriptionFrom($row));
                 $post->setUrlKey($urlKey);
                 $post->setMetaTitle((string) ($row['meta_title'] ?: $title));
                 $post->setMetaDescription((string) ($row['meta_description'] ?? ''));
@@ -276,6 +311,7 @@ class MigrateAmastyCommand extends Command
         $output->writeln($dryRun ? '<info>DRY RUN — nothing written.</info>' : '<info>Migration complete.</info>');
         $output->writeln("  posts migrated:  {$migrated}");
         $output->writeln("  posts skipped:   {$skipped}  (already present)");
+        $output->writeln("  short descs:     {$backfilled}  (filled in on posts already present)");
         $output->writeln("  posts failed:    {$failed}  (rolled back, safe to re-run)");
         $output->writeln("  tag links:       {$tagLinks}");
         $output->writeln('  authors linked:  ' . count($authorsSeen));
@@ -403,23 +439,112 @@ class MigrateAmastyCommand extends Command
 
 
     /**
-     * Does a RequestDesk post already exist with this url_key? Keeps re-runs
-     * idempotent.
+     * The RequestDesk post already holding this url_key, or 0. Keeps re-runs
+     * idempotent, and gives the caller the id it needs to backfill in place.
      *
      * @param string $urlKey
-     * @return bool
+     * @return int
      */
-    private function postExistsByUrlKey(string $urlKey): bool
+    private function findPostIdByUrlKey(string $urlKey): int
     {
         if ($urlKey === '') {
-            return false;
+            return 0;
         }
         $connection = $this->resource->getConnection();
         $select = $connection->select()
             ->from($this->resource->getTableName('requestdesk_blog_post'), ['post_id'])
             ->where('url_key = ?', $urlKey)
             ->limit(1);
-        return (bool) $connection->fetchOne($select);
+        return (int) $connection->fetchOne($select);
+    }
+
+    /**
+     * Which column on amasty_blog_posts holds the teaser, if any.
+     *
+     * @return string|null
+     */
+    private function amastyShortColumn(): ?string
+    {
+        if (!$this->amastyShortColumnResolved) {
+            $this->amastyShortColumnResolved = true;
+
+            try {
+                $connection = $this->resource->getConnection();
+                $columns = array_keys(
+                    $connection->describeTable($this->resource->getTableName('amasty_blog_posts'))
+                );
+                $this->amastyShortColumn = $this->firstExisting($columns, self::AMASTY_SHORT_COLUMNS);
+            } catch (\Exception $e) {
+                // No readable source table. The posts themselves are what this
+                // command is for, so a missing teaser column must not stop it.
+                $this->amastyShortColumn = null;
+            }
+        }
+
+        return $this->amastyShortColumn;
+    }
+
+    /**
+     * The teaser on one Amasty row, or null when there is none worth writing.
+     *
+     * @param array<string, mixed> $row
+     * @return string|null
+     */
+    private function shortDescriptionFrom(array $row): ?string
+    {
+        $column = $this->amastyShortColumn();
+        if ($column === null) {
+            return null;
+        }
+
+        $value = trim((string) ($row[$column] ?? ''));
+
+        return $value !== '' ? $value : null;
+    }
+
+    /**
+     * Fill short_description on an existing post, but only if it is still empty.
+     *
+     * Written as a direct UPDATE rather than a load-and-save through the
+     * repository on purpose: this runs over posts someone may already have
+     * edited, and a full save would rewrite every other column and reset the
+     * RequestDesk sync fields. Only updated_at moves, which the column's
+     * on_update does by itself.
+     *
+     * @param int $postId
+     * @param string $shortDescription
+     * @param bool $dryRun
+     * @return bool true when a value was written, or would have been
+     */
+    private function backfillShortDescription(int $postId, string $shortDescription, bool $dryRun): bool
+    {
+        $connection = $this->resource->getConnection();
+        $table = $this->resource->getTableName('requestdesk_blog_post');
+
+        $current = $connection->fetchOne(
+            $connection->select()
+                ->from($table, ['short_description'])
+                ->where('post_id = ?', $postId)
+                ->limit(1)
+        );
+
+        // Anything already there was either migrated earlier or typed by hand.
+        // Neither is ours to overwrite.
+        if (trim((string) $current) !== '') {
+            return false;
+        }
+
+        if ($dryRun) {
+            return true;
+        }
+
+        $connection->update(
+            $table,
+            ['short_description' => $shortDescription],
+            ['post_id = ?' => $postId]
+        );
+
+        return true;
     }
 
     /*

@@ -11,6 +11,7 @@ use Magento\Framework\App\RequestInterface;
 use Magento\Framework\Controller\Result\Redirect;
 use Magento\Framework\Controller\Result\RedirectFactory;
 use Magento\Framework\Message\ManagerInterface;
+use Magento\Framework\UrlInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use RequestDesk\Blog\Api\Data\PostInterface;
@@ -56,7 +57,12 @@ class SaveTest extends TestCase
         $this->postRepository = $this->createMock(PostRepositoryInterface::class);
 
         $redirect = $this->createMock(Redirect::class);
+        // Both, because the controller sends the commenter back to the post's
+        // pretty URL via setUrl() and falls back to setPath() with the id form
+        // when the post cannot be resolved. An unstubbed one returns null, and
+        // execute() is typed to return a Redirect.
         $redirect->method('setPath')->willReturnSelf();
+        $redirect->method('setUrl')->willReturnSelf();
 
         $redirectFactory = $this->createMock(RedirectFactory::class);
         $redirectFactory->method('create')->willReturn($redirect);
@@ -66,7 +72,8 @@ class SaveTest extends TestCase
             $redirectFactory,
             $this->messageManager,
             $this->commentManager,
-            $this->postRepository
+            $this->postRepository,
+            $this->createMock(UrlInterface::class)
         );
     }
 

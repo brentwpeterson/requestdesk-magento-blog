@@ -22,10 +22,16 @@
     <!--
         Pretty post URLs: /blog/<url-key> as well as /blog/post/view/id/N.
 
-        sortOrder 60 puts this AFTER Magento's standard router (10) and after the
-        CMS router (60 is the conventional slot for "tried everything else"), so a
-        real controller path always wins and this only ever picks up what would
-        otherwise 404. The id form keeps working, so no rewrites and no redirects.
+        Runs after Magento's standard router, so a real controller path always
+        wins and this only ever picks up what would otherwise 404. The id form
+        keeps working, so no rewrites and no redirects.
+
+        sortOrder 50 rather than 60 on purpose: Amasty_Blog registers its own
+        router at 60 for the same /blog prefix, and on a tie it is reached first,
+        which sent every pretty post URL to the legacy Amasty page instead of
+        this module's. 50 also runs before the CMS router, which is safe here
+        because match() returns null unless the path is exactly /blog/<key> and
+        a published post owns that key.
     -->
     <type name="Magento\Framework\App\RouterList">
         <arguments>
@@ -33,7 +39,7 @@
                 <item name="requestdesk_blog" xsi:type="array">
                     <item name="class" xsi:type="string">RequestDesk\Blog\Controller\Router</item>
                     <item name="disable" xsi:type="boolean">false</item>
-                    <item name="sortOrder" xsi:type="string">60</item>
+                    <item name="sortOrder" xsi:type="string">50</item>
                 </item>
             </argument>
         </arguments>

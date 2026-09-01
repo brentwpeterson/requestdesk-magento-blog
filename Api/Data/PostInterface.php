@@ -21,6 +21,7 @@ interface PostInterface
     public const POST_ID = 'post_id';
     public const TITLE = 'title';
     public const CONTENT = 'content';
+    public const SHORT_DESCRIPTION = 'short_description';
     public const URL_KEY = 'url_key';
     public const META_TITLE = 'meta_title';
     public const META_DESCRIPTION = 'meta_description';
@@ -90,6 +91,23 @@ interface PostInterface
      * @return $this
      */
     public function setContent(?string $content): self;
+
+    /**
+     * Authored teaser for the listing cards. Null when it was never written.
+     *
+     * Kept nullable rather than defaulting to an excerpt of the content, so a
+     * caller can tell "nobody has written one" from "someone wrote an empty
+     * one" - the migration backfill depends on that difference.
+     *
+     * @return string|null
+     */
+    public function getShortDescription(): ?string;
+
+    /**
+     * @param string|null $shortDescription
+     * @return $this
+     */
+    public function setShortDescription(?string $shortDescription): self;
 
     /**
      * @return string|null

@@ -21,6 +21,7 @@ use Magento\Widget\Block\BlockInterface;
 use RequestDesk\Blog\Api\Data\PostInterface;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
 use RequestDesk\Blog\Block\ImageUrl;
+use RequestDesk\Blog\Block\PostUrl;
 use RequestDesk\Blog\Model\PostCategoryResolver;
 
 /**
@@ -154,7 +155,7 @@ class PostsWidget extends Template implements BlockInterface
      */
     public function getPostUrl(PostInterface $post): string
     {
-        return $this->getUrl('blog/post/view', ['id' => $post->getPostId()]);
+        return PostUrl::resolve($post, $this->_urlBuilder);
     }
 
     /**

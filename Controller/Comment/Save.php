@@ -15,7 +15,9 @@ use Magento\Framework\App\RequestInterface;
 use Magento\Framework\Controller\Result\Redirect;
 use Magento\Framework\Controller\Result\RedirectFactory;
 use Magento\Framework\Message\ManagerInterface;
+use Magento\Framework\UrlInterface;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
+use RequestDesk\Blog\Block\PostUrl;
 use RequestDesk\Blog\Model\CommentManager;
 
 /**
@@ -36,7 +38,8 @@ class Save implements HttpPostActionInterface
         private readonly RedirectFactory $redirectFactory,
         private readonly ManagerInterface $messageManager,
         private readonly CommentManager $commentManager,
-        private readonly PostRepositoryInterface $postRepository
+        private readonly PostRepositoryInterface $postRepository,
+        private readonly UrlInterface $urlBuilder
     ) {
     }
 
@@ -47,7 +50,7 @@ class Save implements HttpPostActionInterface
     {
         $redirect = $this->redirectFactory->create();
         $postId = (int) $this->request->getParam('post_id');
-        $backToPost = $redirect->setPath('blog/post/view', ['id' => $postId]);
+        $backToPost = $this->backToPost($redirect, $postId);
 
         // Honeypot: real users never fill this hidden field. Silently drop bots.
         if (trim((string) $this->request->getParam('website')) !== '') {
@@ -90,5 +93,26 @@ class Save implements HttpPostActionInterface
         }
 
         return $backToPost;
+    }
+
+    /**
+     * Send the commenter back to the post they were reading, on its pretty URL so
+     * the address bar does not switch to the id form on the way back.
+     *
+     * @param Redirect $redirect
+     * @param int $postId
+     * @return Redirect
+     */
+    private function backToPost(Redirect $redirect, int $postId): Redirect
+    {
+        try {
+            return $redirect->setUrl(
+                PostUrl::resolve($this->postRepository->getById($postId), $this->urlBuilder)
+            );
+        } catch (\Throwable $e) {
+            // No such post, or it could not be loaded. The id form still routes,
+            // and a bad id lands on the same 404 it always did.
+            return $redirect->setPath('blog/post/view', ['id' => $postId]);
+        }
     }
 }

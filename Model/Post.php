@@ -117,6 +117,24 @@ class Post extends AbstractModel implements PostInterface
     /**
      * @inheritdoc
      */
+    public function getShortDescription(): ?string
+    {
+        $value = $this->getData(self::SHORT_DESCRIPTION);
+
+        return $value === null ? null : (string) $value;
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function setShortDescription(?string $shortDescription): PostInterface
+    {
+        return $this->setData(self::SHORT_DESCRIPTION, $shortDescription);
+    }
+
+    /**
+     * @inheritdoc
+     */
     public function getUrlKey(): ?string
     {
         return $this->getData(self::URL_KEY);

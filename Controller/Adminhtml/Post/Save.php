@@ -93,6 +93,10 @@ class Save extends Action
 
             $post->setTitle($data['title'] ?? '');
             $post->setContent($data['content'] ?? '');
+            // Blank the column rather than storing '', so "never written" and
+            // "cleared by hand" stay distinguishable for the migration backfill.
+            $shortDescription = trim((string) ($data['short_description'] ?? ''));
+            $post->setShortDescription($shortDescription !== '' ? $shortDescription : null);
             $post->setUrlKey($this->resolveUrlKey($data, $postId));
             $post->setMetaTitle($data['meta_title'] ?? '');
             $post->setMetaDescription($data['meta_description'] ?? '');
@@ -105,6 +109,7 @@ class Save extends Action
             }
             $post->setAuthorId(!empty($data['author_id']) ? (int)$data['author_id'] : null);
             $post->setIsActive(isset($data['is_active']) ? (int)$data['is_active'] : 0);
+            $post->setCommentsEnabled(isset($data['comments_enabled']) ? (bool)$data['comments_enabled'] : false);
 
             $this->postRepository->save($post);
 

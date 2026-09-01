@@ -20,6 +20,11 @@
         <column xsi:type="int" name="post_id" unsigned="true" nullable="false" identity="true" comment="Post ID"/>
         <column xsi:type="varchar" name="title" nullable="false" length="255" comment="Post Title"/>
         <column xsi:type="mediumtext" name="content" nullable="true" comment="Post Content"/>
+        <!-- Authored teaser shown on the listing cards. Nullable with no default:
+             every post that predates this column reads as "not written yet", which
+             is what lets the Amasty migration tell a genuine blank apart from a
+             value it has already filled in. -->
+        <column xsi:type="mediumtext" name="short_description" nullable="true" comment="Short Description"/>
         <column xsi:type="varchar" name="url_key" nullable="false" length="255" comment="URL Key"/>
         <column xsi:type="varchar" name="meta_title" nullable="true" length="255" comment="Meta Title"/>
         <column xsi:type="text" name="meta_description" nullable="true" comment="Meta Description"/>

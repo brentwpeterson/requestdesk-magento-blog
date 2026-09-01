@@ -23,8 +23,17 @@ Unlike Shopify or WordPress, **Magento has no built-in blog functionality**. Thi
 ### Blog Management
 - Full CRUD for blog posts via admin panel (Content → RequestDesk Blog → Posts)
 - SEO fields: meta title, meta description, URL keys
+- **Short Description** — a second WYSIWYG field, above Content, that supplies the
+  teaser on the listing cards. Left empty, a card falls back to an automatic
+  plain-text excerpt of the post body, so the field can be filled in gradually.
+  An authored value is emitted as **markup**, not escaped text, so hiding an
+  element in the editor takes effect on the card exactly as it does on the post;
+  its length is trimmed visually by CSS rather than truncated in PHP
 - Featured images, plus a proper Open Graph head block (`og:title/description/image`)
 - Draft/Published status workflow via an Active toggle
+- Per-post **Allow Comment** toggle
+- **Paginated listing** — `?p=` for the page and `?limit=` for a per-request page
+  size, capped so `?limit=99999` cannot pull the whole table
 - Store-scoped content
 
 ### Taxonomy & authorship (reuse-first)
@@ -215,6 +224,44 @@ same name rather than duplicating one, and clears the dangling id on any post
 that has no byline to rebuild from. Safe and idempotent on a healthy install:
 it reports nothing to repair and writes nothing.
 
+### Backfilling Short Description onto posts you already migrated
+
+`short_description` is new, so every post migrated before it existed has the
+column empty. The Amasty migration used to skip any post whose `url_key` was
+already present, which meant a re-run could never fill it in — the only way to
+get the field was to delete the post and import it again.
+
+It now examines an existing post instead of passing over it. If the Amasty row
+has a teaser and yours is still empty, that one column is filled in place with a
+direct `UPDATE`; everything else about the post is untouched, and a value that is
+already there is never overwritten. So the command is safe to re-run and safe to
+run over posts you have since edited by hand.
+
+```bash
+bin/magento setup:upgrade                                  # creates the column
+bin/magento requestdesk:blog:migrate-amasty --dry-run      # reports, writes nothing
+bin/magento requestdesk:blog:migrate-amasty
+```
+
+The summary gains a `short descs:` line counting the posts filled in.
+
+Two limits worth knowing. The command only reads Amasty rows with
+`status = 2` (published), so a post whose Amasty source has since been
+unpublished is not backfilled. And `--limit` applies to the source rows it reads,
+so a limited run only backfills within that slice.
+
+Amasty's teaser column has been spelled differently across releases, so it is
+probed rather than assumed — `short_content`, `short_description`, `post_teaser`,
+`teaser`, `excerpt`, in that order. If your install uses another name the command
+backfills nothing and does **not** error. Check with:
+
+```sql
+SHOW COLUMNS FROM amasty_blog_posts LIKE '%short%';
+```
+
+and add the name to `AMASTY_SHORT_COLUMNS` in
+`Console/Command/MigrateAmastyCommand.php` if it is not in the list.
+
 ## Configuration
 
 Navigate to **Stores > Configuration > RequestDesk > Blog**
@@ -347,13 +394,15 @@ Main blog posts table with RequestDesk sync tracking.
 | `post_id` | int | Primary key |
 | `title` | varchar(255) | Post title |
 | `content` | mediumtext | Post content (HTML) |
+| `short_description` | mediumtext | Listing-card teaser (HTML, nullable). Null means "never written" — the Amasty backfill relies on that being distinguishable from an empty string |
 | `url_key` | varchar(255) | SEO-friendly URL slug |
 | `meta_title` | varchar(255) | SEO meta title |
 | `meta_description` | text | SEO meta description |
 | `featured_image` | varchar(255) | Featured image path |
 | `status` | smallint | 0=Draft, 1=Published |
+| `comments_enabled` | smallint | 0=No, 1=Yes (default 1, so posts predating the column keep comments on) |
 | `author` | varchar(255) | Author name (free-text fallback byline) |
-| `author_id` | int | Native `admin_user.user_id` (nullable, `SET NULL`) |
+| `author_id` | int | FK to `requestdesk_blog_author.author_id` (nullable, `SET NULL`). Not `admin_user.user_id` — that confusion is what 1.6.4's `repair-authors` command exists to undo |
 | `store_id` | int | Magento store ID |
 | `requestdesk_post_id` | varchar(50) | RequestDesk post ID |
 | `requestdesk_sync_status` | varchar(20) | synced/pending/failed |
@@ -416,8 +465,22 @@ Enable/disable via **Stores > Configuration > RequestDesk > Blog > Automated Imp
 | Route | Description |
 |-------|-------------|
 | `/blog` | Blog listing page |
-| `/blog/post/view/id/:postId` | Single post view |
+| `/blog?p=2` | Listing, page 2. `&limit=25` overrides the configured page size |
+| `/blog/:urlKey` | Single post view (preferred) |
+| `/blog/post/view/id/:postId` | Single post view, id form — still routed, so old links keep working |
 | `/blog/category/:urlKey` | Category listing |
+| `/blog/author/:urlKey` | Author archive |
+| `/blog/tag/:urlKey` | Tag archive |
+
+`/blog/:urlKey` is served by `Controller\Router`, which runs only after Magento's
+standard router has failed to match. Nothing is written to `url_rewrite` and there
+are no redirects to maintain.
+
+> **Router priority.** The router registers at `sortOrder 50` in
+> `etc/frontend/di.xml`. Amasty_Blog registers its own router for the same `/blog`
+> prefix at `60`, and on a tie Amasty is reached first — which sends every pretty
+> post URL to the legacy Amasty page instead of this module's. If you do not have
+> Amasty_Blog installed, `60` is equally fine.
 
 ## ACL Permissions
 
@@ -473,6 +536,16 @@ The extension includes optimized templates for [Hyvä Theme](https://hyva.io/):
 - `view/frontend/layout/hyva_blog_*.xml` - Layout handles
 
 These templates use Alpine.js and Tailwind CSS patterns consistent with Hyvä.
+
+> **If a template edit appears to do nothing, check for a theme override first.**
+> A file at `app/design/frontend/<Vendor>/<theme>/RequestDesk_Blog/templates/...`
+> wins over the module's copy at the same path, and Magento gives no warning that
+> the module file is being shadowed. Two separate bugs on this install came from
+> editing the module template while the theme copy was the one rendering.
+>
+> ```bash
+> find app/design -path '*RequestDesk_Blog/templates/*' -name '*.phtml'
+> ```
 
 ## Troubleshooting
 
@@ -667,6 +740,55 @@ Answer Engine Optimization (AEO) is the practice of structuring content so AI sy
 - Content not optimized for AI will become invisible
 
 ## Changelog
+
+### 1.9.3 (2026-09-01)
+
+- **New: Short Description.** A second WYSIWYG on the post form, above Content,
+  feeding the listing cards. Nullable on purpose: null means "never written",
+  which is what lets the migration backfill tell a genuine blank from a value it
+  has already filled. Cards fall back to the automatic excerpt when it is empty.
+  The card emits the authored value as markup rather than escaped text: hiding an
+  element in the editor is a styling instruction, not a deletion, so `strip_tags()`
+  dropped the marking and kept the words — content the author had hidden came back
+  on the card. Rendering the real markup lets the browser apply the author's intent
+  without this code needing to know how a given editor spells "hidden". The card is
+  a `div`, not a `p`, since the field can hold block elements
+- **The Amasty migration backfills Short Description onto posts already
+  migrated.** The old unconditional skip-if-exists meant no re-run could ever add
+  a newly introduced field. An existing post is now examined, and an empty
+  column filled from the source with a direct `UPDATE` — not a repository save,
+  which would rewrite every column and reset the RequestDesk sync fields
+- **Fix: saving a post fataled with a `TypeError`.** `setCommentsEnabled(bool)`
+  is strictly typed and the admin controller passed `(int)`, under
+  `declare(strict_types=1)` where no coercion happens. Both ternary branches were
+  wrong — the `: 0` fallback would have thrown the same way. The neighbouring
+  `setIsActive()` has no parameter type at all, which is why it never showed the
+  same symptom
+- **Fix: Allow Comment was ignored on the frontend.** The guard existed in both
+  module post templates, but the active theme's override of
+  `hyva/post/view.phtml` had no guard, and a theme template wins over a module
+  one. Comments rendered on every post regardless of the toggle
+- **Fix: listing links used the id form.** `Controller\Router` had resolved
+  `/blog/<url-key>` for some time, but nothing generated those URLs — five blocks
+  each carried their own copy of `getPostUrl()` returning `blog/post/view`. They
+  now share `Block\PostUrl`, which falls back to the id form for a post with no
+  `url_key`. `BlogPosting` JSON-LD and the post-comment redirect were emitting the
+  id form too, and `Model\ExternalBlog` was emitting `blog/post/<slug>` — three
+  segments, which the router rejects, so **every URL in that API payload 404'd**
+- **Fix: pretty URLs reached the wrong module.** `Controller\Router` and
+  Amasty_Blog's router both registered at `sortOrder 60`, and Amasty won the tie,
+  so `/blog/<url-key>` rendered the legacy Amasty post page. Moved to `50`
+- **Fix: the listing never paginated.** The theme's list template already drew a
+  pager, but `PostList` had none of the methods it called. That failed silently
+  rather than fatally: `DataObject::__call()` answers an undefined `hasPagination()`
+  by looking up `$_data['pagination']`, so it returned false forever and the pager
+  simply never drew. `?p=` and `?limit=` now work, page size comes from
+  `Model\Config` instead of a second config read in the block, and both module
+  list templates carry a pager of their own
+- Documentation: `short_description` and `comments_enabled` added to the schema
+  table; the `author_id` row corrected — it is a FK onto
+  `requestdesk_blog_author.author_id`, not `admin_user.user_id`, which is the
+  confusion 1.6.4's `repair-authors` exists to undo
 
 ### 1.6.4 (2026-08-10)
 - **Fix: three of the four admin grids were never registered.** `etc/di.xml`

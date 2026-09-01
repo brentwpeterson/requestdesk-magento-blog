@@ -224,6 +224,30 @@
              explicitly bypasses that preference, and the class this once pointed at
              (Magento\Cms\Ui\Component\Form\Element\Wysiwyg) does not exist in 2.4.7
              at all, which fataled the form a different way. -->
+        <!-- Same wysiwyg rules as the Content field below: no <wysiwyg> element and
+             no explicit class, or the form stops validating. Kept shorter and with
+             images off, because this one feeds a listing card rather than a page. -->
+        <field name="short_description" sortOrder="5" formElement="wysiwyg">
+            <argument name="data" xsi:type="array">
+                <item name="config" xsi:type="array">
+                    <item name="wysiwygConfigData" xsi:type="array">
+                        <item name="height" xsi:type="string">150px</item>
+                        <item name="add_variables" xsi:type="boolean">false</item>
+                        <item name="add_widgets" xsi:type="boolean">false</item>
+                        <item name="add_images" xsi:type="boolean">false</item>
+                        <item name="add_directives" xsi:type="boolean">true</item>
+                    </item>
+                </item>
+            </argument>
+            <!-- Deliberately no <notice> here. It is very probably valid, but this
+                 form has already been taken down twice by an element that was not,
+                 and the hint is not worth reintroducing that risk unverified. -->
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">Short Description</label>
+            </settings>
+        </field>
+
         <field name="content" sortOrder="10" formElement="wysiwyg">
             <argument name="data" xsi:type="array">
                 <item name="config" xsi:type="array">

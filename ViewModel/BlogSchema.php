@@ -19,6 +19,7 @@ use RequestDesk\Blog\Api\Data\PostInterface;
 use RequestDesk\Blog\Api\FaqSchemaBuilderInterface;
 use RequestDesk\Blog\Api\QaLinkResolverInterface;
 use RequestDesk\Blog\Block\ImageUrl;
+use RequestDesk\Blog\Block\PostUrl;
 use RequestDesk\Blog\Model\AuthorResolver;
 use RequestDesk\Blog\Model\CommentManager;
 use RequestDesk\Blog\Model\TagResolver;
@@ -99,7 +100,7 @@ class BlogSchema implements ArgumentInterface
      */
     private function buildBlogPostingNode(PostInterface $post): array
     {
-        $url = $this->urlBuilder->getUrl('blog/post/view', ['id' => $post->getPostId()]);
+        $url = PostUrl::resolve($post, $this->urlBuilder);
 
         $node = [
             '@context' => 'https://schema.org',
