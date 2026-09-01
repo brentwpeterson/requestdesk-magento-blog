@@ -21,6 +21,8 @@ require_once __DIR__ . '/../../vendor/autoload.php';
 
 $generatedFactories = [
     'Magento\Catalog\Model\CategoryFactory',
+    'Magento\Framework\Api\SearchCriteriaBuilderFactory',
+    'RequestDesk\Blog\Model\PostFactory',
 ];
 
 foreach ($generatedFactories as $factory) {

@@ -53,93 +53,96 @@ $posts = $block->getPosts();
                 </li>
             <?php endforeach; ?>
         </ul>
+    <?php endif; ?>
 
-        <?php if ($block->hasPagination()): ?>
-            <?php
-            $currentPage = $block->getCurrentPage();
-            $lastPage = $block->getLastPageNumber();
-            // Sliding window around the current page, so the pager keeps a fixed
-            // width whether the blog has 3 pages or 300.
-            $windowStart = max(1, $currentPage - 2);
-            $windowEnd = min($lastPage, $currentPage + 2);
-            ?>
-            <!--
-                Luma's own pager classes (pages / pages-items / pages-item-*), so
-                this picks up the theme's existing styling instead of shipping a
-                second look for the same control.
-            -->
-            <div class="pages">
-                <strong class="label pages-label" id="rd-blog-paging-label">
-                    <?= $escaper->escapeHtml(__('Page')) ?>
-                </strong>
-                <ul class="items pages-items" aria-labelledby="rd-blog-paging-label">
-                    <?php if ($currentPage > 1): ?>
-                        <li class="item pages-item-previous">
-                            <a class="action previous" rel="prev"
-                               href="<?= $escaper->escapeUrl($block->getPageUrl($currentPage - 1)) ?>"
-                               title="<?= $escaper->escapeHtmlAttr(__('Previous')) ?>">
-                                <span class="label"><?= $escaper->escapeHtml(__('Page')) ?></span>
-                                <span><?= $escaper->escapeHtml(__('Previous')) ?></span>
-                            </a>
-                        </li>
+    <?php /* Pagination lives outside the empty check: a past-the-end ?p= still has a
+             real total count, so the visitor needs a way back to page 1 even though
+             this page's own item list is empty. */ ?>
+    <?php if ($block->hasPagination()): ?>
+        <?php
+        $currentPage = $block->getCurrentPage();
+        $lastPage = $block->getLastPageNumber();
+        // Sliding window around the current page, so the pager keeps a fixed
+        // width whether the blog has 3 pages or 300.
+        $windowStart = max(1, $currentPage - 2);
+        $windowEnd = min($lastPage, $currentPage + 2);
+        ?>
+        <!--
+            Luma's own pager classes (pages / pages-items / pages-item-*), so
+            this picks up the theme's existing styling instead of shipping a
+            second look for the same control.
+        -->
+        <div class="pages">
+            <strong class="label pages-label" id="rd-blog-paging-label">
+                <?= $escaper->escapeHtml(__('Page')) ?>
+            </strong>
+            <ul class="items pages-items" aria-labelledby="rd-blog-paging-label">
+                <?php if ($currentPage > 1): ?>
+                    <li class="item pages-item-previous">
+                        <a class="action previous" rel="prev"
+                           href="<?= $escaper->escapeUrl($block->getPageUrl($currentPage - 1)) ?>"
+                           title="<?= $escaper->escapeHtmlAttr(__('Previous')) ?>">
+                            <span class="label"><?= $escaper->escapeHtml(__('Page')) ?></span>
+                            <span><?= $escaper->escapeHtml(__('Previous')) ?></span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+
+                <?php if ($windowStart > 1): ?>
+                    <li class="item">
+                        <a class="page" href="<?= $escaper->escapeUrl($block->getPageUrl(1)) ?>">
+                            <span class="label"><?= $escaper->escapeHtml(__('Page')) ?></span>
+                            <span>1</span>
+                        </a>
+                    </li>
+                    <?php if ($windowStart > 2): ?>
+                        <li class="item">&hellip;</li>
                     <?php endif; ?>
+                <?php endif; ?>
 
-                    <?php if ($windowStart > 1): ?>
+                <?php for ($page = $windowStart; $page <= $windowEnd; $page++): ?>
+                    <?php if ($page === $currentPage): ?>
+                        <li class="item current">
+                            <strong class="page">
+                                <span class="label">
+                                    <?= $escaper->escapeHtml(__("You're currently reading page")) ?>
+                                </span>
+                                <span><?= $escaper->escapeHtml((string) $page) ?></span>
+                            </strong>
+                        </li>
+                    <?php else: ?>
                         <li class="item">
-                            <a class="page" href="<?= $escaper->escapeUrl($block->getPageUrl(1)) ?>">
+                            <a class="page" href="<?= $escaper->escapeUrl($block->getPageUrl($page)) ?>">
                                 <span class="label"><?= $escaper->escapeHtml(__('Page')) ?></span>
-                                <span>1</span>
-                            </a>
-                        </li>
-                        <?php if ($windowStart > 2): ?>
-                            <li class="item">&hellip;</li>
-                        <?php endif; ?>
-                    <?php endif; ?>
-
-                    <?php for ($page = $windowStart; $page <= $windowEnd; $page++): ?>
-                        <?php if ($page === $currentPage): ?>
-                            <li class="item current">
-                                <strong class="page">
-                                    <span class="label">
-                                        <?= $escaper->escapeHtml(__("You're currently reading page")) ?>
-                                    </span>
-                                    <span><?= $escaper->escapeHtml((string) $page) ?></span>
-                                </strong>
-                            </li>
-                        <?php else: ?>
-                            <li class="item">
-                                <a class="page" href="<?= $escaper->escapeUrl($block->getPageUrl($page)) ?>">
-                                    <span class="label"><?= $escaper->escapeHtml(__('Page')) ?></span>
-                                    <span><?= $escaper->escapeHtml((string) $page) ?></span>
-                                </a>
-                            </li>
-                        <?php endif; ?>
-                    <?php endfor; ?>
-
-                    <?php if ($windowEnd < $lastPage): ?>
-                        <?php if ($windowEnd < $lastPage - 1): ?>
-                            <li class="item">&hellip;</li>
-                        <?php endif; ?>
-                        <li class="item">
-                            <a class="page" href="<?= $escaper->escapeUrl($block->getPageUrl($lastPage)) ?>">
-                                <span class="label"><?= $escaper->escapeHtml(__('Page')) ?></span>
-                                <span><?= $escaper->escapeHtml((string) $lastPage) ?></span>
+                                <span><?= $escaper->escapeHtml((string) $page) ?></span>
                             </a>
                         </li>
                     <?php endif; ?>
+                <?php endfor; ?>
 
-                    <?php if ($currentPage < $lastPage): ?>
-                        <li class="item pages-item-next">
-                            <a class="action next" rel="next"
-                               href="<?= $escaper->escapeUrl($block->getPageUrl($currentPage + 1)) ?>"
-                               title="<?= $escaper->escapeHtmlAttr(__('Next')) ?>">
-                                <span class="label"><?= $escaper->escapeHtml(__('Page')) ?></span>
-                                <span><?= $escaper->escapeHtml(__('Next')) ?></span>
-                            </a>
-                        </li>
+                <?php if ($windowEnd < $lastPage): ?>
+                    <?php if ($windowEnd < $lastPage - 1): ?>
+                        <li class="item">&hellip;</li>
                     <?php endif; ?>
-                </ul>
-            </div>
-        <?php endif; ?>
+                    <li class="item">
+                        <a class="page" href="<?= $escaper->escapeUrl($block->getPageUrl($lastPage)) ?>">
+                            <span class="label"><?= $escaper->escapeHtml(__('Page')) ?></span>
+                            <span><?= $escaper->escapeHtml((string) $lastPage) ?></span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+
+                <?php if ($currentPage < $lastPage): ?>
+                    <li class="item pages-item-next">
+                        <a class="action next" rel="next"
+                           href="<?= $escaper->escapeUrl($block->getPageUrl($currentPage + 1)) ?>"
+                           title="<?= $escaper->escapeHtmlAttr(__('Next')) ?>">
+                            <span class="label"><?= $escaper->escapeHtml(__('Page')) ?></span>
+                            <span><?= $escaper->escapeHtml(__('Next')) ?></span>
+                        </a>
+                    </li>
+                <?php endif; ?>
+            </ul>
+        </div>
     <?php endif; ?>
 </div>

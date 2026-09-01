@@ -741,6 +741,23 @@ Answer Engine Optimization (AEO) is the practice of structuring content so AI sy
 
 ## Changelog
 
+### 1.9.4 (2026-09-01)
+
+- **Fix: an out-of-range listing page stranded the visitor.** `hasPagination()`
+  is driven by the total post count, not by whether the current page has any
+  items, so `?p=` past the last page returned zero posts while pagination was
+  still true. Both list templates nested the pager inside the "posts is not
+  empty" branch, so that combination hid the pager along with the grid,
+  leaving a dead end with no link back to page 1. The pager now renders
+  whenever `hasPagination()` is true, independent of whether this page's own
+  item list is empty
+- **Fix: the External Blog API still emitted a dead URL for a post with no
+  `url_key`.** 1.9.3's fix moved every URL-emitting call site onto the shared
+  `Block\PostUrl` helper, but `Model\ExternalBlog::formatPostResponse()` was
+  missed — it kept hand-concatenating `'blog/' . $post->getUrlKey()`, which for
+  an empty `url_key` produced a bare `blog/` link instead of the id-form
+  fallback every other call site now falls back to
+
 ### 1.9.3 (2026-09-01)
 
 - **New: Short Description.** A second WYSIWYG on the post form, above Content,

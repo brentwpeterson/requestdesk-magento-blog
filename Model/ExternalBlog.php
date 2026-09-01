@@ -19,8 +19,10 @@ namespace RequestDesk\Blog\Model;
 use RequestDesk\Blog\Api\ExternalBlogInterface;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
 use RequestDesk\Blog\Api\Data\PostInterface;
+use RequestDesk\Blog\Block\PostUrl;
 use Magento\Store\Model\StoreManagerInterface;
 use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Framework\UrlInterface;
 use Magento\Framework\Webapi\Rest\Request;
 use Magento\Framework\Exception\AuthorizationException;
 use Magento\Framework\Exception\NoSuchEntityException;
@@ -53,7 +55,8 @@ class ExternalBlog implements ExternalBlogInterface
         private readonly LoggerInterface $logger,
         private readonly ApiKeyValidator $apiKeyValidator,
         private readonly TagResolver $tagResolver,
-        private readonly PostCategoryResolver $postCategoryResolver
+        private readonly PostCategoryResolver $postCategoryResolver,
+        private readonly UrlInterface $urlBuilder
     ) {
     }
 
@@ -93,8 +96,6 @@ class ExternalBlog implements ExternalBlogInterface
      */
     private function formatPostResponse(PostInterface $post): array
     {
-        $store = $this->storeManager->getStore();
-
         return [
             'id' => $post->getPostId(),
             'title' => $post->getTitle(),
@@ -110,7 +111,7 @@ class ExternalBlog implements ExternalBlogInterface
             'last_sync' => $post->getRequestdeskLastSync(),
             'created_at' => $post->getCreatedAt(),
             'updated_at' => $post->getUpdatedAt(),
-            'url' => $store->getBaseUrl() . 'blog/' . $post->getUrlKey()
+            'url' => PostUrl::resolve($post, $this->urlBuilder)
         ];
     }
 
