@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * RequestDesk Blog - Hyva Theme Layout for Author View
+ *
+ * Same wrapper + child split as the Luma blog_author_view.xml: the wrapper
+ * renders the author profile header, the child renders the posts with the
+ * shared Hyva list template the blog index and category pages use.
+ */
+-->
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <body>
+        <referenceContainer name="content">
+            <block class="RequestDesk\Blog\Block\AuthorView"
+                   name="blog.author.view"
+                   template="RequestDesk_Blog::author/view.phtml"
+                   cacheable="false">
+                <block class="RequestDesk\Blog\Block\AuthorView"
+                       name="blog.author.view.posts"
+                       as="posts"
+                       template="RequestDesk_Blog::hyva/list.phtml">
+                    <arguments>
+                        <!-- The wrapper already carries the page's single h1. -->
+                        <argument name="suppress_title" xsi:type="boolean">true</argument>
+                    </arguments>
+                </block>
+            </block>
+        </referenceContainer>
+    </body>
+</page>

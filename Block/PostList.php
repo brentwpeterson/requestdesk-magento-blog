@@ -18,7 +18,10 @@ use Magento\Store\Model\StoreManagerInterface;
 use RequestDesk\Blog\Api\Data\PostInterface;
 use RequestDesk\Blog\Api\Data\PostSearchResultsInterface;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
+use RequestDesk\Blog\Model\AuthorResolver;
 use RequestDesk\Blog\Model\Config;
+use RequestDesk\Blog\Model\PostCategoryResolver;
+use RequestDesk\Blog\Model\PostContent;
 
 /**
  * Supplies published posts to the list templates (Luma and Hyva both use this).
@@ -32,6 +35,12 @@ class PostList extends Template
     private const LIMIT_VAR_NAME = 'limit';
 
     /**
+     * Placeholder for "match nothing": post ids start at 1, so an IN (0)
+     * filter matches no post without a separate empty-result code path.
+     */
+    protected const NO_MATCH_POST_ID = 0;
+
+    /**
      * Memoised so the items and the total count share one query.
      *
      * @var PostSearchResultsInterface|null
@@ -39,25 +48,34 @@ class PostList extends Template
     private ?PostSearchResultsInterface $postResults = null;
 
     /**
+     * Categories per post id for the current page, resolved once.
+     *
+     * @var array<int, array<int, array{id:int, name:string, url:string}>>|null
+     */
+    private ?array $postCategories = null;
+
+    /**
      * @param Context $context
      * @param PostRepositoryInterface $postRepository
      * @param SearchCriteriaBuilder $searchCriteriaBuilder
      * @param SortOrderBuilder $sortOrderBuilder
      * @param StoreManagerInterface $storeManager
-     * @param \RequestDesk\Blog\Model\AuthorResolver $authorResolver
-     * @param \RequestDesk\Blog\Model\PostContent $postContent
+     * @param AuthorResolver $authorResolver
+     * @param PostContent $postContent
      * @param Config $config
+     * @param PostCategoryResolver $categoryResolver
      * @param array $data
      */
     public function __construct(
         Context $context,
-        private readonly PostRepositoryInterface $postRepository,
-        private readonly SearchCriteriaBuilder $searchCriteriaBuilder,
-        private readonly SortOrderBuilder $sortOrderBuilder,
+        protected readonly PostRepositoryInterface $postRepository,
+        protected readonly SearchCriteriaBuilder $searchCriteriaBuilder,
+        protected readonly SortOrderBuilder $sortOrderBuilder,
         private readonly StoreManagerInterface $storeManager,
-        private readonly \RequestDesk\Blog\Model\AuthorResolver $authorResolver,
-        private readonly \RequestDesk\Blog\Model\PostContent $postContent,
+        protected readonly AuthorResolver $authorResolver,
+        private readonly PostContent $postContent,
         private readonly Config $config,
+        protected readonly PostCategoryResolver $categoryResolver,
         array $data = []
     ) {
         parent::__construct($context, $data);
@@ -76,6 +94,41 @@ class PostList extends Template
     }
 
     /**
+     * Native categories shown on a listing card, as [id, name, url].
+     *
+     * Resolved for the whole page on the first call so the card loop in the
+     * template does not become one query per post.
+     *
+     * @param PostInterface $post
+     * @return array<int, array{id:int, name:string, url:string}>
+     */
+    public function getPostCategories(PostInterface $post): array
+    {
+        if ($this->postCategories === null) {
+            $postIds = array_map(
+                static fn (PostInterface $pagePost): int => (int) $pagePost->getPostId(),
+                $this->getPosts()
+            );
+            $this->postCategories = $this->categoryResolver->getCategoriesForPosts($postIds);
+        }
+
+        return $this->postCategories[(int) $post->getPostId()] ?? [];
+    }
+
+    /**
+     * A card's date line, e.g. "August 12, 2026", in the store locale.
+     *
+     * @param PostInterface $post
+     * @return string
+     */
+    public function getPostDate(PostInterface $post): string
+    {
+        return $post->getCreatedAt()
+            ? (string) $this->formatDate($post->getCreatedAt(), \IntlDateFormatter::LONG)
+            : '';
+    }
+
+    /**
      * Published posts for the current page, newest first.
      *
      * @return PostInterface[]
@@ -86,7 +139,7 @@ class PostList extends Template
     }
 
     /**
-     * Runs the paginated query once and keeps the result for the whole render.
+     * Runs the listing query once and keeps the result for the whole render.
      *
      * The template asks for the items and the page count separately; without
      * memoising, that is two identical queries per request.
@@ -96,22 +149,73 @@ class PostList extends Template
     private function getPostResults(): PostSearchResultsInterface
     {
         if ($this->postResults === null) {
-            $sort = $this->sortOrderBuilder
-                ->setField(PostInterface::CREATED_AT)
-                ->setDirection('DESC')
-                ->create();
-
-            $criteria = $this->searchCriteriaBuilder
-                ->addFilter(PostInterface::STATUS, PostInterface::STATUS_PUBLISHED)
-                ->addSortOrder($sort)
-                ->setPageSize($this->getPostsPerPage())
-                ->setCurrentPage($this->getCurrentPage())
-                ->create();
-
-            $this->postResults = $this->postRepository->getList($criteria);
+            $this->postResults = $this->isPaginationEnabled()
+                ? $this->loadPostResults($this->getPostsPerPage(), $this->getCurrentPage())
+                : $this->loadPostResults(null, null);
         }
 
         return $this->postResults;
+    }
+
+    /**
+     * The listing query itself: all published posts, newest first.
+     *
+     * Subclasses (category/author/tag views) override this to filter the same
+     * base shape by their own post ids. A null $pageSize means pagination is
+     * disabled and every post loads in one go.
+     *
+     * @param int|null $pageSize
+     * @param int|null $currentPage
+     * @return PostSearchResultsInterface
+     */
+    protected function loadPostResults(?int $pageSize, ?int $currentPage): PostSearchResultsInterface
+    {
+        return $this->postRepository->getList($this->buildListCriteria(null, $pageSize, $currentPage));
+    }
+
+    /**
+     * Shared criteria shape: published only, newest first, paged when asked.
+     *
+     * $postIds null means "every published post" (the plain blog list); an
+     * empty array means "deliberately nothing" and is sent as IN (0), since
+     * post ids start at 1 - one code path instead of special-cased empties.
+     *
+     * @param int[]|null $postIds
+     * @param int|null $pageSize
+     * @param int|null $currentPage
+     * @return \Magento\Framework\Api\SearchCriteriaInterface
+     */
+    protected function buildListCriteria(
+        ?array $postIds,
+        ?int $pageSize,
+        ?int $currentPage
+    ): \Magento\Framework\Api\SearchCriteriaInterface {
+        $sort = $this->sortOrderBuilder
+            ->setField(PostInterface::CREATED_AT)
+            ->setDirection('DESC')
+            ->create();
+
+        $criteria = $this->searchCriteriaBuilder
+            ->addFilter(PostInterface::STATUS, PostInterface::STATUS_PUBLISHED)
+            ->addSortOrder($sort);
+        if ($postIds !== null) {
+            $criteria->addFilter(PostInterface::POST_ID, $postIds ?: [self::NO_MATCH_POST_ID], 'in');
+        }
+        if ($pageSize !== null) {
+            $criteria->setPageSize($pageSize)->setCurrentPage($currentPage ?? 1);
+        }
+
+        return $criteria->create();
+    }
+
+    /**
+     * Whether the pager renders anywhere it is included.
+     *
+     * @return bool
+     */
+    protected function isPaginationEnabled(): bool
+    {
+        return $this->config->isPaginationEnabled();
     }
 
     /**
@@ -165,7 +269,10 @@ class PostList extends Template
     }
 
     /**
-     * Whether there is more than one page worth of posts.
+     * Whether the pager should be drawn: config on AND more than one page.
+     *
+     * The config check comes first so a disabled pager never triggers the
+     * total-count work behind getLastPageNumber().
      *
      * Must exist as a real method: DataObject::__call() answers any undefined
      * has*() with a lookup in $_data, so a missing one here would quietly
@@ -175,18 +282,31 @@ class PostList extends Template
      */
     public function hasPagination(): bool
     {
-        return $this->getLastPageNumber() > 1;
+        return $this->isPaginationEnabled() && $this->getLastPageNumber() > 1;
     }
 
     /**
-     * URL for a given page. Page 1 drops the parameter to keep /blog canonical.
+     * Heading for the shared listing template; empty means "Blog".
      *
-     * Built from the "blog" route rather than the current-action wildcard, which
-     * resolves to blog/index/index and emits /blog/index/index/?p=2 - a second
-     * address for a page that already answers on /blog.
+     * Blocks that reuse the list template with a filtered collection
+     * (CategoryView) override this so the page title matches what is shown.
+     *
+     * @return string
+     */
+    public function getListingTitle(): string
+    {
+        return '';
+    }
+
+    /**
+     * URL for a given page. Page 1 drops the parameter to keep the page canonical.
      *
      * An active ?limit= has to be carried over explicitly or page 2 would
      * revert to the configured size.
+     *
+     * The route comes from getPagerRoutePath()/getPagerRouteParams() so filtered
+     * listings (category/author/tag) keep the pager on their own URL and carry
+     * their identifying parameter instead of jumping back to /blog.
      *
      * @param int $page
      * @return string
@@ -200,7 +320,28 @@ class PostList extends Template
             $query[self::LIMIT_VAR_NAME] = $limit;
         }
 
-        return $this->getUrl('blog', ['_query' => $query]);
+        return $this->getUrl($this->getPagerRoutePath(), $this->getPagerRouteParams($query));
+    }
+
+    /**
+     * Route the pager links to; the plain list answers on /blog.
+     *
+     * @return string
+     */
+    protected function getPagerRoutePath(): string
+    {
+        return 'blog';
+    }
+
+    /**
+     * Route parameters for a pager link, including the query string.
+     *
+     * @param array $query
+     * @return array
+     */
+    protected function getPagerRouteParams(array $query): array
+    {
+        return ['_query' => $query];
     }
 
     /**

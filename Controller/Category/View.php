@@ -53,7 +53,7 @@ class View implements HttpGetActionInterface
         }
 
         $page = $this->pageFactory->create();
-        $page->getConfig()->getTitle()->set(__('Blog: %1', $category->getName()));
+        $page->getConfig()->getTitle()->set((string) $category->getName());
         return $page;
     }
 }

@@ -11,6 +11,11 @@
       layout="1column"
       xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
     <body>
+        <!-- The post template renders the post title as its h1; drop the
+             theme's page-title block so the title does not appear twice. -->
+        <referenceContainer name="page.main.title" remove="true"/>
+        <referenceBlock name="page.title" remove="true"/>
+
         <referenceContainer name="head.additional">
             <block class="RequestDesk\Blog\Block\Head\OpenGraph"
                    name="requestdesk.blog.opengraph"

@@ -7,9 +7,14 @@
  */
 
 $posts = $block->getPosts();
+/* CategoryView overrides this with the category name; the plain list says "Blog". */
+$title = $block->getListingTitle();
 ?>
 <div class="requestdesk-blog-list">
-    <h1 class="page-title"><?= $escaper->escapeHtml(__('Blog')) ?></h1>
+    <?php /* Skipped when a wrapper block (author page) already renders the h1. */ ?>
+    <?php if (!$block->getSuppressTitle()): ?>
+        <h1 class="page-title"><?= $escaper->escapeHtml($title !== '' ? $title : __('Blog')) ?></h1>
+    <?php endif; ?>
 
     <?php if (empty($posts)): ?>
         <p><?= $escaper->escapeHtml(__('No posts yet.')) ?></p>

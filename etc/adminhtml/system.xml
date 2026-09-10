@@ -42,6 +42,12 @@
                     <validate>validate-digits</validate>
                     <comment>Number of posts to display per page on the blog listing.</comment>
                 </field>
+
+                <field id="enable_pagination" translate="label comment" type="select" sortOrder="35" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Pagination</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Show a pager on the blog, category, author and tag listing pages. When disabled, all posts render on a single page.</comment>
+                </field>
             </group>
 
             <group id="api" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="0" showInStore="0">

@@ -10,42 +10,23 @@ declare(strict_types=1);
 
 namespace RequestDesk\Blog\Block;
 
-use Magento\Framework\Api\SearchCriteriaBuilder;
-use Magento\Framework\Api\SortOrderBuilder;
-use Magento\Framework\View\Element\Template;
-use Magento\Framework\View\Element\Template\Context;
-use RequestDesk\Blog\Api\Data\PostInterface;
-use RequestDesk\Blog\Api\PostRepositoryInterface;
-use RequestDesk\Blog\Model\AuthorResolver;
+use RequestDesk\Blog\Api\Data\PostSearchResultsInterface;
 
 /**
  * Supplies the author profile + their published posts to the author page.
+ *
+ * Extends PostList so the author page renders its posts with the same list
+ * templates the blog index and category pages use; only the collection
+ * differs - filtered to one author's post ids.
  */
-class AuthorView extends Template
+class AuthorView extends PostList
 {
     /**
+     * Tri-state memo: null = not loaded yet, false = looked up and missing.
+     *
      * @var array|null|false
      */
     private $author = null;
-
-    /**
-     * @param Context $context
-     * @param AuthorResolver $authorResolver
-     * @param PostRepositoryInterface $postRepository
-     * @param SearchCriteriaBuilder $searchCriteriaBuilder
-     * @param SortOrderBuilder $sortOrderBuilder
-     * @param array $data
-     */
-    public function __construct(
-        Context $context,
-        private readonly AuthorResolver $authorResolver,
-        private readonly PostRepositoryInterface $postRepository,
-        private readonly SearchCriteriaBuilder $searchCriteriaBuilder,
-        private readonly SortOrderBuilder $sortOrderBuilder,
-        array $data = []
-    ) {
-        parent::__construct($context, $data);
-    }
 
     /**
      * The resolved author, or null.
@@ -62,39 +43,49 @@ class AuthorView extends Template
     }
 
     /**
-     * The author's published posts.
+     * The listing query for this author's posts; paging comes from the parent.
      *
-     * @return PostInterface[]
+     * @param int|null $pageSize
+     * @param int|null $currentPage
+     * @return PostSearchResultsInterface
      */
-    public function getPosts(): array
+    protected function loadPostResults(?int $pageSize, ?int $currentPage): PostSearchResultsInterface
     {
         $author = $this->getAuthor();
-        if ($author === null) {
-            return [];
-        }
-        $postIds = $this->authorResolver->getPostIdsByAuthor((int) $author['id']);
-        if ($postIds === []) {
-            return [];
-        }
+        $postIds = $author === null
+            ? []
+            : $this->authorResolver->getPostIdsByAuthor((int) $author['id']);
 
-        $sort = $this->sortOrderBuilder
-            ->setField(PostInterface::CREATED_AT)->setDirection('DESC')->create();
-        $criteria = $this->searchCriteriaBuilder
-            ->addFilter(PostInterface::POST_ID, $postIds, 'in')
-            ->addFilter(PostInterface::STATUS, PostInterface::STATUS_PUBLISHED)
-            ->addSortOrder($sort)
-            ->create();
-        return $this->postRepository->getList($criteria)->getItems();
+        return $this->postRepository->getList($this->buildListCriteria($postIds, $pageSize, $currentPage));
     }
 
     /**
-     * URL to a post.
+     * Page heading for the shared list template: the author's name.
      *
-     * @param PostInterface $post
      * @return string
      */
-    public function getPostUrl(PostInterface $post): string
+    public function getListingTitle(): string
     {
-        return PostUrl::resolve($post, $this->_urlBuilder);
+        $author = $this->getAuthor();
+        return $author !== null ? $author['name'] : '';
+    }
+
+    /**
+     * The pager stays on the author page, not /blog.
+     *
+     * @return string
+     */
+    protected function getPagerRoutePath(): string
+    {
+        return 'blog/author/view';
+    }
+
+    /**
+     * @param array $query
+     * @return array
+     */
+    protected function getPagerRouteParams(array $query): array
+    {
+        return ['id' => (int) $this->getRequest()->getParam('id'), '_query' => $query];
     }
 }

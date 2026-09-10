@@ -11,6 +11,11 @@
       layout="1column"
       xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
     <body>
+        <!-- The list template renders its own h1 ("Blog"); drop the theme's
+             page-title block so the title does not appear twice. -->
+        <referenceContainer name="page.main.title" remove="true"/>
+        <referenceBlock name="page.title" remove="true"/>
+
         <referenceContainer name="content">
             <block class="RequestDesk\Blog\Block\PostList"
                    name="requestdesk.blog.list"

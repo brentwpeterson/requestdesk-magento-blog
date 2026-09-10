@@ -49,7 +49,7 @@ class View implements HttpGetActionInterface
         }
 
         $page = $this->pageFactory->create();
-        $page->getConfig()->getTitle()->set(__('Tag: %1', $tag['name']));
+        $page->getConfig()->getTitle()->set($tag['name']);
         return $page;
     }
 }
