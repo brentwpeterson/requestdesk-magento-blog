@@ -35,7 +35,9 @@ $faqPairs = ($schema && $post) ? $schema->getFaqPairs($post) : [];
                 <?php endif; ?>
                 &middot;
             <?php endif; ?>
-            <?= $escaper->escapeHtml($post->getCreatedAt()) ?>
+            <?php /* getPostDate(), not the raw column: getCreatedAt() is a SQL
+                     datetime and rendered as "2026-09-09 18:59:18". */ ?>
+            <?= $escaper->escapeHtml($block->getPostDate()) ?>
         </p>
 
         <?php $categories = $block->getCategories(); ?>

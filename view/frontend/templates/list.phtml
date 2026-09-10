@@ -37,13 +37,36 @@ $title = $block->getListingTitle();
                         <h2 style="font-size:18px;margin:0 0 8px;">
                             <a href="<?= $escaper->escapeUrl($url) ?>"><?= $escaper->escapeHtml($post->getTitle()) ?></a>
                         </h2>
+                        <?php
+                        $authorName = $block->getAuthorName($post);
+                        $postDate = $block->getPostDate($post);
+                        $categories = $block->getPostCategories($post);
+                        ?>
+                        <!--
+                            getPostDate() rather than the raw column: getCreatedAt()
+                            returns a SQL datetime, so printing it put
+                            "2026-09-09 18:59:18" on every card instead of a date in
+                            the store's locale.
+                        -->
                         <p style="color:#777;font-size:13px;margin:0 0 8px;">
-                            <?php $authorName = $block->getAuthorName($post); ?>
                             <?php if ($authorName !== ''): ?>
-                                <?= $escaper->escapeHtml($authorName) ?> &middot;
+                                <?= $escaper->escapeHtml($authorName) ?>
                             <?php endif; ?>
-                            <?= $escaper->escapeHtml($post->getCreatedAt()) ?>
+                            <?php if ($authorName !== '' && $postDate !== ''): ?>
+                                &middot;
+                            <?php endif; ?>
+                            <?php if ($postDate !== ''): ?>
+                                <?= $escaper->escapeHtml($postDate) ?>
+                            <?php endif; ?>
                         </p>
+                        <?php if ($categories !== []): ?>
+                            <p style="font-size:13px;margin:0 0 8px;">
+                                <?php foreach ($categories as $i => $category): ?><?php
+                                    /* Comma emitted inside the tag run so the browser
+                                       does not render a space before it. */
+                                    ?><?= $i > 0 ? ', ' : '' ?><a href="<?= $escaper->escapeUrl($category['url']) ?>" style="color:#1979c3;"><?= $escaper->escapeHtml($category['name']) ?></a><?php endforeach; ?>
+                            </p>
+                        <?php endif; ?>
                         <!--
                             Short Description when written, excerpt of the content
                             otherwise. Clamped to 4 lines to match the Hyva card.

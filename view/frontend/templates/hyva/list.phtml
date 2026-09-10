@@ -48,22 +48,44 @@ $title = $block->getListingTitle();
                             </a>
                         </h2>
 
+                        <?php
+                        /* getAuthorName() resolves the author entity the post view and
+                           the Luma card both use. Reading $post->getAuthor() here meant
+                           the flat varchar, so one post could show two different names
+                           depending on the theme. */
+                        $authorName = $block->getAuthorName($post);
+                        $postDate = $block->getPostDate($post);
+                        $categories = $block->getPostCategories($post);
+                        ?>
                         <div class="flex flex-wrap items-center text-sm text-gray-500 mb-4 gap-4">
-                            <?php if ($post->getAuthor()): ?>
+                            <?php if ($authorName !== ''): ?>
                                 <span class="flex items-center">
                                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                                     </svg>
-                                    <?= $escaper->escapeHtml($post->getAuthor()) ?>
+                                    <?= $escaper->escapeHtml($authorName) ?>
                                 </span>
                             <?php endif; ?>
-                            <span class="flex items-center">
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                </svg>
-                                <?= $escaper->escapeHtml($post->getCreatedAt()) ?>
-                            </span>
+                            <?php if ($postDate !== ''): ?>
+                                <span class="flex items-center">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                    <?= $escaper->escapeHtml($postDate) ?>
+                                </span>
+                            <?php endif; ?>
                         </div>
+
+                        <?php if ($categories !== []): ?>
+                            <div class="flex flex-wrap gap-2 mb-4">
+                                <?php foreach ($categories as $category): ?>
+                                    <a href="<?= $escaper->escapeUrl($category['url']) ?>"
+                                       class="inline-block text-xs bg-gray-100 text-gray-700 rounded px-2 py-1 hover:bg-gray-200">
+                                        <?= $escaper->escapeHtml($category['name']) ?>
+                                    </a>
+                                <?php endforeach; ?>
+                            </div>
+                        <?php endif; ?>
 
                         <!-- Emitted as markup, not escaped text, so that hiding an
                              element in the editor takes effect here the same way it

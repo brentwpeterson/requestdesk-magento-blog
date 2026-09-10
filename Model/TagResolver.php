@@ -17,6 +17,8 @@ use Magento\Framework\UrlInterface;
  * Reads and attaches blog tags. Tags are a blog-owned taxonomy (Magento has no
  * native tag entity), linked to posts through requestdesk_blog_post_tag.
  */
+use RequestDesk\Blog\Block\ArchiveUrl;
+
 class TagResolver
 {
     private const TAG_TABLE = 'requestdesk_blog_tag';
@@ -46,7 +48,7 @@ class TagResolver
             ->join(
                 ['t' => $this->resource->getTableName(self::TAG_TABLE)],
                 't.tag_id = l.tag_id',
-                ['tag_id', 'name']
+                ['tag_id', 'name', 'url_key']
             )
             ->where('l.post_id = ?', $postId)
             ->order('t.name ASC');
@@ -56,7 +58,12 @@ class TagResolver
             $tags[] = [
                 'id' => (int) $row['tag_id'],
                 'name' => (string) $row['name'],
-                'url' => $this->urlBuilder->getUrl('blog/tag/view', ['id' => (int) $row['tag_id']]),
+                'url' => ArchiveUrl::resolve(
+                    ArchiveUrl::TYPE_TAG,
+                    (int) $row['tag_id'],
+                    $row['url_key'] ?? null,
+                    $this->urlBuilder
+                ),
             ];
         }
         return $tags;
@@ -83,7 +90,7 @@ class TagResolver
     {
         $connection = $this->resource->getConnection();
         $select = $connection->select()
-            ->from($this->resource->getTableName(self::TAG_TABLE), ['tag_id', 'name'])
+            ->from($this->resource->getTableName(self::TAG_TABLE), ['tag_id', 'name', 'url_key'])
             ->where('tag_id = ?', $tagId)
             ->limit(1);
         $row = $connection->fetchRow($select);
@@ -93,7 +100,12 @@ class TagResolver
         return [
             'id' => (int) $row['tag_id'],
             'name' => (string) $row['name'],
-            'url' => $this->urlBuilder->getUrl('blog/tag/view', ['id' => (int) $row['tag_id']]),
+            'url' => ArchiveUrl::resolve(
+                    ArchiveUrl::TYPE_TAG,
+                    (int) $row['tag_id'],
+                    $row['url_key'] ?? null,
+                    $this->urlBuilder
+                ),
         ];
     }
 

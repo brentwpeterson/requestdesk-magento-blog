@@ -12,10 +12,15 @@
       xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
     <body>
         <referenceContainer name="content">
+            <!--
+                cacheable="false" removed: it switched full page cache off for
+                every blog listing on Hyva, while the matching Luma handle has
+                never set it. A listing is public, identical for every visitor
+                and the heaviest query in the module - exactly what FPC is for.
+            -->
             <block class="RequestDesk\Blog\Block\TagView"
                    name="blog.tag.view"
-                   template="RequestDesk_Blog::hyva/list.phtml"
-                   cacheable="false"/>
+                   template="RequestDesk_Blog::hyva/list.phtml"/>
         </referenceContainer>
     </body>
 </page>

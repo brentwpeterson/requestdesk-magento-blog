@@ -262,6 +262,36 @@ SHOW COLUMNS FROM amasty_blog_posts LIKE '%short%';
 and add the name to `AMASTY_SHORT_COLUMNS` in
 `Console/Command/MigrateAmastyCommand.php` if it is not in the list.
 
+### Backfilling publish dates onto posts you already migrated
+
+The migration never read Amasty's `published_at`, so `created_at` on every
+migrated post took its `CURRENT_TIMESTAMP` default — the moment the import ran.
+On a real archive that collapses years of posts onto one or two days and makes
+every freshness signal on the blog wrong. It now carries the source date across
+on create, and corrects posts that were already migrated.
+
+```bash
+bin/magento requestdesk:blog:migrate-amasty --dry-run      # reports, writes nothing
+bin/magento requestdesk:blog:migrate-amasty
+```
+
+The summary gains a `publish dates:` line counting the posts corrected.
+
+`published_at` is preferred, falling back to the Amasty row's own `created_at`
+where `published_at` was never set. Zero dates are rejected rather than parsed.
+
+**What it will and will not overwrite.** `created_at` can never be "empty" the
+way `short_description` can — the column defaults to `CURRENT_TIMESTAMP` — so
+emptiness cannot be the test for whether a value is ours to replace. The test is
+that the stored date is **later** than the source's: an import stamp always is,
+because it was written long after the post was published. A date someone moved
+deliberately to an earlier point is left alone. Once corrected the two match, so
+a re-run is a no-op rather than a rewrite.
+
+The same limits as the short-description backfill apply: only Amasty rows with
+`status = 2` are read, and `--limit` applies to the source rows, so a limited run
+only corrects within that slice.
+
 ## Configuration
 
 Navigate to **Stores > Configuration > RequestDesk > Blog**
@@ -740,6 +770,55 @@ Answer Engine Optimization (AEO) is the practice of structuring content so AI sy
 - Content not optimized for AI will become invisible
 
 ## Changelog
+
+### 1.10.0 (2026-09-10)
+
+- **Fix: the 1.9.6 listing footer was never wired.** `PostList::getPostDate()`
+  and `getPostCategories()` were added and no template called either one, so both
+  were dead code and every card still printed `$post->getCreatedAt()` — the raw
+  SQL datetime, `2026-09-09 18:59:18` — with no category anywhere. Both listing
+  templates now call them
+- **Fix: the same raw datetime on the post detail page,** on both themes.
+  `PostView::getPostDate()` added to match `PostList`, so a card and the post it
+  opens read the same date
+- **Fix: Hyva showed a different author than Luma for the same post.** The Hyva
+  card read `$post->getAuthor()`, the flat varchar, where Luma resolves the author
+  entity through `getAuthorName()`. The Hyva post byline had the same split and
+  now uses `getAuthorData()`, so the name links to the author archive
+- **Fix: migrated posts all claimed to be published on import day.** The Amasty
+  migration never read the source's `published_at`, so `created_at` took its
+  `CURRENT_TIMESTAMP` default — on the Evrig data, 271 of 274 posts landed on one
+  of two days in 2026 and collapsed a four-year archive. The migration now carries
+  the date across on create, and corrects it on posts already migrated. See
+  *Backfilling publish dates* below
+- **Fix: Hyva post pages emitted no `og:` tags and no `BlogPosting` JSON-LD.**
+  `hyva_blog_post_view.xml` carried neither the Open Graph block nor the schema
+  view model that `blog_post_view.xml` has had since the schema work landed, so
+  the theme a store actually runs was the half answer engines could not read.
+  The Hyva post page also gained the category links Luma shows
+- **Fix: full page cache was off for the entire blog on Hyva.** All five
+  `hyva_blog_*` layouts set `cacheable="false"`; none of the Luma handles ever
+  did. Removed, which puts the heaviest queries in the module back behind FPC
+- **New: pretty URLs for the three archives.** `/blog/category/:urlKey`,
+  `/blog/tag/:urlKey` and `/blog/author/:urlKey` now resolve — the README has
+  documented them for some time, but nothing served them and every link still
+  read `/blog/category/view/id/77`. `Controller\Router` resolves all three, and
+  the new `Block\ArchiveUrl` gives the four call sites that built these URLs by
+  hand (`PostCategoryResolver`, `TagResolver` twice, `AuthorResolver`) one rule,
+  the same way `Block\PostUrl` did for posts. The id form stays routed
+- **Category keys are resolved among blog categories only.** Blog categories are
+  native catalog categories, and Magento enforces `url_key` uniqueness only among
+  siblings — the Evrig catalog has two categories keyed `ecommerce` and two keyed
+  `hyva`. Restricting the lookup to categories with at least one post attached
+  settles it, since that is the only set whose archive has anything to show. A
+  genuine tie resolves to the lowest id rather than row order
+- **Cleanup: `view/frontend/templates/tag/view.phtml` removed.** Orphaned by the
+  same refactor that deleted `category/view.phtml` in 1.9.6 — `blog_tag_view.xml`
+  points at `list.phtml`, so nothing had rendered it
+- **Tests: 81 → 94.** `ArchiveUrlTest` pins the pretty form, the id fallback and
+  the per-type segment; `MigrateAmastyPublishDateTest` pins the date rule in both
+  directions, since getting it wrong the other way would silently rewrite
+  hand-edited dates across a whole blog
 
 ### 1.9.6 (2026-09-10)
 

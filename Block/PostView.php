@@ -55,6 +55,26 @@ class PostView extends Template
     }
 
     /**
+     * The post's date line, e.g. "August 12, 2026", in the store locale.
+     *
+     * Both detail templates printed getCreatedAt() straight out of the model,
+     * which is a SQL datetime - every post carried "2026-09-09 18:59:18" under
+     * its title. Mirrors PostList::getPostDate() so a card and the post it
+     * opens read the same.
+     *
+     * @return string
+     */
+    public function getPostDate(): string
+    {
+        $post = $this->getPost();
+        if ($post === null || !$post->getCreatedAt()) {
+            return '';
+        }
+
+        return (string) $this->formatDate($post->getCreatedAt(), \IntlDateFormatter::LONG);
+    }
+
+    /**
      * The post body, unescaped and with directives resolved, ready to echo.
      *
      * @return string

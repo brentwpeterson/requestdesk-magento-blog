@@ -22,6 +22,8 @@ use RequestDesk\Blog\Block\ImageUrl;
  * but does not need one. Falls back to the legacy free-text author name on posts
  * that were never assigned an author record.
  */
+use RequestDesk\Blog\Block\ArchiveUrl;
+
 class AuthorResolver
 {
     private const AUTHOR_TABLE = 'requestdesk_blog_author';
@@ -73,7 +75,7 @@ class AuthorResolver
         $select = $connection->select()
             ->from(
                 $this->resource->getTableName(self::AUTHOR_TABLE),
-                ['author_id', 'name', 'bio', 'avatar', 'url']
+                ['author_id', 'name', 'bio', 'avatar', 'url', 'url_key']
             )
             ->where('author_id = ?', $authorId)
             ->limit(1);
@@ -88,7 +90,12 @@ class AuthorResolver
             'name' => (string) $row['name'],
             'bio' => (string) ($row['bio'] ?? ''),
             'avatar' => ImageUrl::resolve($row['avatar'] ?? null, $this->storeManager),
-            'page_url' => $this->urlBuilder->getUrl('blog/author/view', ['id' => (int) $row['author_id']]),
+            'page_url' => ArchiveUrl::resolve(
+                ArchiveUrl::TYPE_AUTHOR,
+                (int) $row['author_id'],
+                $row['url_key'] ?? null,
+                $this->urlBuilder
+            ),
             'link' => (string) ($row['url'] ?? ''),
         ];
     }

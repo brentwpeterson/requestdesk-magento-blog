@@ -11,11 +11,25 @@ use RequestDesk\Blog\Block\PostView;
 
 /** @var Escaper $escaper */
 /** @var PostView $block */
+/** @var \RequestDesk\Blog\ViewModel\BlogSchema|null $schema */
 
 $post = $block->getPost();
+
+/*
+ * Same three lines the Luma template has carried since the schema work landed.
+ * This handle passed no schema_view_model at all, so a Hyva store emitted no
+ * BlogPosting JSON-LD and no FAQ block - the two things the module exists to
+ * put in front of an answer engine.
+ */
+$schema = $block->getData('schema_view_model');
+$jsonLd = ($schema && $post) ? $schema->getJsonLd($post) : '';
+$faqPairs = ($schema && $post) ? $schema->getFaqPairs($post) : [];
 ?>
 
 <?php if ($post && $post->getId()): ?>
+<?php if ($jsonLd !== ''): ?>
+    <script type="application/ld+json"><?= /* @noEscape */ $jsonLd ?></script>
+<?php endif; ?>
 <article class="container mx-auto px-4 py-8 max-w-4xl">
     <!-- Back Link -->
     <a href="<?= $escaper->escapeUrl($block->getBackUrl()) ?>"
@@ -33,21 +47,46 @@ $post = $block->getPost();
         </h1>
 
         <div class="flex flex-wrap items-center text-sm text-gray-500 gap-4">
-            <?php if ($post->getAuthor()): ?>
+            <?php /* getAuthorData(), like the Luma template: the resolved author
+                     entity carries the profile URL, where $post->getAuthor() is the
+                     flat varchar and links nowhere. */ ?>
+            <?php $author = $block->getAuthorData(); ?>
+            <?php if ($author): ?>
                 <span class="flex items-center">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                     </svg>
-                    <?= $escaper->escapeHtml($post->getAuthor()) ?>
+                    <?php if ($author['page_url'] !== ''): ?>
+                        <a href="<?= $escaper->escapeUrl($author['page_url']) ?>" class="hover:underline"><?= $escaper->escapeHtml($author['name']) ?></a>
+                    <?php else: ?>
+                        <?= $escaper->escapeHtml($author['name']) ?>
+                    <?php endif; ?>
                 </span>
             <?php endif; ?>
-            <span class="flex items-center">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                </svg>
-                <?= $escaper->escapeHtml($post->getCreatedAt()) ?>
-            </span>
+            <?php $postDate = $block->getPostDate(); ?>
+            <?php if ($postDate !== ''): ?>
+                <span class="flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    <?= $escaper->escapeHtml($postDate) ?>
+                </span>
+            <?php endif; ?>
         </div>
+
+        <?php /* Luma shows an "In: <categories>" line; this template had none, so a
+                 Hyva post gave a reader no way up to the archive it belongs to. */ ?>
+        <?php $categories = $block->getCategories(); ?>
+        <?php if (!empty($categories)): ?>
+            <div class="flex flex-wrap gap-2 mt-4">
+                <?php foreach ($categories as $cat): ?>
+                    <a href="<?= $escaper->escapeUrl($cat['url']) ?>"
+                       class="inline-block text-xs bg-gray-100 text-gray-700 rounded px-2 py-1 hover:bg-gray-200">
+                        <?= $escaper->escapeHtml($cat['name']) ?>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
     </header>
 
     <!-- Featured Image -->

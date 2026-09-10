@@ -34,11 +34,29 @@ use Magento\Framework\App\RouterInterface;
  * controller path still resolve exactly as before. It just gives the leftover
  * single-segment case a meaning.
  *
+ * The same treatment now covers the three archives - /blog/category/<url-key>,
+ * /blog/tag/<url-key> and /blog/author/<url-key> - which had been left on the id
+ * form when posts moved off it.
+ *
  * The id form keeps working on purpose. Nothing needs rewriting, old links stay
  * good, and there are no redirects to maintain.
  */
 class Router implements RouterInterface
 {
+    /**
+     * Archive front names this router resolves by url_key. Anything else in the
+     * second segment is left to the standard router.
+     */
+    private const TYPE_CATEGORY = 'category';
+
+    private const ARCHIVE_TYPES = [self::TYPE_CATEGORY, 'tag', 'author'];
+
+    /** Own-table archives, keyed by type. Categories are native, so not here. */
+    private const ARCHIVE_TABLES = [
+        'tag' => ['requestdesk_blog_tag', 'tag_id'],
+        'author' => ['requestdesk_blog_author', 'author_id'],
+    ];
+
     /**
      * First path segments that belong to real controllers, so they must never be
      * mistaken for a post url_key.
@@ -71,8 +89,17 @@ class Router implements RouterInterface
         $identifier = trim($request->getPathInfo(), '/');
         $parts = explode('/', $identifier);
 
+        if (($parts[0] ?? '') !== 'blog') {
+            return null;
+        }
+
+        // /blog/<type>/<url-key> — a category, tag or author archive.
+        if (count($parts) === 3 && in_array($parts[1], self::ARCHIVE_TYPES, true)) {
+            return $this->matchArchive($request, $identifier, $parts[1], $parts[2]);
+        }
+
         // Only /blog/<something> — one segment past the front name.
-        if (count($parts) !== 2 || $parts[0] !== 'blog') {
+        if (count($parts) !== 2) {
             return null;
         }
 
@@ -96,6 +123,154 @@ class Router implements RouterInterface
         $request->setAlias(\Magento\Framework\Url::REWRITE_REQUEST_PATH_ALIAS, $identifier);
 
         return $this->actionFactory->create(\Magento\Framework\App\Action\Forward::class);
+    }
+
+    /**
+     * Forward /blog/<type>/<url-key> to the archive controller for that record.
+     *
+     * @param RequestInterface $request
+     * @param string $identifier the full path, for the address-bar alias
+     * @param string $type one of self::ARCHIVE_TYPES
+     * @param string $urlKey
+     * @return ActionInterface|null null when nothing matches, so the standard 404 runs
+     */
+    private function matchArchive(
+        RequestInterface $request,
+        string $identifier,
+        string $type,
+        string $urlKey
+    ): ?ActionInterface {
+        // /blog/category/view and friends belong to the real controllers. They
+        // are matched by the standard router long before this one runs, but a
+        // guard here keeps that true if a route is ever renamed.
+        if ($urlKey === '' || in_array($urlKey, self::RESERVED, true) || $urlKey === 'view') {
+            return null;
+        }
+
+        $id = $type === self::TYPE_CATEGORY
+            ? $this->findBlogCategoryIdByUrlKey($urlKey)
+            : $this->findArchiveIdByUrlKey($type, $urlKey);
+
+        if ($id === 0) {
+            return null;
+        }
+
+        $request->setModuleName('blog')
+            ->setControllerName($type)
+            ->setActionName('view')
+            ->setParam('id', $id);
+
+        $request->setAlias(\Magento\Framework\Url::REWRITE_REQUEST_PATH_ALIAS, $identifier);
+
+        return $this->actionFactory->create(\Magento\Framework\App\Action\Forward::class);
+    }
+
+    /**
+     * Look up a tag or author by its url_key.
+     *
+     * Both tables carry a unique index on url_key, so at most one row matches.
+     *
+     * @param string $type
+     * @param string $urlKey
+     * @return int 0 when there is no such record
+     */
+    private function findArchiveIdByUrlKey(string $type, string $urlKey): int
+    {
+        [$table, $idColumn] = self::ARCHIVE_TABLES[$type];
+
+        try {
+            $connection = $this->resource->getConnection();
+
+            return (int) $connection->fetchOne(
+                $connection->select()
+                    ->from($this->resource->getTableName($table), [$idColumn])
+                    ->where('url_key = ?', $urlKey)
+                    ->limit(1)
+            );
+        } catch (\Throwable $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * Look up a native Magento category by url_key, among those the blog uses.
+     *
+     * Blog categories are native catalog categories, and Magento enforces
+     * url_key uniqueness only among siblings - this store has two catalog
+     * categories called "ecommerce" and two called "hyva". A plain url_key
+     * lookup across the whole tree would be a coin flip.
+     *
+     * Restricting the search to categories with at least one post attached
+     * settles it: that is the only set whose archive has anything to show, and
+     * within it the keys are distinct. A genuine tie is resolved by lowest id
+     * rather than left to row order, so the same URL always opens the same
+     * archive, and /blog/category/view/id/N stays available to address the other
+     * one exactly.
+     *
+     * @param string $urlKey
+     * @return int 0 when no blog category has that key
+     */
+    private function findBlogCategoryIdByUrlKey(string $urlKey): int
+    {
+        try {
+            $connection = $this->resource->getConnection();
+
+            $select = $connection->select()
+                ->from(['e' => $this->resource->getTableName('catalog_category_entity')], ['entity_id'])
+                ->join(
+                    ['v' => $this->resource->getTableName('catalog_category_entity_varchar')],
+                    'v.' . $this->categoryLinkField() . ' = e.' . $this->categoryLinkField()
+                    . ' AND v.store_id = 0',
+                    []
+                )
+                ->join(
+                    ['a' => $this->resource->getTableName('eav_attribute')],
+                    'a.attribute_id = v.attribute_id',
+                    []
+                )
+                ->join(
+                    ['t' => $this->resource->getTableName('eav_entity_type')],
+                    't.entity_type_id = a.entity_type_id',
+                    []
+                )
+                ->where('a.attribute_code = ?', 'url_key')
+                ->where('t.entity_type_code = ?', 'catalog_category')
+                ->where('v.value = ?', $urlKey)
+                ->where(
+                    'e.entity_id IN (?)',
+                    new \Zend_Db_Expr(
+                        (string) $connection->select()->from(
+                            $this->resource->getTableName('requestdesk_blog_post_category'),
+                            ['category_id']
+                        )
+                    )
+                )
+                ->order('e.entity_id ASC')
+                ->limit(1);
+
+            return (int) $connection->fetchOne($select);
+        } catch (\Throwable $e) {
+            return 0;
+        }
+    }
+
+    /**
+     * The column catalog_category_entity_varchar joins on.
+     *
+     * Open Source keys EAV value rows on entity_id; Commerce keys them on
+     * row_id for staging. Reading it from the table rather than hard-coding
+     * entity_id keeps this working on both.
+     *
+     * @return string
+     */
+    private function categoryLinkField(): string
+    {
+        $connection = $this->resource->getConnection();
+        $columns = $connection->describeTable(
+            $this->resource->getTableName('catalog_category_entity_varchar')
+        );
+
+        return isset($columns['row_id']) ? 'row_id' : 'entity_id';
     }
 
     /**

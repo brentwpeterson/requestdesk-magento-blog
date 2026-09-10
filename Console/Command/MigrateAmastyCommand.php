@@ -170,6 +170,7 @@ class MigrateAmastyCommand extends Command
         $migrated = 0;
         $skipped = 0;
         $backfilled = 0;
+        $datesFixed = 0;
         $failed = 0;
         $tagLinks = 0;
         $categoryLinks = 0;
@@ -193,6 +194,8 @@ class MigrateAmastyCommand extends Command
             // about the post is left exactly as it is.
             $existingId = $this->findPostIdByUrlKey($urlKey);
             if ($existingId > 0) {
+                $touched = false;
+
                 $sourceShort = $this->shortDescriptionFrom($row);
                 if ($sourceShort !== null && $this->backfillShortDescription($existingId, $sourceShort, $dryRun)) {
                     $output->writeln(
@@ -201,7 +204,28 @@ class MigrateAmastyCommand extends Command
                             : "  backfilled short description: {$urlKey}"
                     );
                     $backfilled++;
-                } else {
+                    $touched = true;
+                }
+
+                // Posts migrated before the date was carried across are all
+                // stamped with the moment the import ran, which collapses years
+                // of archive onto one or two days. The two backfills are
+                // independent - this used to be an if/else, so a post that only
+                // needed its date was reported as "skip (exists)" and left wrong.
+                $sourcePublishedAt = $this->publishedAtFrom($row);
+                if ($sourcePublishedAt !== null
+                    && $this->backfillPublishDate($existingId, $sourcePublishedAt, $dryRun)
+                ) {
+                    $output->writeln(
+                        $dryRun
+                            ? "  would set publish date {$sourcePublishedAt}: {$urlKey}"
+                            : "  set publish date {$sourcePublishedAt}: {$urlKey}"
+                    );
+                    $datesFixed++;
+                    $touched = true;
+                }
+
+                if (!$touched) {
                     $output->writeln("  skip (exists): {$urlKey}");
                     $skipped++;
                 }
@@ -295,6 +319,14 @@ class MigrateAmastyCommand extends Command
                 $post->setStatus(1); // published
                 $post->setStoreId(0);
 
+                // Without this the row takes created_at's CURRENT_TIMESTAMP
+                // default, so a ten-year archive imports as published today and
+                // every freshness signal on the blog is wrong.
+                $sourcePublishedAt = $this->publishedAtFrom($row);
+                if ($sourcePublishedAt !== null) {
+                    $post->setCreatedAt($sourcePublishedAt);
+                }
+
                 $saved = $this->postRepository->save($post);
                 $savedId = (int) $saved->getPostId();
 
@@ -329,6 +361,7 @@ class MigrateAmastyCommand extends Command
         $output->writeln("  posts migrated:  {$migrated}");
         $output->writeln("  posts skipped:   {$skipped}  (already present)");
         $output->writeln("  short descs:     {$backfilled}  (filled in on posts already present)");
+        $output->writeln("  publish dates:   {$datesFixed}  (corrected on posts already present)");
         $output->writeln("  posts failed:    {$failed}  (rolled back, safe to re-run)");
         $output->writeln("  tag links:       {$tagLinks}");
         $output->writeln('  authors linked:  ' . count($authorsSeen));
@@ -517,6 +550,81 @@ class MigrateAmastyCommand extends Command
         $value = trim((string) ($row[$column] ?? ''));
 
         return $value !== '' ? $value : null;
+    }
+
+    /**
+     * The original publish date on one Amasty row, as 'Y-m-d H:i:s'.
+     *
+     * published_at is Amasty's own field for this and is what its front end
+     * shows. created_at is the fallback for a row where published_at was never
+     * set: still the truth about when the post appeared, and far closer than
+     * the moment our import ran.
+     *
+     * @param array<string, mixed> $row
+     * @return string|null null when the source has no usable date
+     */
+    private function publishedAtFrom(array $row): ?string
+    {
+        foreach (['published_at', 'created_at'] as $column) {
+            $value = trim((string) ($row[$column] ?? ''));
+            if ($value === '' || str_starts_with($value, '0000-00-00')) {
+                continue;
+            }
+
+            $timestamp = strtotime($value);
+            if ($timestamp !== false && $timestamp > 0) {
+                return date('Y-m-d H:i:s', $timestamp);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Correct created_at on an existing post to the source's publish date.
+     *
+     * created_at can never be "empty" the way short_description can - the column
+     * defaults to CURRENT_TIMESTAMP - so emptiness cannot be the test for
+     * whether a value is ours to replace. The test is that ours is LATER than
+     * the source: an import stamp always is, because it was written long after
+     * the post was published. A date someone moved deliberately to an earlier
+     * point is left alone, and once corrected the two match, so a re-run is a
+     * no-op rather than a rewrite.
+     *
+     * A direct UPDATE for the same reason backfillShortDescription() uses one:
+     * a full repository save would rewrite every other column and reset the
+     * RequestDesk sync fields on a post someone may have edited.
+     *
+     * @param int $postId
+     * @param string $publishedAt 'Y-m-d H:i:s'
+     * @param bool $dryRun
+     * @return bool true when the date was corrected, or would have been
+     */
+    private function backfillPublishDate(int $postId, string $publishedAt, bool $dryRun): bool
+    {
+        $connection = $this->resource->getConnection();
+        $table = $this->resource->getTableName('requestdesk_blog_post');
+
+        $current = (string) $connection->fetchOne(
+            $connection->select()
+                ->from($table, ['created_at'])
+                ->where('post_id = ?', $postId)
+                ->limit(1)
+        );
+
+        $currentTs = $current !== '' ? strtotime($current) : false;
+        $sourceTs = strtotime($publishedAt);
+        if ($currentTs === false || $sourceTs === false || $currentTs <= $sourceTs) {
+            return false;
+        }
+
+        if ($dryRun) {
+            return true;
+        }
+
+        $connection->update($table, ['created_at' => $publishedAt], ['post_id = ?' => $postId]);
+
+        return true;
     }
 
     /**

@@ -13,6 +13,7 @@ namespace RequestDesk\Blog\Model;
 use Magento\Catalog\Api\CategoryRepositoryInterface;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\UrlInterface;
+use RequestDesk\Blog\Block\ArchiveUrl;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -105,7 +106,12 @@ class PostCategoryResolver
                 $categories[$categoryId] = [
                     'id' => $categoryId,
                     'name' => (string) $category->getName(),
-                    'url' => $this->urlBuilder->getUrl('blog/category/view', ['id' => $categoryId]),
+                    'url' => ArchiveUrl::resolve(
+                        ArchiveUrl::TYPE_CATEGORY,
+                        $categoryId,
+                        $category->getUrlKey(),
+                        $this->urlBuilder
+                    ),
                 ];
             } catch (\Throwable $e) {
                 // category removed from the catalog — skip it
