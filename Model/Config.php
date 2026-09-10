@@ -19,6 +19,7 @@ use Magento\Store\Model\ScopeInterface;
 class Config
 {
     public const XML_PATH_POSTS_PER_PAGE = 'requestdesk_blog/general/posts_per_page';
+    public const XML_PATH_ENABLE_PAGINATION = 'requestdesk_blog/general/enable_pagination';
 
     /**
      * Mirrors etc/config.xml, so a blank value still paginates instead of
@@ -75,5 +76,26 @@ class Config
         }
 
         return min($requested, self::MAX_POSTS_PER_PAGE);
+    }
+
+    /**
+     * Whether listing pages (blog, category, author, tag) show a pager.
+     *
+     * When off, every listing renders all of its posts on one page.
+     *
+     * isSetFlag() rather than isFlag(): isFlag() is newer than this codebase's
+     * framework version, and the DI interceptor wrapping the config object
+     * does not implement it.
+     *
+     * @param int|string|null $store
+     * @return bool
+     */
+    public function isPaginationEnabled($store = null): bool
+    {
+        return $this->scopeConfig->isSetFlag(
+            self::XML_PATH_ENABLE_PAGINATION,
+            ScopeInterface::SCOPE_STORE,
+            $store
+        );
     }
 }

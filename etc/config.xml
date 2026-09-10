@@ -15,6 +15,7 @@
                 <enabled>1</enabled>
                 <blog_title>Blog</blog_title>
                 <posts_per_page>10</posts_per_page>
+                <enable_pagination>1</enable_pagination>
             </general>
             <api>
                 <endpoint_url>https://api.requestdesk.ai</endpoint_url>

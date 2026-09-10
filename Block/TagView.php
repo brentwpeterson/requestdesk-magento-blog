@@ -12,18 +12,28 @@ namespace RequestDesk\Blog\Block;
 
 use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Framework\Api\SortOrderBuilder;
-use Magento\Framework\View\Element\Template;
 use Magento\Framework\View\Element\Template\Context;
-use RequestDesk\Blog\Api\Data\PostInterface;
+use Magento\Store\Model\StoreManagerInterface;
+use RequestDesk\Blog\Api\Data\PostSearchResultsInterface;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
+use RequestDesk\Blog\Model\AuthorResolver;
+use RequestDesk\Blog\Model\Config;
+use RequestDesk\Blog\Model\PostCategoryResolver;
+use RequestDesk\Blog\Model\PostContent;
 use RequestDesk\Blog\Model\TagResolver;
 
 /**
  * Supplies the tag and its published posts to the tag archive page.
+ *
+ * Extends PostList so the tag page renders its posts with the same list
+ * templates the blog index and category pages use; only the collection
+ * differs - filtered to one tag's post ids.
  */
-class TagView extends Template
+class TagView extends PostList
 {
     /**
+     * Tri-state memo: null = not loaded yet, false = looked up and missing.
+     *
      * @var array|null|false
      */
     private $tag = null;
@@ -34,17 +44,38 @@ class TagView extends Template
      * @param PostRepositoryInterface $postRepository
      * @param SearchCriteriaBuilder $searchCriteriaBuilder
      * @param SortOrderBuilder $sortOrderBuilder
+     * @param StoreManagerInterface $storeManager
+     * @param AuthorResolver $authorResolver
+     * @param PostContent $postContent
+     * @param Config $config
+     * @param PostCategoryResolver $categoryResolver
      * @param array $data
      */
     public function __construct(
         Context $context,
         private readonly TagResolver $tagResolver,
-        private readonly PostRepositoryInterface $postRepository,
-        private readonly SearchCriteriaBuilder $searchCriteriaBuilder,
-        private readonly SortOrderBuilder $sortOrderBuilder,
+        PostRepositoryInterface $postRepository,
+        SearchCriteriaBuilder $searchCriteriaBuilder,
+        SortOrderBuilder $sortOrderBuilder,
+        StoreManagerInterface $storeManager,
+        AuthorResolver $authorResolver,
+        PostContent $postContent,
+        Config $config,
+        PostCategoryResolver $categoryResolver,
         array $data = []
     ) {
-        parent::__construct($context, $data);
+        parent::__construct(
+            $context,
+            $postRepository,
+            $searchCriteriaBuilder,
+            $sortOrderBuilder,
+            $storeManager,
+            $authorResolver,
+            $postContent,
+            $config,
+            $categoryResolver,
+            $data
+        );
     }
 
     /**
@@ -60,35 +91,49 @@ class TagView extends Template
     }
 
     /**
-     * @return PostInterface[]
+     * The listing query for this tag's posts; paging comes from the parent.
+     *
+     * @param int|null $pageSize
+     * @param int|null $currentPage
+     * @return PostSearchResultsInterface
      */
-    public function getPosts(): array
+    protected function loadPostResults(?int $pageSize, ?int $currentPage): PostSearchResultsInterface
     {
         $tag = $this->getTag();
-        if ($tag === null) {
-            return [];
-        }
-        $postIds = $this->tagResolver->getPostIdsByTag((int) $tag['id']);
-        if ($postIds === []) {
-            return [];
-        }
+        $postIds = $tag === null
+            ? []
+            : $this->tagResolver->getPostIdsByTag((int) $tag['id']);
 
-        $sort = $this->sortOrderBuilder
-            ->setField(PostInterface::CREATED_AT)->setDirection('DESC')->create();
-        $criteria = $this->searchCriteriaBuilder
-            ->addFilter(PostInterface::POST_ID, $postIds, 'in')
-            ->addFilter(PostInterface::STATUS, PostInterface::STATUS_PUBLISHED)
-            ->addSortOrder($sort)
-            ->create();
-        return $this->postRepository->getList($criteria)->getItems();
+        return $this->postRepository->getList($this->buildListCriteria($postIds, $pageSize, $currentPage));
     }
 
     /**
-     * @param PostInterface $post
+     * Page heading for the shared list template: the tag's name.
+     *
      * @return string
      */
-    public function getPostUrl(PostInterface $post): string
+    public function getListingTitle(): string
     {
-        return PostUrl::resolve($post, $this->_urlBuilder);
+        $tag = $this->getTag();
+        return $tag !== null ? $tag['name'] : '';
+    }
+
+    /**
+     * The pager stays on the tag page, not /blog.
+     *
+     * @return string
+     */
+    protected function getPagerRoutePath(): string
+    {
+        return 'blog/tag/view';
+    }
+
+    /**
+     * @param array $query
+     * @return array
+     */
+    protected function getPagerRouteParams(array $query): array
+    {
+        return ['id' => (int) $this->getRequest()->getParam('id'), '_query' => $query];
     }
 }

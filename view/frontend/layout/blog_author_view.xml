@@ -11,10 +11,28 @@
       layout="1column"
       xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
     <body>
+        <!-- The author wrapper template renders the page's single h1; drop the
+             theme's page-title block so the title does not appear twice. -->
+        <referenceContainer name="page.main.title" remove="true"/>
+        <referenceBlock name="page.title" remove="true"/>
+
         <referenceContainer name="content">
+            <!-- Wrapper renders the author profile header; the child renders the
+                 posts with the same shared list template the blog index and
+                 category pages use (cards + optional pager). -->
             <block class="RequestDesk\Blog\Block\AuthorView"
                    name="requestdesk.blog.author"
-                   template="RequestDesk_Blog::author/view.phtml"/>
+                   template="RequestDesk_Blog::author/view.phtml">
+                <block class="RequestDesk\Blog\Block\AuthorView"
+                       name="requestdesk.blog.author.posts"
+                       as="posts"
+                       template="RequestDesk_Blog::list.phtml">
+                    <arguments>
+                        <!-- The wrapper already carries the page's single h1. -->
+                        <argument name="suppress_title" xsi:type="boolean">true</argument>
+                    </arguments>
+                </block>
+            </block>
         </referenceContainer>
     </body>
 </page>

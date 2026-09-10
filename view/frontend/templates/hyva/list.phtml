@@ -13,12 +13,17 @@ use RequestDesk\Blog\Block\PostList;
 /** @var PostList $block */
 
 $posts = $block->getPosts();
+/* CategoryView overrides this with the category name; the plain list says "Blog". */
+$title = $block->getListingTitle();
 ?>
 
 <div class="container mx-auto px-4 py-8">
-    <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-8">
-        <?= $escaper->escapeHtml(__('Blog')) ?>
-    </h1>
+    <?php /* Skipped when a wrapper block (author page) already renders the h1. */ ?>
+    <?php if (!$block->getSuppressTitle()): ?>
+        <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-8">
+            <?= $escaper->escapeHtml($title !== '' ? $title : __('Blog')) ?>
+        </h1>
+    <?php endif; ?>
 
     <?php if (!empty($posts)): ?>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

@@ -741,6 +741,23 @@ Answer Engine Optimization (AEO) is the practice of structuring content so AI sy
 
 ## Changelog
 
+### 1.9.6 (2026-09-10)
+
+- **New: category + author + date footer on the listing cards.** Moved off
+  the top of the card to a footer row under a divider: the locale-formatted
+  date (`August 12, 2026`) and the post's native categories as links
+  (`Category: General, Adobe Commerce`) on the left, `by Author` on the
+  right. Each part hides itself when the post has none
+- **New: `PostCategoryResolver::getCategoriesForPosts()`** resolves
+  categories for a whole page in one pass — one link-table query plus one
+  load per unique category — and `PostList::getPostCategories()` memoizes
+  it, so the card loop adds no per-post queries. The existing single-post
+  `getCategoriesForPost()` now delegates to it
+- **Cleanup: dead constructor removed from `AuthorView`.** It promoted
+  nothing and only reordered parent arguments — Magento DI injects by type,
+  not position, so the reorder had no effect. `PostList` promotes
+  `PostCategoryResolver`; `CategoryView`/`TagView` forward it
+
 ### 1.9.5 (2026-09-01)
 
 - **Fix: updating a post through the External Blog API silently dropped

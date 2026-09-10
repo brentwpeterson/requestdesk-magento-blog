@@ -1,17 +1,22 @@
 <?php
 /**
- * RequestDesk Blog - Author Page Template (default / Luma)
+ * RequestDesk Blog - Author Page Template (theme-agnostic wrapper)
+ *
+ * Renders the author profile header, then delegates the post list to the
+ * "posts" child block (added in blog_author_view.xml / hyva_blog_author_view.xml),
+ * which uses the same shared list template as the blog index and category
+ * pages. Inline styles on purpose: this wrapper renders on Luma and Hyva
+ * alike, and neither ships a shared profile-header component to borrow.
  *
  * @var \RequestDesk\Blog\Block\AuthorView $block
  * @var \Magento\Framework\Escaper $escaper
  */
 
 $author = $block->getAuthor();
-$posts = $block->getPosts();
 ?>
 <?php if ($author): ?>
-    <div class="requestdesk-blog-author" style="max-width:820px;margin:0 auto;">
-        <header style="display:flex;align-items:center;gap:16px;margin-bottom:24px;">
+    <div class="requestdesk-blog-author" style="margin-bottom:24px;">
+        <header style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
             <?php if ($author['avatar'] !== ''): ?>
                 <img src="<?= $escaper->escapeUrl($author['avatar']) ?>"
                      alt="<?= $escaper->escapeHtmlAttr($author['name']) ?>"
@@ -26,23 +31,14 @@ $posts = $block->getPosts();
         </header>
 
         <?php if ($author['bio'] !== ''): ?>
-            <p style="margin:0 0 28px;"><?= $escaper->escapeHtml($author['bio']) ?></p>
-        <?php endif; ?>
-
-        <h2><?= $escaper->escapeHtml(__('Posts by %1', $author['name'])) ?></h2>
-        <?php if (empty($posts)): ?>
-            <p><?= $escaper->escapeHtml(__('No posts yet.')) ?></p>
-        <?php else: ?>
-            <ul>
-                <?php foreach ($posts as $post): ?>
-                    <li style="margin-bottom:8px;">
-                        <a href="<?= $escaper->escapeUrl($block->getPostUrl($post)) ?>"><?= $escaper->escapeHtml($post->getTitle()) ?></a>
-                        <span style="color:#777;font-size:13px;"> &middot; <?= $escaper->escapeHtml($post->getCreatedAt()) ?></span>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
+            <p style="margin:16px 0 0;"><?= $escaper->escapeHtml($author['bio']) ?></p>
         <?php endif; ?>
     </div>
+
+    <?php /* The posts grid + optional pager; the child's own h1 is suppressed
+           via the suppress_title layout argument so this page keeps exactly
+           one h1. */ ?>
+    <?= $block->getChildHtml('posts') ?>
 <?php else: ?>
     <p><?= $escaper->escapeHtml(__('Author not found.')) ?></p>
 <?php endif; ?>

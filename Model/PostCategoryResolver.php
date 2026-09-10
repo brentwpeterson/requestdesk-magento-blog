@@ -45,17 +45,64 @@ class PostCategoryResolver
      */
     public function getCategoriesForPost(int $postId): array
     {
+        return $this->getCategoriesForPosts([$postId])[$postId] ?? [];
+    }
+
+    /**
+     * Native categories for a whole page of posts in one pass.
+     *
+     * The listing calls this for every card it renders; one link-table query
+     * and one load per unique category beats a round trip per post.
+     *
+     * @param int[] $postIds
+     * @return array<int, array<int, array{id:int, name:string, url:string}>> post_id => categories
+     */
+    public function getCategoriesForPosts(array $postIds): array
+    {
+        $postIds = array_values(array_unique(array_filter(array_map('intval', $postIds))));
+        if ($postIds === []) {
+            return [];
+        }
+
         $connection = $this->resource->getConnection();
         $select = $connection->select()
-            ->from($this->resource->getTableName(self::LINK_TABLE), ['category_id'])
-            ->where('post_id = ?', $postId);
+            ->from($this->resource->getTableName(self::LINK_TABLE), ['post_id', 'category_id'])
+            ->where('post_id IN (?)', $postIds);
 
+        $categoryIdsByPost = [];
+        foreach ($connection->fetchAll($select) as $row) {
+            $categoryIdsByPost[(int) $row['post_id']][] = (int) $row['category_id'];
+        }
+
+        $categoriesById = $this->loadCategories(
+            array_unique(array_merge(...array_values($categoryIdsByPost ?: [[]])))
+        );
+
+        $result = [];
+        foreach ($categoryIdsByPost as $postId => $categoryIds) {
+            foreach ($categoryIds as $categoryId) {
+                if (isset($categoriesById[$categoryId])) {
+                    $result[$postId][] = $categoriesById[$categoryId];
+                }
+            }
+        }
+        return $result;
+    }
+
+    /**
+     * Load the category records behind the link rows, skipping ids that no
+     * longer exist in the catalog.
+     *
+     * @param int[] $categoryIds
+     * @return array<int, array{id:int, name:string, url:string}>
+     */
+    private function loadCategories(array $categoryIds): array
+    {
         $categories = [];
-        foreach ($connection->fetchCol($select) as $categoryId) {
-            $categoryId = (int) $categoryId;
+        foreach ($categoryIds as $categoryId) {
             try {
                 $category = $this->categoryRepository->get($categoryId);
-                $categories[] = [
+                $categories[$categoryId] = [
                     'id' => $categoryId,
                     'name' => (string) $category->getName(),
                     'url' => $this->urlBuilder->getUrl('blog/category/view', ['id' => $categoryId]),
@@ -64,7 +111,6 @@ class PostCategoryResolver
                 // category removed from the catalog — skip it
                 $this->logger->debug('RequestDesk Blog: linked category missing', [
                     'category_id' => $categoryId,
-                    'post_id' => $postId,
                 ]);
             }
         }
