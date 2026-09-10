@@ -2,21 +2,24 @@
 <!--
 /**
  * RequestDesk Blog - Hyva Theme Layout for Blog Listing
+ *
+ * Hyva loads a hyva_-prefixed handle IN ADDITION to the base one, not instead of
+ * it. These handles used to declare a second block under a different name, so on
+ * a Hyva store every blog page rendered twice - two grids, two h1s, the Luma
+ * markup stacked above the Tailwind markup. It went unseen because the module
+ * had no runnable Hyva install to look at.
+ *
+ * referenceBlock re-templates the block the base handle already defines. One
+ * block, one render, and every argument and head addition on the base handle
+ * still applies rather than needing a second copy here.
+ *
+ * @category  RequestDesk
+ * @package   RequestDesk_Blog
  */
 -->
 <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
     <body>
-        <referenceContainer name="content">
-            <!--
-                cacheable="false" removed: it switched full page cache off for
-                every blog listing on Hyva, while the matching Luma handle has
-                never set it. A listing is public, identical for every visitor
-                and the heaviest query in the module - exactly what FPC is for.
-            -->
-            <block class="RequestDesk\Blog\Block\PostList"
-                   name="blog.list"
-                   template="RequestDesk_Blog::hyva/list.phtml"/>
-        </referenceContainer>
+        <referenceBlock name="requestdesk.blog.list" template="RequestDesk_Blog::hyva/list.phtml"/>
     </body>
 </page>

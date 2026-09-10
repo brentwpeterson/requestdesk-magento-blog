@@ -3,44 +3,23 @@
 /**
  * RequestDesk Blog - Hyva Theme Layout for Post View
  *
- * Mirrors blog_post_view.xml. The two had drifted: this handle carried neither
- * the Open Graph head block nor the schema view model, so on Hyva - the theme
- * a store actually runs - every post rendered with no og: tags and no
- * BlogPosting JSON-LD, while Luma emitted both. Answer engines and social
- * scrapers were reading the half of the module nobody browses.
+ * Hyva loads a hyva_-prefixed handle IN ADDITION to the base one, not instead of
+ * it. These handles used to declare a second block under a different name, so on
+ * a Hyva store every blog page rendered twice - two grids, two h1s, the Luma
+ * markup stacked above the Tailwind markup. It went unseen because the module
+ * had no runnable Hyva install to look at.
+ *
+ * referenceBlock re-templates the block the base handle already defines. One
+ * block, one render, and every argument and head addition on the base handle
+ * still applies rather than needing a second copy here.
  *
  * @category  RequestDesk
  * @package   RequestDesk_Blog
  */
 -->
 <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      layout="1column"
       xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
     <body>
-        <!-- The post template renders the post title as its h1; drop the
-             theme's page-title block so the title does not appear twice. -->
-        <referenceContainer name="page.main.title" remove="true"/>
-        <referenceBlock name="page.title" remove="true"/>
-
-        <referenceContainer name="head.additional">
-            <block class="RequestDesk\Blog\Block\Head\OpenGraph"
-                   name="requestdesk.blog.opengraph"
-                   template="RequestDesk_Blog::head/opengraph.phtml"/>
-        </referenceContainer>
-        <referenceContainer name="content">
-            <!--
-                cacheable="false" removed. It switched full page cache off for
-                every blog post on Hyva, and the Luma handle has never set it -
-                the comment form is FPC-safe there for the same reason it is
-                here, because Magento injects the form key client side.
-            -->
-            <block class="RequestDesk\Blog\Block\PostView"
-                   name="blog.post.view"
-                   template="RequestDesk_Blog::hyva/post/view.phtml">
-                <arguments>
-                    <argument name="schema_view_model" xsi:type="object">RequestDesk\Blog\ViewModel\BlogSchema</argument>
-                </arguments>
-            </block>
-        </referenceContainer>
+        <referenceBlock name="requestdesk.blog.post" template="RequestDesk_Blog::hyva/post/view.phtml"/>
     </body>
 </page>

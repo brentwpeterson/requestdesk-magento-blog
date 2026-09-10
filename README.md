@@ -771,6 +771,28 @@ Answer Engine Optimization (AEO) is the practice of structuring content so AI sy
 
 ## Changelog
 
+### 1.10.1 (2026-09-10)
+
+- **Fix: every blog page rendered twice on Hyva.** Hyva loads a `hyva_`-prefixed
+  handle *in addition to* the base one, not instead of it, and all five
+  `hyva_blog_*.xml` handles declared a second block under a different name
+  (`blog.list` beside `requestdesk.blog.list`, and so on). The result was two
+  grids and two `h1`s on every page, Luma markup stacked above Tailwind markup.
+  They now `referenceBlock` the block the base handle already defines and swap
+  only its template: one block, one render, and every argument and head addition
+  on the base handle applies without a second copy
+- **Correction to the 1.10.0 note about `og:` tags and JSON-LD on Hyva.** That
+  entry said the Hyva post page emitted neither. It was wrong — read off the
+  layout file rather than a rendered page, because the module had no runnable
+  Hyva install to check against. The base `blog_post_view.xml` handle loads on
+  Hyva too, so both were already being emitted; the duplicate block that 1.10.0
+  added to the Hyva handle produced *two* JSON-LD blocks. Both are back to one
+- **This was the first run against a working Hyva install.** The theme could not
+  be rendered on the development store — the Hyva modules were disabled and the
+  `Hyva/reset` and `Hyva/default` theme rows carried stale flags from an imported
+  database — so the Hyva half of the module had been shipping unverified. All
+  twelve blog routes are now confirmed on both themes
+
 ### 1.10.0 (2026-09-10)
 
 - **Fix: the 1.9.6 listing footer was never wired.** `PostList::getPostDate()`
