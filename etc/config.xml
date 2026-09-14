@@ -24,5 +24,12 @@
                 <url_prefix>blog</url_prefix>
             </seo>
         </requestdesk_blog>
+        <sitemap>
+            <requestdesk_blog>
+                <enabled>1</enabled>
+                <priority>0.5</priority>
+                <changefreq>weekly</changefreq>
+            </requestdesk_blog>
+        </sitemap>
     </default>
 </config>

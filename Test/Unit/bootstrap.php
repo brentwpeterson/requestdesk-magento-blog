@@ -22,6 +22,7 @@ require_once __DIR__ . '/../../vendor/autoload.php';
 $generatedFactories = [
     'Magento\Catalog\Model\CategoryFactory',
     'Magento\Framework\Api\SearchCriteriaBuilderFactory',
+    'Magento\Sitemap\Model\SitemapItemInterfaceFactory',
     'RequestDesk\Blog\Model\PostFactory',
 ];
 

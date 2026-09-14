@@ -292,6 +292,61 @@ The same limits as the short-description backfill apply: only Amasty rows with
 `status = 2` are read, and `--limit` applies to the source rows, so a limited run
 only corrects within that slice.
 
+### Moving blog images off Amasty's folder (1.10.2)
+
+Amasty keeps blog images under `pub/media/amasty/blog` and stores a featured
+image as a path relative to that folder (`MM26IN.png`,
+`uploads/2022/05/Evrig_Homepage.png`). Migrated verbatim, those resolved to
+`/media/<file>` and 404'd. Post bodies link into the same folder through
+`{{media url=...}}` directives, `.renditions` copies and absolute `/media/` URLs.
+
+The blog's images now live in `pub/media/blog`. Two steps, in this order.
+
+**1. Copy the files on the server** (a copy, not a move, while Amasty Blog is
+still serving the old pages). From the Magento root:
+
+```bash
+rsync -a --exclude 'cache/' pub/media/amasty/blog/ pub/media/blog/
+rsync -a pub/media/.renditions/amasty/blog/ pub/media/.renditions/blog/
+find pub/media/amasty/blog -type f -not -path '*/cache/*' | wc -l   # these two
+find pub/media/blog -type f | wc -l                                  # should match
+```
+
+`cache/` is Amasty's resized copies and is not referenced by the blog.
+
+**2. Repoint the posts.** New migrations write `blog/<file>` and rewrite body
+links as they go. Posts migrated before 1.10.2 are repaired by re-running the
+migration:
+
+```bash
+bin/magento requestdesk:blog:migrate-amasty --dry-run      # reports, writes nothing
+bin/magento requestdesk:blog:migrate-amasty
+```
+
+The summary gains an `image paths:` line. A featured image is moved only while
+it still holds the Amasty value (equal to the source `post_thumbnail`, or naming
+`amasty/blog/`); one picked by hand after the migration is left alone. Body
+links are rewritten only where `amasty/blog/` follows `{{media url=` or
+`/media/` (optionally through `.renditions/`), so prose and links to amasty.com
+are untouched. Only the changed columns are written, and a re-run is a no-op.
+
+Delete `pub/media/amasty/blog` only after Amasty Blog is switched off.
+
+### Blog URLs in the XML sitemap (1.10.2)
+
+On a store moving off Amasty Blog, blog sitemap entries came from the
+`amasty/blog-sitemap` add-on, so switching Amasty off drops the blog out of the
+sitemap. The module now adds its own URLs to Magento's XML sitemap through
+`Magento\Sitemap\Model\ItemProvider\Composite`, so the sitemap you already
+generate (Marketing > Site Map, or the sitemap cron) includes them. Nothing new
+to schedule.
+
+It emits `/blog`, each published post, and each category, tag and author archive
+with at least one published post, with `lastmod` from the newest post in each.
+Settings are under **Stores > Configuration > Catalog > XML Sitemap > Blog
+Options (RequestDesk)**: on/off (default on), frequency (default weekly) and
+priority (default 0.5). Regenerate the sitemap after upgrading.
+
 ## Configuration
 
 Navigate to **Stores > Configuration > RequestDesk > Blog**
@@ -771,7 +826,20 @@ Answer Engine Optimization (AEO) is the practice of structuring content so AI sy
 
 ## Changelog
 
-### 1.10.1 (2026-09-10)
+### 1.10.2 (2026-09-14)
+
+- **Fix: every migrated featured image 404'd on the live store.** The migration
+  copied Amasty's `post_thumbnail` verbatim, a path relative to
+  `pub/media/amasty/blog`, and `ImageUrl` resolved it against the media root.
+  Checked against production: the same values load under `/media/amasty/blog/`
+  and 404 under `/media/`. Images now live in `pub/media/blog`; new migrations
+  write `blog/<file>` and rewrite body links, and re-running `migrate-amasty`
+  repairs posts migrated earlier. Server copy steps are under Upgrading
+- **New: blog URLs in the XML sitemap.** `Model\Sitemap\BlogItemProvider`
+  registers with Magento's sitemap composite, replacing what
+  `amasty/blog-sitemap` provided. Configurable under Catalog > XML Sitemap.
+  Adds `magento/module-sitemap` to `require` and `Magento_Sitemap` to the module
+  sequence
 
 - **Fix: every blog page rendered twice on Hyva.** Hyva loads a `hyva_`-prefixed
   handle *in addition to* the base one, not instead of it, and all five

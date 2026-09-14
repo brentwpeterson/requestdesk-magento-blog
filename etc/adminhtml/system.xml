@@ -100,5 +100,30 @@
             </group>
 
         </section>
+
+        <!--
+            Blog options inside Magento's own XML Sitemap section, beside the
+            category, product and CMS page options, since that is where the
+            sitemap is tuned. Read by Model\Sitemap\BlogConfigReader.
+        -->
+        <section id="sitemap">
+            <group id="requestdesk_blog" translate="label" type="text" sortOrder="6" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Blog Options (RequestDesk)</label>
+                <field id="enabled" translate="label comment" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Include Blog URLs</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Adds /blog, published posts, and the category, tag and author pages that have posts.</comment>
+                </field>
+                <field id="changefreq" translate="label" type="select" sortOrder="2" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Frequency</label>
+                    <source_model>Magento\Sitemap\Model\Config\Source\Frequency</source_model>
+                </field>
+                <field id="priority" translate="label comment" type="text" sortOrder="3" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Priority</label>
+                    <backend_model>Magento\Sitemap\Model\Config\Backend\Priority</backend_model>
+                    <comment>Valid values range from 0.0 to 1.0.</comment>
+                </field>
+            </group>
+        </section>
     </system>
 </config>

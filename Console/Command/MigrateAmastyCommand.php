@@ -29,6 +29,7 @@ use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\App\State;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
 use RequestDesk\Blog\Model\AmastyCategoryMapper;
+use RequestDesk\Blog\Model\AmastyMediaPath;
 use RequestDesk\Blog\Model\AuthorResolver;
 use RequestDesk\Blog\Model\PostCategoryResolver;
 use RequestDesk\Blog\Model\PostFactory;
@@ -171,6 +172,7 @@ class MigrateAmastyCommand extends Command
         $skipped = 0;
         $backfilled = 0;
         $datesFixed = 0;
+        $mediaFixed = 0;
         $failed = 0;
         $tagLinks = 0;
         $categoryLinks = 0;
@@ -222,6 +224,20 @@ class MigrateAmastyCommand extends Command
                             : "  set publish date {$sourcePublishedAt}: {$urlKey}"
                     );
                     $datesFixed++;
+                    $touched = true;
+                }
+
+                // Posts migrated before 1.10.2 carry Amasty's image paths as-is,
+                // which resolve to /media/<file> and 404 once the files live in
+                // pub/media/blog. Same third independent backfill: featured image
+                // and body links, repaired in place.
+                if ($this->backfillMediaPaths($existingId, $row['post_thumbnail'] ?? null, $dryRun)) {
+                    $output->writeln(
+                        $dryRun
+                            ? "  would move image paths to blog/: {$urlKey}"
+                            : "  moved image paths to blog/: {$urlKey}"
+                    );
+                    $mediaFixed++;
                     $touched = true;
                 }
 
@@ -297,12 +313,12 @@ class MigrateAmastyCommand extends Command
             try {
                 $post = $this->postFactory->create();
                 $post->setTitle($title !== '' ? $title : 'Untitled');
-                $post->setContent((string) ($row['full_content'] ?? ''));
+                $post->setContent(AmastyMediaPath::rewriteContent((string) ($row['full_content'] ?? '')));
                 $post->setShortDescription($this->shortDescriptionFrom($row));
                 $post->setUrlKey($urlKey);
                 $post->setMetaTitle((string) ($row['meta_title'] ?: $title));
                 $post->setMetaDescription((string) ($row['meta_description'] ?? ''));
-                $post->setFeaturedImage(!empty($row['post_thumbnail']) ? $row['post_thumbnail'] : null);
+                $post->setFeaturedImage(AmastyMediaPath::featuredImage($row['post_thumbnail'] ?? null));
 
                 $amastyAuthor = $this->authorDetails((int) ($row['author_id'] ?? 0));
                 $post->setAuthor($amastyAuthor['name']);
@@ -362,6 +378,7 @@ class MigrateAmastyCommand extends Command
         $output->writeln("  posts skipped:   {$skipped}  (already present)");
         $output->writeln("  short descs:     {$backfilled}  (filled in on posts already present)");
         $output->writeln("  publish dates:   {$datesFixed}  (corrected on posts already present)");
+        $output->writeln("  image paths:     {$mediaFixed}  (moved to blog/ on posts already present)");
         $output->writeln("  posts failed:    {$failed}  (rolled back, safe to re-run)");
         $output->writeln("  tag links:       {$tagLinks}");
         $output->writeln('  authors linked:  ' . count($authorsSeen));
@@ -623,6 +640,71 @@ class MigrateAmastyCommand extends Command
         }
 
         $connection->update($table, ['created_at' => $publishedAt], ['post_id = ?' => $postId]);
+
+        return true;
+    }
+
+    /**
+     * Move an existing post's image references from amasty/blog/ to blog/.
+     *
+     * The featured image is only ours to move while it still holds the Amasty
+     * value: equal to the source post_thumbnail, or naming the Amasty folder
+     * outright. Anything else was chosen by hand after the migration and is left
+     * alone. Once moved it no longer matches the source, and the body no longer
+     * contains an amasty/blog/ media link, so a re-run is a no-op.
+     *
+     * A direct UPDATE of the changed columns only, for the reason the other two
+     * backfills give: a repository save would rewrite every column and reset the
+     * RequestDesk sync fields.
+     *
+     * @param int $postId
+     * @param string|null $sourceThumbnail post_thumbnail on the Amasty row
+     * @param bool $dryRun
+     * @return bool true when something was moved, or would have been
+     */
+    private function backfillMediaPaths(int $postId, ?string $sourceThumbnail, bool $dryRun): bool
+    {
+        $connection = $this->resource->getConnection();
+        $table = $this->resource->getTableName('requestdesk_blog_post');
+
+        $row = $connection->fetchRow(
+            $connection->select()
+                ->from($table, ['featured_image', 'content'])
+                ->where('post_id = ?', $postId)
+                ->limit(1)
+        ) ?: [];
+        if ($row === []) {
+            return false;
+        }
+
+        $changes = [];
+
+        $currentImage = trim((string) ($row['featured_image'] ?? ''));
+        if ($currentImage !== ''
+            && ($currentImage === trim((string) $sourceThumbnail)
+                || str_starts_with($currentImage, AmastyMediaPath::AMASTY_DIR))
+        ) {
+            $moved = AmastyMediaPath::featuredImage($currentImage);
+            if ($moved !== $currentImage) {
+                $changes['featured_image'] = $moved;
+            }
+        }
+
+        $content = (string) ($row['content'] ?? '');
+        $rewritten = AmastyMediaPath::rewriteContent($content);
+        if ($rewritten !== $content) {
+            $changes['content'] = $rewritten;
+        }
+
+        if ($changes === []) {
+            return false;
+        }
+
+        if ($dryRun) {
+            return true;
+        }
+
+        $connection->update($table, $changes, ['post_id = ?' => $postId]);
 
         return true;
     }
