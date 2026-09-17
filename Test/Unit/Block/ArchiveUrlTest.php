@@ -42,25 +42,25 @@ class ArchiveUrlTest extends TestCase
 
         $this->assertSame(
             'https://example.test/blog/category/ecommerce',
-            ArchiveUrl::resolve(ArchiveUrl::TYPE_CATEGORY, 77, 'ecommerce', $urlBuilder)
+            ArchiveUrl::resolve(ArchiveUrl::TYPE_CATEGORY, 77, 'ecommerce', $urlBuilder, 'blog')
         );
     }
 
     /**
-     * The route path, not _direct: passing "blog/tag/<key>" as a route would
-     * have the URL builder read the segments as controller and action names.
+     * The id form goes through _direct as well, under the prefix, with the
+     * trailing slash getUrl() wrote for the old route path.
      */
     public function testEmptyUrlKeyFallsBackToTheIdForm(): void
     {
         $urlBuilder = $this->urlBuilder();
         $urlBuilder->expects($this->once())
             ->method('getUrl')
-            ->with('blog/tag/view', ['id' => 12])
+            ->with('', ['_direct' => 'blog/tag/view/id/12/'])
             ->willReturn('https://example.test/blog/tag/view/id/12/');
 
         $this->assertSame(
             'https://example.test/blog/tag/view/id/12/',
-            ArchiveUrl::resolve(ArchiveUrl::TYPE_TAG, 12, '', $urlBuilder)
+            ArchiveUrl::resolve(ArchiveUrl::TYPE_TAG, 12, '', $urlBuilder, 'blog')
         );
     }
 
@@ -69,12 +69,12 @@ class ArchiveUrlTest extends TestCase
         $urlBuilder = $this->urlBuilder();
         $urlBuilder->expects($this->once())
             ->method('getUrl')
-            ->with('blog/author/view', ['id' => 4])
+            ->with('', ['_direct' => 'blog/author/view/id/4/'])
             ->willReturn('https://example.test/blog/author/view/id/4/');
 
         $this->assertSame(
             'https://example.test/blog/author/view/id/4/',
-            ArchiveUrl::resolve(ArchiveUrl::TYPE_AUTHOR, 4, null, $urlBuilder)
+            ArchiveUrl::resolve(ArchiveUrl::TYPE_AUTHOR, 4, null, $urlBuilder, 'blog')
         );
     }
 
@@ -87,12 +87,12 @@ class ArchiveUrlTest extends TestCase
         $urlBuilder = $this->urlBuilder();
         $urlBuilder->expects($this->once())
             ->method('getUrl')
-            ->with('blog/author/view', ['id' => 9])
+            ->with('', ['_direct' => 'blog/author/view/id/9/'])
             ->willReturn('https://example.test/blog/author/view/id/9/');
 
         $this->assertSame(
             'https://example.test/blog/author/view/id/9/',
-            ArchiveUrl::resolve(ArchiveUrl::TYPE_AUTHOR, 9, '   ', $urlBuilder)
+            ArchiveUrl::resolve(ArchiveUrl::TYPE_AUTHOR, 9, '   ', $urlBuilder, 'blog')
         );
     }
 
@@ -117,8 +117,29 @@ class ArchiveUrlTest extends TestCase
 
             $this->assertSame(
                 'https://example.test/' . $expectedPath,
-                ArchiveUrl::resolve($type, 1, 'news', $urlBuilder)
+                ArchiveUrl::resolve($type, 1, 'news', $urlBuilder, 'blog')
             );
         }
+    }
+
+    /**
+     * A store that moved the blog to /news gets /news links in both forms. A
+     * resolver that kept writing /blog would send every visitor to a 404.
+     */
+    public function testCustomPrefixIsUsedForBothForms(): void
+    {
+        $urlBuilder = $this->urlBuilder();
+        $urlBuilder->expects($this->exactly(2))
+            ->method('getUrl')
+            ->willReturnCallback(static fn (string $route, array $params) => 'https://example.test/' . $params['_direct']);
+
+        $this->assertSame(
+            'https://example.test/news/tag/hyva',
+            ArchiveUrl::resolve(ArchiveUrl::TYPE_TAG, 3, 'hyva', $urlBuilder, 'news')
+        );
+        $this->assertSame(
+            'https://example.test/news/tag/view/id/3/',
+            ArchiveUrl::resolve(ArchiveUrl::TYPE_TAG, 3, null, $urlBuilder, 'news')
+        );
     }
 }

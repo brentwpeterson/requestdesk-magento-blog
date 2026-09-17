@@ -58,7 +58,7 @@ class PostListPerPageTest extends TestCase
             PostList::class,
             [
                 'context' => $context,
-                'config' => new Config($this->scopeConfig),
+                'config' => new Config($this->scopeConfig, $this->createMock(\Psr\Log\LoggerInterface::class)),
             ]
         );
     }

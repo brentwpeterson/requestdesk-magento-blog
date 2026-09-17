@@ -119,21 +119,12 @@ class TagView extends PostList
     }
 
     /**
-     * The pager stays on the tag page, not /blog.
+     * The pager stays on the tag page, not the blog index.
      *
      * @return string
      */
-    protected function getPagerRoutePath(): string
+    protected function getPagerPath(): string
     {
-        return 'blog/tag/view';
-    }
-
-    /**
-     * @param array $query
-     * @return array
-     */
-    protected function getPagerRouteParams(array $query): array
-    {
-        return ['id' => (int) $this->getRequest()->getParam('id'), '_query' => $query];
+        return 'tag/view/id/' . (int) $this->getRequest()->getParam('id');
     }
 }

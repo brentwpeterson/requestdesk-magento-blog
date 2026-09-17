@@ -18,6 +18,7 @@ use Magento\Framework\View\Result\Page;
 use Magento\Framework\View\Result\PageFactory;
 use RequestDesk\Blog\Api\Data\PostInterface;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
+use RequestDesk\Blog\Model\StorefrontGate;
 
 /**
  * Renders a single published post at /blog/post/view/id/{id}.
@@ -29,12 +30,14 @@ class View implements HttpGetActionInterface
      * @param PageFactory $pageFactory
      * @param ForwardFactory $forwardFactory
      * @param RequestInterface $request
+     * @param StorefrontGate $storefrontGate
      * @param PostRepositoryInterface $postRepository
      */
     public function __construct(
         private readonly PageFactory $pageFactory,
         private readonly ForwardFactory $forwardFactory,
         private readonly RequestInterface $request,
+        private readonly StorefrontGate $storefrontGate,
         private readonly PostRepositoryInterface $postRepository
     ) {
     }
@@ -46,6 +49,10 @@ class View implements HttpGetActionInterface
      */
     public function execute()
     {
+        if (!$this->storefrontGate->allows($this->request)) {
+            return $this->forwardFactory->create()->forward('noroute');
+        }
+
         $id = (int) $this->request->getParam('id');
         if ($id <= 0) {
             return $this->notFound();

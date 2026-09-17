@@ -8,6 +8,8 @@ declare(strict_types=1);
 namespace RequestDesk\Blog\Test\Unit\Controller\Comment;
 
 use Magento\Framework\App\RequestInterface;
+use Magento\Framework\Controller\Result\Forward;
+use Magento\Framework\Controller\Result\ForwardFactory;
 use Magento\Framework\Controller\Result\Redirect;
 use Magento\Framework\Controller\Result\RedirectFactory;
 use Magento\Framework\Message\ManagerInterface;
@@ -18,6 +20,8 @@ use RequestDesk\Blog\Api\Data\PostInterface;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
 use RequestDesk\Blog\Controller\Comment\Save;
 use RequestDesk\Blog\Model\CommentManager;
+use RequestDesk\Blog\Model\Config;
+use RequestDesk\Blog\Model\StorefrontGate;
 
 /**
  * The guest comment endpoint.
@@ -47,6 +51,15 @@ class SaveTest extends TestCase
     /** @var PostRepositoryInterface&MockObject */
     private PostRepositoryInterface $postRepository;
 
+    /** @var StorefrontGate&MockObject */
+    private StorefrontGate $storefrontGate;
+
+    /** What the gate answers; a test that needs the blog off flips it. */
+    private bool $blogReachable = true;
+
+    /** @var Forward&MockObject */
+    private Forward $forward;
+
     private Save $controller;
 
     protected function setUp(): void
@@ -57,15 +70,30 @@ class SaveTest extends TestCase
         $this->postRepository = $this->createMock(PostRepositoryInterface::class);
 
         $redirect = $this->createMock(Redirect::class);
-        // Both, because the controller sends the commenter back to the post's
-        // pretty URL via setUrl() and falls back to setPath() with the id form
-        // when the post cannot be resolved. An unstubbed one returns null, and
-        // execute() is typed to return a Redirect.
+        // The controller sends the commenter back with setUrl(), on the post's
+        // pretty URL or the id form when the post cannot be resolved. setPath()
+        // is stubbed as well so a regression to it fails on the assertion that
+        // matters rather than on a null return.
         $redirect->method('setPath')->willReturnSelf();
         $redirect->method('setUrl')->willReturnSelf();
 
         $redirectFactory = $this->createMock(RedirectFactory::class);
         $redirectFactory->method('create')->willReturn($redirect);
+
+        $this->storefrontGate = $this->createMock(StorefrontGate::class);
+        $this->storefrontGate->method('allows')->willReturnCallback(fn () => $this->blogReachable);
+        $this->forward = $this->createMock(Forward::class);
+        $this->forward->method('forward')->willReturnSelf();
+        $forwardFactory = $this->createMock(ForwardFactory::class);
+        $forwardFactory->method('create')->willReturn($this->forward);
+
+        // The commenter is sent back to the post's address, which is built
+        // from the URL builder on both the pretty and the id-form path.
+        $urlBuilder = $this->createMock(UrlInterface::class);
+        $urlBuilder->method('getUrl')->willReturn('https://example.test/blog/post/view/id/7/');
+
+        $config = $this->createMock(Config::class);
+        $config->method('getUrlPrefix')->willReturn('blog');
 
         $this->controller = new Save(
             $this->request,
@@ -73,7 +101,10 @@ class SaveTest extends TestCase
             $this->messageManager,
             $this->commentManager,
             $this->postRepository,
-            $this->createMock(UrlInterface::class)
+            $urlBuilder,
+            $this->storefrontGate,
+            $forwardFactory,
+            $config
         );
     }
 
@@ -215,5 +246,25 @@ class SaveTest extends TestCase
             ->with(7, 'Ada', null, 'Nice post');
 
         $this->controller->execute();
+    }
+
+    // ------------------------------------------------------- Enable Blog
+
+    /**
+     * With the blog switched off the post page 404s and its form is gone, but
+     * this endpoint is a plain POST. Without the gate a comment could still be
+     * filed against a blog the store has taken down.
+     */
+    public function testNothingIsAcceptedWhileTheBlogIsSwitchedOff(): void
+    {
+        $this->blogReachable = false;
+        $this->params();
+        $this->postWithComments(true);
+
+        $this->commentManager->expects($this->never())->method('submit');
+        $this->messageManager->expects($this->never())->method('addSuccessMessage');
+        $this->forward->expects($this->once())->method('forward')->with('noroute');
+
+        $this->assertSame($this->forward, $this->controller->execute());
     }
 }

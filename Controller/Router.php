@@ -21,6 +21,7 @@ use Magento\Framework\App\ActionInterface;
 use Magento\Framework\App\RequestInterface;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\App\RouterInterface;
+use RequestDesk\Blog\Model\Config;
 
 /**
  * Resolves /blog/<url-key> to a post.
@@ -40,6 +41,18 @@ use Magento\Framework\App\RouterInterface;
  *
  * The id form keeps working on purpose. Nothing needs rewriting, old links stay
  * good, and there are no redirects to maintain.
+ *
+ * Blog URL Prefix. Everything above answers on the store's configured prefix,
+ * /blog unless it is set to something else. On a custom prefix such as /news
+ * the standard router cannot reach the controllers, because it only knows the
+ * front name "blog", so this router also maps /news, /news/post/view/id/N,
+ * /news/comment/save and the other controller paths onto them. Only the
+ * controller and action pairs the module has are mapped. A forward to an
+ * action that does not exist would come straight back here, and Magento stops
+ * that loop after 100 passes with an exception rather than a 404. The old /blog
+ * addresses on such a store are closed by Model\StorefrontGate.
+ *
+ * Enable Blog set to No makes this router match nothing.
  */
 class Router implements RouterInterface
 {
@@ -71,31 +84,70 @@ class Router implements RouterInterface
     ];
 
     /**
+     * The module's storefront controllers and their actions, which is every
+     * pair a custom prefix is allowed to reach. Keys match RESERVED.
+     */
+    private const CONTROLLER_ACTIONS = [
+        'author' => ['view'],
+        'category' => ['view'],
+        'comment' => ['save'],
+        'index' => ['index'],
+        'post' => ['view'],
+        'tag' => ['view'],
+    ];
+
+    /**
      * @param ActionFactory $actionFactory
      * @param ResourceConnection $resource
+     * @param Config $config
      */
     public function __construct(
         private readonly ActionFactory $actionFactory,
-        private readonly ResourceConnection $resource
+        private readonly ResourceConnection $resource,
+        private readonly Config $config
     ) {
     }
 
     /**
+     * Resolve a storefront path under the blog's prefix.
+     *
      * @param RequestInterface $request
      * @return ActionInterface|null
      */
     public function match(RequestInterface $request): ?ActionInterface
     {
-        $identifier = trim($request->getPathInfo(), '/');
-        $parts = explode('/', $identifier);
-
-        if (($parts[0] ?? '') !== 'blog') {
+        // Already forwarded once and the standard router still found nothing to
+        // run. Matching again would forward again, so let the 404 happen.
+        if ($request->getModuleName() === Config::ROUTE_FRONT_NAME) {
             return null;
         }
 
-        // /blog/<type>/<url-key> — a category, tag or author archive.
+        if (!$this->config->isBlogEnabled()) {
+            return null;
+        }
+
+        $prefix = $this->config->getUrlPrefix();
+        $identifier = trim($request->getPathInfo(), '/');
+        $parts = explode('/', $identifier);
+
+        if (($parts[0] ?? '') !== $prefix) {
+            return null;
+        }
+
+        // /<prefix>/<type>/<url-key> — a category, tag or author archive.
         if (count($parts) === 3 && in_array($parts[1], self::ARCHIVE_TYPES, true)) {
-            return $this->matchArchive($request, $identifier, $parts[1], $parts[2]);
+            $archive = $this->matchArchive($request, $identifier, $parts[1], $parts[2]);
+            if ($archive !== null || $prefix === Config::ROUTE_FRONT_NAME) {
+                return $archive;
+            }
+        }
+
+        // On a custom prefix, the controller paths the standard router would
+        // have matched under /blog.
+        if ($prefix !== Config::ROUTE_FRONT_NAME
+            && (count($parts) === 1 || in_array($parts[1], self::RESERVED, true))
+        ) {
+            return $this->matchControllerPath($request, $identifier, $parts);
         }
 
         // Only /blog/<something> — one segment past the front name.
@@ -113,7 +165,7 @@ class Router implements RouterInterface
             return null;
         }
 
-        $request->setModuleName('blog')
+        $request->setModuleName(Config::ROUTE_FRONT_NAME)
             ->setControllerName('post')
             ->setActionName('view')
             ->setParam('id', $postId);
@@ -126,7 +178,48 @@ class Router implements RouterInterface
     }
 
     /**
-     * Forward /blog/<type>/<url-key> to the archive controller for that record.
+     * Forward a controller path under a custom prefix onto the blog's controllers.
+     *
+     * A store whose prefix is not the route's front name cannot reach them
+     * through the standard router.
+     *
+     * The parameters after the action (id/77) are read from the path by the
+     * standard router when it picks up the forward, the same way it reads them
+     * for /blog/category/view/id/77.
+     *
+     * @param RequestInterface $request
+     * @param string $identifier the full path, for the address-bar alias
+     * @param string[] $parts
+     * @return ActionInterface|null null for a pair the module does not have
+     */
+    private function matchControllerPath(
+        RequestInterface $request,
+        string $identifier,
+        array $parts
+    ): ?ActionInterface {
+        $controller = $parts[1] ?? 'index';
+        $controller = $controller !== '' ? $controller : 'index';
+        $action = $parts[2] ?? 'index';
+
+        if (!in_array($action, self::CONTROLLER_ACTIONS[$controller] ?? [], true)) {
+            return null;
+        }
+
+        $request->setModuleName(Config::ROUTE_FRONT_NAME)
+            ->setControllerName($controller)
+            ->setActionName($action);
+
+        for ($i = 3, $count = count($parts); $i < $count; $i += 2) {
+            $request->setParam($parts[$i], isset($parts[$i + 1]) ? urldecode($parts[$i + 1]) : '');
+        }
+
+        $request->setAlias(\Magento\Framework\Url::REWRITE_REQUEST_PATH_ALIAS, $identifier);
+
+        return $this->actionFactory->create(\Magento\Framework\App\Action\Forward::class);
+    }
+
+    /**
+     * Forward /<prefix>/<type>/<url-key> to the archive controller for that record.
      *
      * @param RequestInterface $request
      * @param string $identifier the full path, for the address-bar alias
@@ -155,7 +248,7 @@ class Router implements RouterInterface
             return null;
         }
 
-        $request->setModuleName('blog')
+        $request->setModuleName(Config::ROUTE_FRONT_NAME)
             ->setControllerName($type)
             ->setActionName('view')
             ->setParam('id', $id);

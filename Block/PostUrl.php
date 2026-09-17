@@ -16,8 +16,8 @@ use RequestDesk\Blog\Api\Data\PostInterface;
 /**
  * Builds the public address of a post.
  *
- * Prefers the pretty form /blog/<url-key>, which Controller\Router resolves. The
- * id form /blog/post/view/id/N stays the fallback for a post with no url_key, so
+ * Prefers the pretty form /<prefix>/<url-key>, which Controller\Router resolves.
+ * The id form /<prefix>/post/view/id/N stays the fallback for a post with no url_key, so
  * a row that predates the column - or one imported without a slug - is still
  * reachable instead of linking nowhere.
  *
@@ -27,21 +27,26 @@ use RequestDesk\Blog\Api\Data\PostInterface;
 class PostUrl
 {
     /**
+     * The prefix is required rather than defaulted to "blog": a call site that
+     * forgot it would keep writing /blog links after a store changed the prefix,
+     * and nothing would say so.
+     *
      * @param PostInterface $post
      * @param UrlInterface $urlBuilder
+     * @param string $prefix from Model\Config::getUrlPrefix()
      * @return string
      */
-    public static function resolve(PostInterface $post, UrlInterface $urlBuilder): string
+    public static function resolve(PostInterface $post, UrlInterface $urlBuilder, string $prefix): string
     {
         $urlKey = trim((string) $post->getUrlKey());
 
         if ($urlKey === '') {
-            return $urlBuilder->getUrl('blog/post/view', ['id' => $post->getPostId()]);
+            return BlogUrl::resolve($prefix, 'post/view/id/' . (int) $post->getPostId(), [], $urlBuilder);
         }
 
         // _direct emits the path verbatim under the store base URL. Passing
-        // "blog/<key>" as a route path instead would have the URL builder read
-        // the key as a controller name and rewrite it.
-        return $urlBuilder->getUrl('', ['_direct' => 'blog/' . $urlKey]);
+        // "<prefix>/<key>" as a route path instead would have the URL builder
+        // read the key as a controller name and rewrite it.
+        return $urlBuilder->getUrl('', ['_direct' => $prefix . '/' . $urlKey]);
     }
 }

@@ -16,6 +16,7 @@ use Magento\Sitemap\Model\ItemProvider\ItemProviderInterface;
 use Magento\Sitemap\Model\SitemapItemInterface;
 use Magento\Sitemap\Model\SitemapItemInterfaceFactory;
 use Magento\Store\Model\ScopeInterface;
+use RequestDesk\Blog\Model\Config;
 
 /**
  * Puts the blog into Magento's XML sitemap.
@@ -50,12 +51,14 @@ class BlogItemProvider implements ItemProviderInterface
      * @param SitemapItemInterfaceFactory $itemFactory
      * @param BlogConfigReader $configReader
      * @param ScopeConfigInterface $scopeConfig
+     * @param Config $config
      */
     public function __construct(
         private readonly ResourceConnection $resource,
         private readonly SitemapItemInterfaceFactory $itemFactory,
         private readonly BlogConfigReader $configReader,
-        private readonly ScopeConfigInterface $scopeConfig
+        private readonly ScopeConfigInterface $scopeConfig,
+        private readonly Config $config
     ) {
     }
 
@@ -79,11 +82,15 @@ class BlogItemProvider implements ItemProviderInterface
             return [];
         }
 
-        $items = [$this->item('blog', max(array_column($posts, 'updated_at')), $storeId)];
+        // The store's own prefix: the sitemap lists the addresses the storefront
+        // serves, and on a store that moved the blog to /news, /blog 404s.
+        $prefix = $this->config->getUrlPrefix($storeId);
+
+        $items = [$this->item($prefix, max(array_column($posts, 'updated_at')), $storeId)];
 
         foreach ($posts as $post) {
             $urlKey = trim((string) $post['url_key']);
-            $url = $urlKey !== '' ? 'blog/' . $urlKey : 'blog/post/view/id/' . (int) $post['post_id'];
+            $url = $urlKey !== '' ? $prefix . '/' . $urlKey : $prefix . '/post/view/id/' . (int) $post['post_id'];
             $items[] = $this->item($url, $post['updated_at'], $storeId);
         }
 
@@ -92,7 +99,7 @@ class BlogItemProvider implements ItemProviderInterface
             'tag' => $this->fetchTagArchives($storeId),
             'author' => $this->fetchAuthorArchives($storeId),
         ] as $type => $archives) {
-            foreach ($this->archiveUrls($type, $archives) as $url => $updatedAt) {
+            foreach ($this->archiveUrls($prefix, $type, $archives) as $url => $updatedAt) {
                 $items[] = $this->item($url, $updatedAt, $storeId);
             }
         }
@@ -226,11 +233,12 @@ class BlogItemProvider implements ItemProviderInterface
      * later record with the same key would point search engines at the wrong
      * archive and gets its id form instead, which the router serves exactly.
      *
+     * @param string $prefix
      * @param string $type
      * @param array<int, array{id:string, url_key:?string, updated_at:string}> $rows
      * @return array<string, string> url => updated_at
      */
-    private function archiveUrls(string $type, array $rows): array
+    private function archiveUrls(string $prefix, string $type, array $rows): array
     {
         $urls = [];
         $claimedKeys = [];
@@ -240,9 +248,9 @@ class BlogItemProvider implements ItemProviderInterface
 
             if ($urlKey !== '' && !isset($claimedKeys[$urlKey])) {
                 $claimedKeys[$urlKey] = true;
-                $url = 'blog/' . $type . '/' . $urlKey;
+                $url = $prefix . '/' . $type . '/' . $urlKey;
             } else {
-                $url = 'blog/' . $type . '/view/id/' . (int) $row['id'];
+                $url = $prefix . '/' . $type . '/view/id/' . (int) $row['id'];
             }
 
             $urls[$url] = (string) $row['updated_at'];

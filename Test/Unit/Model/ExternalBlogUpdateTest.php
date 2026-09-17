@@ -19,6 +19,7 @@ use Psr\Log\LoggerInterface;
 use RequestDesk\Blog\Api\Data\PostInterface;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
 use RequestDesk\Blog\Model\ApiKeyValidator;
+use RequestDesk\Blog\Model\Config;
 use RequestDesk\Blog\Model\ExternalBlog;
 use RequestDesk\Blog\Model\PostCategoryResolver;
 use RequestDesk\Blog\Model\PostFactory;
@@ -60,7 +61,8 @@ class ExternalBlogUpdateTest extends TestCase
             $this->createMock(ApiKeyValidator::class),
             $this->createMock(TagResolver::class),
             $this->postCategoryResolver,
-            $urlBuilder
+            $urlBuilder,
+            $this->createMock(Config::class)
         );
     }
 

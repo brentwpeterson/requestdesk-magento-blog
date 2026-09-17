@@ -117,21 +117,12 @@ class CategoryView extends PostList
     }
 
     /**
-     * The pager stays on the category page, not /blog.
+     * The pager stays on the category page, not the blog index.
      *
      * @return string
      */
-    protected function getPagerRoutePath(): string
+    protected function getPagerPath(): string
     {
-        return 'blog/category/view';
-    }
-
-    /**
-     * @param array $query
-     * @return array
-     */
-    protected function getPagerRouteParams(array $query): array
-    {
-        return ['id' => $this->getCategoryId(), '_query' => $query];
+        return 'category/view/id/' . (int) $this->getCategoryId();
     }
 }

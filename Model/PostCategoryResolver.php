@@ -29,12 +29,14 @@ class PostCategoryResolver
      * @param ResourceConnection $resource
      * @param CategoryRepositoryInterface $categoryRepository
      * @param LoggerInterface $logger
+     * @param Config $config
      */
     public function __construct(
         private readonly ResourceConnection $resource,
         private readonly CategoryRepositoryInterface $categoryRepository,
         private readonly LoggerInterface $logger,
-        private readonly UrlInterface $urlBuilder
+        private readonly UrlInterface $urlBuilder,
+        private readonly Config $config
     ) {
     }
 
@@ -110,7 +112,8 @@ class PostCategoryResolver
                         ArchiveUrl::TYPE_CATEGORY,
                         $categoryId,
                         $category->getUrlKey(),
-                        $this->urlBuilder
+                        $this->urlBuilder,
+                        $this->config->getUrlPrefix()
                     ),
                 ];
             } catch (\Throwable $e) {

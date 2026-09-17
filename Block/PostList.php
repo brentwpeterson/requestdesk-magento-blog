@@ -304,9 +304,10 @@ class PostList extends Template
      * An active ?limit= has to be carried over explicitly or page 2 would
      * revert to the configured size.
      *
-     * The route comes from getPagerRoutePath()/getPagerRouteParams() so filtered
-     * listings (category/author/tag) keep the pager on their own URL and carry
-     * their identifying parameter instead of jumping back to /blog.
+     * The path comes from getPagerPath() so filtered listings (category, author,
+     * tag) keep the pager on their own URL and carry their identifying id
+     * instead of jumping back to the blog index. Both sit under the store's
+     * configured prefix.
      *
      * @param int $page
      * @return string
@@ -320,28 +321,18 @@ class PostList extends Template
             $query[self::LIMIT_VAR_NAME] = $limit;
         }
 
-        return $this->getUrl($this->getPagerRoutePath(), $this->getPagerRouteParams($query));
+        return BlogUrl::resolve($this->config->getUrlPrefix(), $this->getPagerPath(), $query, $this->_urlBuilder);
     }
 
     /**
-     * Route the pager links to; the plain list answers on /blog.
+     * Path under the blog prefix the pager links to; the plain list answers on
+     * the prefix itself.
      *
      * @return string
      */
-    protected function getPagerRoutePath(): string
+    protected function getPagerPath(): string
     {
-        return 'blog';
-    }
-
-    /**
-     * Route parameters for a pager link, including the query string.
-     *
-     * @param array $query
-     * @return array
-     */
-    protected function getPagerRouteParams(array $query): array
-    {
-        return ['_query' => $query];
+        return '';
     }
 
     /**
@@ -352,7 +343,7 @@ class PostList extends Template
      */
     public function getPostUrl(PostInterface $post): string
     {
-        return PostUrl::resolve($post, $this->_urlBuilder);
+        return PostUrl::resolve($post, $this->_urlBuilder, $this->config->getUrlPrefix());
     }
 
     /**

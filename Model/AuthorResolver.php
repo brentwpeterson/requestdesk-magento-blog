@@ -32,11 +32,13 @@ class AuthorResolver
      * @param ResourceConnection $resource
      * @param UrlInterface $urlBuilder
      * @param StoreManagerInterface $storeManager
+     * @param Config $config
      */
     public function __construct(
         private readonly ResourceConnection $resource,
         private readonly UrlInterface $urlBuilder,
-        private readonly StoreManagerInterface $storeManager
+        private readonly StoreManagerInterface $storeManager,
+        private readonly Config $config
     ) {
     }
 
@@ -94,7 +96,8 @@ class AuthorResolver
                 ArchiveUrl::TYPE_AUTHOR,
                 (int) $row['author_id'],
                 $row['url_key'] ?? null,
-                $this->urlBuilder
+                $this->urlBuilder,
+                $this->config->getUrlPrefix()
             ),
             'link' => (string) ($row['url'] ?? ''),
         ];

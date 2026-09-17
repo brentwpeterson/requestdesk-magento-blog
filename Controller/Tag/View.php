@@ -17,6 +17,7 @@ use Magento\Framework\Controller\Result\ForwardFactory;
 use Magento\Framework\View\Result\Page;
 use Magento\Framework\View\Result\PageFactory;
 use RequestDesk\Blog\Model\TagResolver;
+use RequestDesk\Blog\Model\StorefrontGate;
 
 /**
  * Renders a tag archive at /blog/tag/view/id/{tag_id}.
@@ -27,12 +28,14 @@ class View implements HttpGetActionInterface
      * @param PageFactory $pageFactory
      * @param ForwardFactory $forwardFactory
      * @param RequestInterface $request
+     * @param StorefrontGate $storefrontGate
      * @param TagResolver $tagResolver
      */
     public function __construct(
         private readonly PageFactory $pageFactory,
         private readonly ForwardFactory $forwardFactory,
         private readonly RequestInterface $request,
+        private readonly StorefrontGate $storefrontGate,
         private readonly TagResolver $tagResolver
     ) {
     }
@@ -42,6 +45,10 @@ class View implements HttpGetActionInterface
      */
     public function execute()
     {
+        if (!$this->storefrontGate->allows($this->request)) {
+            return $this->forwardFactory->create()->forward('noroute');
+        }
+
         $id = (int) $this->request->getParam('id');
         $tag = $id > 0 ? $this->tagResolver->getTag($id) : null;
         if ($tag === null) {

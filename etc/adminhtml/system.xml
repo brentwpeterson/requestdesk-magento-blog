@@ -29,7 +29,8 @@
                 <field id="enabled" translate="label comment" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Enable Blog</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
-                    <comment>Enable/disable the blog functionality on the frontend.</comment>
+                    <backend_model>RequestDesk\Blog\Model\Config\Backend\StorefrontSetting</backend_model>
+                    <comment>No takes the blog off the storefront. Blog pages return 404, comments are refused, blog widgets show nothing and the blog leaves the XML sitemap. Posts can still be edited, imported and published in the admin and through the API.</comment>
                 </field>
 
                 <field id="blog_title" translate="label comment" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
@@ -85,7 +86,8 @@
 
                 <field id="url_prefix" translate="label comment" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Blog URL Prefix</label>
-                    <comment>URL prefix for blog pages (default: "blog"). Leave empty for /blog</comment>
+                    <backend_model>RequestDesk\Blog\Model\Config\Backend\UrlPrefix</backend_model>
+                    <comment>The first part of every blog address. "news" puts the blog at /news, posts at /news/post-name and archives at /news/category/name, and /blog stops answering. Lowercase letters, numbers, hyphens and underscores. Leave empty to keep /blog.</comment>
                 </field>
 
                 <field id="meta_title" translate="label comment" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">

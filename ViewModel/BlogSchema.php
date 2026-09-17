@@ -23,6 +23,7 @@ use RequestDesk\Blog\Block\PostUrl;
 use RequestDesk\Blog\Model\AuthorResolver;
 use RequestDesk\Blog\Model\CommentManager;
 use RequestDesk\Blog\Model\TagResolver;
+use RequestDesk\Blog\Model\Config;
 
 /**
  * Builds the answer-engine JSON-LD for a blog post — a BlogPosting node on every
@@ -36,6 +37,7 @@ class BlogSchema implements ArgumentInterface
      * @param StoreManagerInterface $storeManager
      * @param Json $json
      * @param LoggerInterface $logger
+     * @param Config $config
      */
     public function __construct(
         private readonly UrlInterface $urlBuilder,
@@ -46,7 +48,8 @@ class BlogSchema implements ArgumentInterface
         private readonly FaqSchemaBuilderInterface $faqSchemaBuilder,
         private readonly AuthorResolver $authorResolver,
         private readonly TagResolver $tagResolver,
-        private readonly CommentManager $commentManager
+        private readonly CommentManager $commentManager,
+        private readonly Config $config
     ) {
     }
 
@@ -100,7 +103,7 @@ class BlogSchema implements ArgumentInterface
      */
     private function buildBlogPostingNode(PostInterface $post): array
     {
-        $url = PostUrl::resolve($post, $this->urlBuilder);
+        $url = PostUrl::resolve($post, $this->urlBuilder, $this->config->getUrlPrefix());
 
         $node = [
             '@context' => 'https://schema.org',

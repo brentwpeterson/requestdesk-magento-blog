@@ -43,6 +43,7 @@ class ExternalBlog implements ExternalBlogInterface
      * @param EncryptorInterface $encryptor
      * @param SearchCriteriaBuilderFactory $searchCriteriaBuilderFactory
      * @param LoggerInterface $logger
+     * @param Config $config
      */
     public function __construct(
         private readonly PostRepositoryInterface $postRepository,
@@ -56,7 +57,8 @@ class ExternalBlog implements ExternalBlogInterface
         private readonly ApiKeyValidator $apiKeyValidator,
         private readonly TagResolver $tagResolver,
         private readonly PostCategoryResolver $postCategoryResolver,
-        private readonly UrlInterface $urlBuilder
+        private readonly UrlInterface $urlBuilder,
+        private readonly Config $config
     ) {
     }
 
@@ -111,7 +113,7 @@ class ExternalBlog implements ExternalBlogInterface
             'last_sync' => $post->getRequestdeskLastSync(),
             'created_at' => $post->getCreatedAt(),
             'updated_at' => $post->getUpdatedAt(),
-            'url' => PostUrl::resolve($post, $this->urlBuilder)
+            'url' => PostUrl::resolve($post, $this->urlBuilder, $this->config->getUrlPrefix())
         ];
     }
 

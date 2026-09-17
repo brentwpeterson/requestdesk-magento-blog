@@ -12,13 +12,18 @@ namespace RequestDesk\Blog\Controller\Comment;
 
 use Magento\Framework\App\Action\HttpPostActionInterface;
 use Magento\Framework\App\RequestInterface;
+use Magento\Framework\Controller\Result\Forward;
+use Magento\Framework\Controller\Result\ForwardFactory;
 use Magento\Framework\Controller\Result\Redirect;
 use Magento\Framework\Controller\Result\RedirectFactory;
 use Magento\Framework\Message\ManagerInterface;
 use Magento\Framework\UrlInterface;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
+use RequestDesk\Blog\Block\BlogUrl;
 use RequestDesk\Blog\Block\PostUrl;
 use RequestDesk\Blog\Model\CommentManager;
+use RequestDesk\Blog\Model\Config;
+use RequestDesk\Blog\Model\StorefrontGate;
 
 /**
  * Accepts a guest comment. New comments are stored pending and never shown until
@@ -32,6 +37,11 @@ class Save implements HttpPostActionInterface
      * @param RedirectFactory $redirectFactory
      * @param ManagerInterface $messageManager
      * @param CommentManager $commentManager
+     * @param PostRepositoryInterface $postRepository
+     * @param UrlInterface $urlBuilder
+     * @param StorefrontGate $storefrontGate
+     * @param ForwardFactory $forwardFactory
+     * @param Config $config
      */
     public function __construct(
         private readonly RequestInterface $request,
@@ -39,15 +49,24 @@ class Save implements HttpPostActionInterface
         private readonly ManagerInterface $messageManager,
         private readonly CommentManager $commentManager,
         private readonly PostRepositoryInterface $postRepository,
-        private readonly UrlInterface $urlBuilder
+        private readonly UrlInterface $urlBuilder,
+        private readonly StorefrontGate $storefrontGate,
+        private readonly ForwardFactory $forwardFactory,
+        private readonly Config $config
     ) {
     }
 
     /**
-     * @return Redirect
+     * @return Redirect|Forward
      */
-    public function execute(): Redirect
+    public function execute()
     {
+        // A switched-off blog takes no comments either. The form is gone with
+        // the post page, but this endpoint is a plain POST anyone can send.
+        if (!$this->storefrontGate->allows($this->request)) {
+            return $this->forwardFactory->create()->forward('noroute');
+        }
+
         $redirect = $this->redirectFactory->create();
         $postId = (int) $this->request->getParam('post_id');
         $backToPost = $this->backToPost($redirect, $postId);
@@ -107,12 +126,14 @@ class Save implements HttpPostActionInterface
     {
         try {
             return $redirect->setUrl(
-                PostUrl::resolve($this->postRepository->getById($postId), $this->urlBuilder)
+                PostUrl::resolve($this->postRepository->getById($postId), $this->urlBuilder, $this->config->getUrlPrefix())
             );
         } catch (\Throwable $e) {
             // No such post, or it could not be loaded. The id form still routes,
             // and a bad id lands on the same 404 it always did.
-            return $redirect->setPath('blog/post/view', ['id' => $postId]);
+            return $redirect->setUrl(
+                BlogUrl::resolve($this->config->getUrlPrefix(), 'post/view/id/' . $postId, [], $this->urlBuilder)
+            );
         }
     }
 }

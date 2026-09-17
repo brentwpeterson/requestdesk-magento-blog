@@ -19,6 +19,7 @@ use Psr\Log\LoggerInterface;
 use RequestDesk\Blog\Api\Data\PostInterface;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
 use RequestDesk\Blog\Model\ApiKeyValidator;
+use RequestDesk\Blog\Model\Config;
 use RequestDesk\Blog\Model\ExternalBlog;
 use RequestDesk\Blog\Model\PostCategoryResolver;
 use RequestDesk\Blog\Model\PostFactory;
@@ -51,6 +52,8 @@ class ExternalBlogUrlTest extends TestCase
         $this->postRepository = $this->createMock(PostRepositoryInterface::class);
         $this->apiKeyValidator = $this->createMock(ApiKeyValidator::class);
         $this->urlBuilder = $this->createMock(UrlInterface::class);
+        $config = $this->createMock(Config::class);
+        $config->method('getUrlPrefix')->willReturn('blog');
 
         $this->externalBlog = new ExternalBlog(
             $this->postRepository,
@@ -64,7 +67,8 @@ class ExternalBlogUrlTest extends TestCase
             $this->apiKeyValidator,
             $this->createMock(TagResolver::class),
             $this->createMock(PostCategoryResolver::class),
-            $this->urlBuilder
+            $this->urlBuilder,
+            $config
         );
     }
 
@@ -97,7 +101,7 @@ class ExternalBlogUrlTest extends TestCase
 
         $this->urlBuilder->expects($this->once())
             ->method('getUrl')
-            ->with('blog/post/view', ['id' => 256])
+            ->with('', ['_direct' => 'blog/post/view/id/256/'])
             ->willReturn('https://example.com/blog/post/view/id/256/');
 
         $result = $this->externalBlog->getPost('256');

@@ -12,6 +12,7 @@ namespace RequestDesk\Blog\Model;
 
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Store\Model\ScopeInterface;
+use Psr\Log\LoggerInterface;
 
 /**
  * Reads the blog's system configuration.
@@ -20,6 +21,22 @@ class Config
 {
     public const XML_PATH_POSTS_PER_PAGE = 'requestdesk_blog/general/posts_per_page';
     public const XML_PATH_ENABLE_PAGINATION = 'requestdesk_blog/general/enable_pagination';
+    public const XML_PATH_ENABLED = 'requestdesk_blog/general/enabled';
+    public const XML_PATH_URL_PREFIX = 'requestdesk_blog/seo/url_prefix';
+
+    /**
+     * The front name in etc/frontend/routes.xml. The configured prefix is what
+     * visitors see; this is what the controllers are registered under, and the
+     * two are the same unless a store sets a different prefix.
+     */
+    public const ROUTE_FRONT_NAME = 'blog';
+
+    /**
+     * What a prefix may look like: one path segment, lowercase letters, digits,
+     * hyphens and underscores. Anything with a slash cannot be matched by
+     * Controller\Router, which reads the first segment of the path.
+     */
+    public const URL_PREFIX_PATTERN = '/^[a-z0-9][a-z0-9_-]*$/';
 
     /**
      * Mirrors etc/config.xml, so a blank value still paginates instead of
@@ -35,9 +52,11 @@ class Config
 
     /**
      * @param ScopeConfigInterface $scopeConfig
+     * @param LoggerInterface $logger
      */
     public function __construct(
-        private readonly ScopeConfigInterface $scopeConfig
+        private readonly ScopeConfigInterface $scopeConfig,
+        private readonly LoggerInterface $logger
     ) {
     }
 
@@ -97,5 +116,77 @@ class Config
             ScopeInterface::SCOPE_STORE,
             $store
         );
+    }
+
+    /**
+     * Whether the blog is switched on for the storefront.
+     *
+     * Off means every blog page, the comment endpoint and the blog widgets
+     * answer as if the module were not there, and the blog drops out of the
+     * XML sitemap. The admin, the REST API and the RequestDesk import are not
+     * affected, so posts can still be prepared while the storefront is dark.
+     *
+     * @param int|string|null $store
+     * @return bool
+     */
+    public function isBlogEnabled($store = null): bool
+    {
+        return $this->scopeConfig->isSetFlag(
+            self::XML_PATH_ENABLED,
+            ScopeInterface::SCOPE_STORE,
+            $store
+        );
+    }
+
+    /**
+     * The first path segment of every blog address on the storefront.
+     *
+     * Empty means the route's own front name, so an unset field keeps /blog.
+     * The admin form rejects a malformed value on save (see
+     * Model\Config\Backend\UrlPrefix), but config:set and direct database
+     * writes skip that check. A malformed value that reaches here is logged as
+     * an error and the blog stays on /blog, because a prefix with a slash or a
+     * space in it cannot be routed at all and would take every blog page down.
+     *
+     * @param int|string|null $store
+     * @return string
+     */
+    public function getUrlPrefix($store = null): string
+    {
+        $configured = (string) $this->scopeConfig->getValue(
+            self::XML_PATH_URL_PREFIX,
+            ScopeInterface::SCOPE_STORE,
+            $store
+        );
+
+        $prefix = self::normalizeUrlPrefix($configured);
+        if ($prefix === '') {
+            return self::ROUTE_FRONT_NAME;
+        }
+
+        if (!preg_match(self::URL_PREFIX_PATTERN, $prefix)) {
+            $this->logger->error(sprintf(
+                'RequestDesk Blog: %s is "%s", which is not a single URL segment. '
+                . 'The blog is served on /%s until it is corrected.',
+                self::XML_PATH_URL_PREFIX,
+                $configured,
+                self::ROUTE_FRONT_NAME
+            ));
+            return self::ROUTE_FRONT_NAME;
+        }
+
+        return $prefix;
+    }
+
+    /**
+     * Trim surrounding whitespace and slashes and lowercase, so "/News/" and
+     * "news" name the same prefix.
+     *
+     * @param string|null $value
+     * @return string
+     */
+    public static function normalizeUrlPrefix(?string $value): string
+    {
+        return strtolower(trim(trim((string) $value), '/'));
     }
 }

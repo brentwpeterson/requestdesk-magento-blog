@@ -23,6 +23,7 @@ use RequestDesk\Blog\Api\PostRepositoryInterface;
 use RequestDesk\Blog\Block\ImageUrl;
 use RequestDesk\Blog\Block\PostUrl;
 use RequestDesk\Blog\Model\PostCategoryResolver;
+use RequestDesk\Blog\Model\Config;
 
 /**
  * A native Magento widget that surfaces blog posts anywhere widgets are allowed
@@ -47,6 +48,7 @@ class PostsWidget extends Template implements BlockInterface
      * @param PostCategoryResolver $categoryResolver
      * @param Registry $registry
      * @param \RequestDesk\Blog\Model\PostContent $postContent
+     * @param Config $config
      * @param array $data
      */
     public function __construct(
@@ -58,6 +60,7 @@ class PostsWidget extends Template implements BlockInterface
         private readonly PostCategoryResolver $categoryResolver,
         private readonly Registry $registry,
         private readonly \RequestDesk\Blog\Model\PostContent $postContent,
+        private readonly Config $config,
         array $data = []
     ) {
         parent::__construct($context, $data);
@@ -150,12 +153,27 @@ class PostsWidget extends Template implements BlockInterface
     }
 
     /**
+     * Render nothing while the blog is switched off, so a widget placed on a CMS
+     * page or a product page does not keep linking to posts that now 404.
+     *
+     * @return string
+     */
+    protected function _toHtml()
+    {
+        if (!$this->config->isBlogEnabled()) {
+            return '';
+        }
+
+        return parent::_toHtml();
+    }
+
+    /**
      * @param PostInterface $post
      * @return string
      */
     public function getPostUrl(PostInterface $post): string
     {
-        return PostUrl::resolve($post, $this->_urlBuilder);
+        return PostUrl::resolve($post, $this->_urlBuilder, $this->config->getUrlPrefix());
     }
 
     /**

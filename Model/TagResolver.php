@@ -27,10 +27,12 @@ class TagResolver
     /**
      * @param ResourceConnection $resource
      * @param UrlInterface $urlBuilder
+     * @param Config $config
      */
     public function __construct(
         private readonly ResourceConnection $resource,
-        private readonly UrlInterface $urlBuilder
+        private readonly UrlInterface $urlBuilder,
+        private readonly Config $config
     ) {
     }
 
@@ -62,7 +64,8 @@ class TagResolver
                     ArchiveUrl::TYPE_TAG,
                     (int) $row['tag_id'],
                     $row['url_key'] ?? null,
-                    $this->urlBuilder
+                    $this->urlBuilder,
+                    $this->config->getUrlPrefix()
                 ),
             ];
         }
@@ -104,7 +107,8 @@ class TagResolver
                     ArchiveUrl::TYPE_TAG,
                     (int) $row['tag_id'],
                     $row['url_key'] ?? null,
-                    $this->urlBuilder
+                    $this->urlBuilder,
+                    $this->config->getUrlPrefix()
                 ),
         ];
     }

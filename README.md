@@ -355,7 +355,7 @@ Navigate to **Stores > Configuration > RequestDesk > Blog**
 
 | Setting | Description |
 |---------|-------------|
-| Enable Blog | Enable/disable blog functionality on frontend |
+| Enable Blog | No takes the blog off the storefront: every blog page returns 404, the comment endpoint refuses posts, blog widgets render nothing and the blog leaves the XML sitemap. The admin, the REST API and the RequestDesk import keep working |
 | Blog Title | Title displayed on blog listing page |
 | Posts Per Page | Number of posts per page (default: 10) |
 
@@ -373,11 +373,33 @@ Navigate to **Stores > Configuration > RequestDesk > Blog**
 |---------|-------------|
 | Enable Automatic Import | Import published posts from RequestDesk every hour |
 
+### Blog URL Prefix
+
+`news` puts the listing at `/news`, posts at `/news/<url-key>`, archives at
+`/news/category/<url-key>` and the id forms at `/news/post/view/id/N`. Links,
+pagination, the comment form, the JSON-LD `@id` and the XML sitemap all follow,
+and the old `/blog` addresses return 404 rather than serving the same pages at a
+second URL.
+
+One path segment, lowercase letters, numbers, hyphens and underscores. The admin
+refuses a value with a slash or a space, and one that is already another
+module's front name (`checkout`, `customer`), because the standard router would
+reach that module first and the blog would never answer. `config:set` runs the
+same validation; a value written straight into `core_config_data` does not, and
+a malformed one is logged as an error while the blog stays on `/blog`.
+
+The setting is per store view, so two store views can run the blog on different
+prefixes.
+
+What it does not touch: links to the blog in your own theme, a top menu item or
+a CMS block still point where they were written. Flush the full page cache after
+changing it, which the admin marks as invalid for you.
+
 ### SEO Settings
 
 | Setting | Description |
 |---------|-------------|
-| Blog URL Prefix | URL prefix for blog pages (default: `blog`) |
+| Blog URL Prefix | First path segment of every blog address. See below. Empty means `blog` |
 | Default Meta Title | Default meta title for blog listing |
 | Default Meta Description | Default meta description for blog listing |
 
@@ -825,6 +847,25 @@ Answer Engine Optimization (AEO) is the practice of structuring content so AI sy
 - Content not optimized for AI will become invisible
 
 ## Changelog
+
+### 1.10.3 (2026-09-17)
+
+- **Fix: Enable Blog did nothing.** Set to No, every blog page kept answering.
+  Nothing in the module read `requestdesk_blog/general/enabled` except the
+  sitemap provider, so the switch in the admin had no visible effect for four
+  releases. The storefront controllers, the comment endpoint, the router and the
+  posts widget now go through `Model\StorefrontGate`
+- **Fix: Blog URL Prefix did nothing.** The field had been in the admin since
+  the first release with no code reading it; the address was hard-coded to
+  `/blog` in every link, pager, redirect and sitemap entry the module writes. Every blog URL is now built under the configured
+  prefix (`Block\BlogUrl`), `Controller\Router` serves the blog there, and the
+  `/blog` copies close. A malformed prefix is refused on save
+  (`Model\Config\Backend\UrlPrefix`) rather than breaking the storefront
+- **Note for upgrades:** both settings start doing what they say, so check their
+  stored values before upgrading. A store that left Blog URL Prefix filled in
+  with something other than `blog`, or Enable Blog set to No, changes behavior
+  on this upgrade
+- Unit suite 118 -> 144
 
 ### 1.10.2 (2026-09-14)
 

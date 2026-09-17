@@ -17,6 +17,7 @@ use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use RequestDesk\Blog\Model\Sitemap\BlogConfigReader;
 use RequestDesk\Blog\Model\Sitemap\BlogItemProvider;
+use RequestDesk\Blog\Model\Config;
 
 /**
  * A store moving off Amasty Blog got its blog sitemap entries from the
@@ -35,6 +36,9 @@ class BlogItemProviderTest extends TestCase
 
     /** @var ScopeConfigInterface&MockObject */
     private ScopeConfigInterface $scopeConfig;
+
+    /** @var Config&MockObject */
+    private Config $config;
 
     private BlogItemProvider $provider;
 
@@ -69,7 +73,15 @@ class BlogItemProviderTest extends TestCase
 
         $this->scopeConfig = $this->createMock(ScopeConfigInterface::class);
 
-        $this->provider = new BlogItemProvider($resource, $itemFactory, $this->configReader, $this->scopeConfig);
+        $this->config = $this->createMock(Config::class);
+
+        $this->provider = new BlogItemProvider(
+            $resource,
+            $itemFactory,
+            $this->configReader,
+            $this->scopeConfig,
+            $this->config
+        );
     }
 
     /**
@@ -118,6 +130,7 @@ class BlogItemProviderTest extends TestCase
 
     public function testPostsAndArchivesAreEmittedInTheRoutedForms(): void
     {
+        $this->config->method('getUrlPrefix')->with(1)->willReturn('blog');
         $this->configReader->method('isEnabled')->willReturn(true);
         $this->scopeConfig->method('isSetFlag')->willReturn(true);
         $this->connection->method('fetchAll')->willReturnOnConsecutiveCalls(
@@ -148,6 +161,37 @@ class BlogItemProviderTest extends TestCase
                 'blog/category/view/id/91' => '2026-02-02 00:00:00',
                 'blog/tag/magento-development-company' => '2026-03-27 12:00:00',
                 'blog/author/kapil-nandani' => '2026-03-27 12:00:00',
+            ],
+            $this->urls()
+        );
+    }
+
+    /**
+     * The sitemap lists the addresses the store serves. On a store that moved
+     * the blog to /news, a /blog entry would point search engines at a 404.
+     */
+    public function testEntriesUseTheStoresPrefix(): void
+    {
+        $this->config->method('getUrlPrefix')->with(1)->willReturn('news');
+        $this->configReader->method('isEnabled')->willReturn(true);
+        $this->scopeConfig->method('isSetFlag')->willReturn(true);
+        $this->connection->method('fetchAll')->willReturnOnConsecutiveCalls(
+            [
+                ['post_id' => '1', 'url_key' => 'mage-os-version-update', 'updated_at' => '2026-01-10 00:00:00'],
+                ['post_id' => '2', 'url_key' => '', 'updated_at' => '2026-03-27 12:00:00'],
+            ],
+            [['id' => '76', 'url_key' => 'magento-2', 'updated_at' => '2026-01-10 00:00:00']],
+            [['id' => '42', 'url_key' => null, 'updated_at' => '2026-03-27 12:00:00']],
+            []
+        );
+
+        $this->assertSame(
+            [
+                'news' => '2026-03-27 12:00:00',
+                'news/mage-os-version-update' => '2026-01-10 00:00:00',
+                'news/post/view/id/2' => '2026-03-27 12:00:00',
+                'news/category/magento-2' => '2026-01-10 00:00:00',
+                'news/tag/view/id/42' => '2026-03-27 12:00:00',
             ],
             $this->urls()
         );

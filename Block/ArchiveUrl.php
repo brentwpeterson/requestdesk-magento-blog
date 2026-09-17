@@ -31,7 +31,7 @@ use Magento\Framework\UrlInterface;
  */
 class ArchiveUrl
 {
-    /** Path segment under /blog for each archive type. */
+    /** Path segment under the blog prefix for each archive type. */
     public const TYPE_CATEGORY = 'category';
     public const TYPE_TAG = 'tag';
     public const TYPE_AUTHOR = 'author';
@@ -41,23 +41,25 @@ class ArchiveUrl
      * @param int $id
      * @param string|null $urlKey
      * @param UrlInterface $urlBuilder
+     * @param string $prefix from Model\Config::getUrlPrefix(), required for the reason given on PostUrl::resolve()
      * @return string
      */
     public static function resolve(
         string $type,
         int $id,
         ?string $urlKey,
-        UrlInterface $urlBuilder
+        UrlInterface $urlBuilder,
+        string $prefix
     ): string {
         $urlKey = trim((string) $urlKey);
 
         if ($urlKey === '') {
-            return $urlBuilder->getUrl('blog/' . $type . '/view', ['id' => $id]);
+            return BlogUrl::resolve($prefix, $type . '/view/id/' . $id, [], $urlBuilder);
         }
 
         // _direct emits the path verbatim under the store base URL. Passing
-        // "blog/category/<key>" as a route path instead would have the URL
+        // "<prefix>/category/<key>" as a route path instead would have the URL
         // builder read the segments as controller and action names.
-        return $urlBuilder->getUrl('', ['_direct' => 'blog/' . $type . '/' . $urlKey]);
+        return $urlBuilder->getUrl('', ['_direct' => $prefix . '/' . $type . '/' . $urlKey]);
     }
 }

@@ -21,6 +21,7 @@ use RequestDesk\Blog\Model\Comment;
 use RequestDesk\Blog\Model\CommentManager;
 use RequestDesk\Blog\Model\PostCategoryResolver;
 use RequestDesk\Blog\Model\TagResolver;
+use RequestDesk\Blog\Model\Config;
 
 /**
  * Supplies the single published post to the detail templates (both themes).
@@ -37,6 +38,7 @@ class PostView extends Template
      * @param PostRepositoryInterface $postRepository
      * @param StoreManagerInterface $storeManager
      * @param PostCategoryResolver $categoryResolver
+     * @param Config $config
      * @param array $data
      */
     public function __construct(
@@ -49,6 +51,7 @@ class PostView extends Template
         private readonly CommentManager $commentManager,
         private readonly FormKey $formKey,
         private readonly \RequestDesk\Blog\Model\PostContent $postContent,
+        private readonly Config $config,
         array $data = []
     ) {
         parent::__construct($context, $data);
@@ -103,7 +106,7 @@ class PostView extends Template
      */
     public function getCommentActionUrl(): string
     {
-        return $this->getUrl('blog/comment/save');
+        return BlogUrl::resolve($this->config->getUrlPrefix(), 'comment/save', [], $this->_urlBuilder);
     }
 
     /**
@@ -191,6 +194,6 @@ class PostView extends Template
      */
     public function getBackUrl(): string
     {
-        return $this->getUrl('blog');
+        return BlogUrl::resolve($this->config->getUrlPrefix(), '', [], $this->_urlBuilder);
     }
 }
