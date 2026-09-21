@@ -23,6 +23,7 @@ class Config
     public const XML_PATH_ENABLE_PAGINATION = 'requestdesk_blog/general/enable_pagination';
     public const XML_PATH_ENABLED = 'requestdesk_blog/general/enabled';
     public const XML_PATH_URL_PREFIX = 'requestdesk_blog/seo/url_prefix';
+    public const XML_PATH_INCLUDE_IN_MENU = 'requestdesk_blog/general/include_in_menu';
 
     /**
      * The front name in etc/frontend/routes.xml. The configured prefix is what
@@ -133,6 +134,28 @@ class Config
     {
         return $this->scopeConfig->isSetFlag(
             self::XML_PATH_ENABLED,
+            ScopeInterface::SCOPE_STORE,
+            $store
+        );
+    }
+
+    /**
+     * Whether the blog's entry may appear in the storefront menu.
+     *
+     * A second gate on top of the category's own Include in Menu, not a
+     * replacement for it. Evrig, and any store that followed the migration,
+     * links the blog from the menu through a catalog category, so switching
+     * Enable Blog off used to leave that link in place pointing at a page that
+     * now answers 404. A merchant who wants the blog reachable but not
+     * advertised can also set this to No on its own.
+     *
+     * @param int|string|null $store
+     * @return bool
+     */
+    public function isIncludedInMenu($store = null): bool
+    {
+        return $this->scopeConfig->isSetFlag(
+            self::XML_PATH_INCLUDE_IN_MENU,
             ScopeInterface::SCOPE_STORE,
             $store
         );

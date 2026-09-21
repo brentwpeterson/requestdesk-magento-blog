@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * RequestDesk Blog - Frontend Events
+ *
+ * @category  RequestDesk
+ * @package   RequestDesk_Blog
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+    <!--
+        Dispatched from inside Magento\Theme\Block\Html\Topmenu::getHtml, after
+        every beforeGetHtml plugin has run, so Magento_Catalog has already put
+        the category tree in place by the time this observer sees the menu.
+    -->
+    <event name="page_block_html_topmenu_gethtml_before">
+        <observer name="requestdesk_blog_remove_blog_from_topmenu"
+                  instance="RequestDesk\Blog\Observer\RemoveBlogFromTopmenu"/>
+    </event>
+</config>

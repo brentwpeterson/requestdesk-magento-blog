@@ -45,4 +45,18 @@
         </arguments>
     </type>
 
+    <!--
+        The Hyva half of hiding the blog's menu entry. Hyva renders its own
+        menu from Hyva\Theme\Service\Navigation rather than Magento's Topmenu
+        block, so the observer on page_block_html_topmenu_gethtml_before never
+        fires on a Hyva store and this plugin does the same pruning there.
+
+        Declared against a class that only exists when Hyva is installed.
+        Magento applies a plugin when its subject is instantiated, so on a
+        Luma-only store this declaration is simply never reached.
+    -->
+    <type name="Hyva\Theme\ViewModel\Navigation">
+        <plugin name="requestdesk_blog_hyva_menu" type="RequestDesk\Blog\Plugin\HyvaNavigation" sortOrder="10"/>
+    </type>
+
 </config>

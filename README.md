@@ -356,6 +356,7 @@ Navigate to **Stores > Configuration > RequestDesk > Blog**
 | Setting | Description |
 |---------|-------------|
 | Enable Blog | No takes the blog off the storefront: every blog page returns 404, the comment endpoint refuses posts, blog widgets render nothing and the blog leaves the XML sitemap. The admin, the REST API and the RequestDesk import keep working |
+| Include Blog in Menu | No removes the menu entry that points at the blog, on Luma and on Hyva. Enable Blog set to No removes it too. A second gate on top of the category's own Include in Menu, which still has to be Yes for the entry to appear at all. See below |
 | Blog Title | Title displayed on blog listing page |
 | Posts Per Page | Number of posts per page (default: 10) |
 
@@ -391,9 +392,44 @@ a malformed one is logged as an error while the blog stays on `/blog`.
 The setting is per store view, so two store views can run the blog on different
 prefixes.
 
-What it does not touch: links to the blog in your own theme, a top menu item or
-a CMS block still point where they were written. Flush the full page cache after
+What it does not touch: a link to the blog written into your own theme or a
+CMS block still points where it was written. A menu entry does follow the
+prefix for the purpose of Include Blog in Menu, which matches on where the
+entry points rather than on a hard-coded `/blog`. Flush the full page cache after
 changing it, which the admin marks as invalid for you.
+
+### Include Blog in Menu
+
+Stores link the blog from their main menu with a catalog category, which is what
+the Amasty migration's dedicated parent category is for. That link is an
+ordinary menu entry, so switching Enable Blog off used to leave it sitting in
+the menu pointing at a page that now answers 404.
+
+The entry renders only when **Enable Blog** and **Include Blog in Menu** are
+both Yes. Either one set to No and the entry is gone, on Luma and on Hyva alike.
+The category's own Include in Menu is untouched and still has to be Yes for the
+entry to appear at all, so this is a second gate rather than a replacement.
+
+Which entry is the blog's is decided by where it points: an entry whose URL
+lands inside the blog's address space. That means it follows Blog URL Prefix -
+move the blog to `/news` and the entry pointing at `/news` is the one that
+disappears - and it covers a CMS page linked into the menu as well as a
+category.
+
+Hiding the entry does not close the blog. The pages keep answering, so a
+merchant can run the blog without advertising it in the menu.
+
+Hyva does not use Magento's `Topmenu` block; `Hyva\Theme\Service\Navigation`
+builds its own tree. Each menu is therefore handled where it is built:
+`Observer\RemoveBlogFromTopmenu` on the core block's
+`page_block_html_topmenu_gethtml_before` event, and `Plugin\HyvaNavigation` on
+`Hyva\Theme\ViewModel\Navigation`. The Hyva plugin is declared against a class
+that only exists when Hyva is installed, which a Luma-only store compiles
+without complaint because a plugin is applied only when its subject is
+instantiated.
+
+A link written into your own theme by hand is still not covered. Nothing in the
+menu tree describes it, so nothing here can find it.
 
 ### SEO Settings
 
@@ -847,6 +883,23 @@ Answer Engine Optimization (AEO) is the practice of structuring content so AI sy
 - Content not optimized for AI will become invisible
 
 ## Changelog
+
+### 1.11.0 (2026-09-21)
+
+- **New setting: Include Blog in Menu** (`requestdesk_blog/general/include_in_menu`,
+  per store view, default Yes). The blog's menu entry renders only when this and
+  Enable Blog are both Yes
+- **Fix: switching the blog off left its menu entry behind.** 1.10.3 made Enable
+  Blog close the storefront but said in this README that it did not touch the
+  menu, so a store linking the blog from a catalog category kept advertising a
+  page that answered 404. Reported by Evrig
+- The entry is matched on where it points, not on what it is, so it follows Blog
+  URL Prefix and covers a CMS page as well as a category
+- Handled separately in each menu, because Hyva does not use Magento's `Topmenu`
+  block: `Observer\RemoveBlogFromTopmenu` for the core menu,
+  `Plugin\HyvaNavigation` for Hyva's. Verified on Luma, Hyva/default and
+  Evrig/hyva against the local copy of the Evrig store
+- Unit suite 144 -> 158
 
 ### 1.10.3 (2026-09-17)
 

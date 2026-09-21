@@ -33,6 +33,16 @@
                     <comment>No takes the blog off the storefront. Blog pages return 404, comments are refused, blog widgets show nothing and the blog leaves the XML sitemap. Posts can still be edited, imported and published in the admin and through the API.</comment>
                 </field>
 
+                <field id="include_in_menu" translate="label comment" type="select" sortOrder="15" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Include Blog in Menu</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <backend_model>RequestDesk\Blog\Model\Config\Backend\StorefrontSetting</backend_model>
+                    <comment>No removes the menu entry that points at the blog, on Luma and on Hyva. Enable Blog set to No removes it too, so a switched-off blog is not advertised in the menu. This does not replace Include in Menu on the category itself, which still has to be Yes for the entry to appear at all. A link written into your theme by hand is not touched.</comment>
+                    <depends>
+                        <field id="enabled">1</field>
+                    </depends>
+                </field>
+
                 <field id="blog_title" translate="label comment" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Blog Title</label>
                     <comment>Title displayed on the blog listing page.</comment>
