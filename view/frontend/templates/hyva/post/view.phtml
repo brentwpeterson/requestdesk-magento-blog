@@ -112,6 +112,46 @@ $faqPairs = ($schema && $post) ? $schema->getFaqPairs($post) : [];
         <?= /* @noEscape */ $block->getRenderedContent() ?>
     </div>
 
+    <!-- Previous is the next older post, next the next newer one, the same
+         reading the Amasty blog gives them. -->
+    <?php $previousLink = $block->getPreviousPostLink(); ?>
+    <?php $nextLink = $block->getNextPostLink(); ?>
+    <?php if ($previousLink || $nextLink): ?>
+        <nav class="mt-12 pt-6 border-t border-gray-200 flex flex-col md:flex-row md:justify-between gap-4"
+             aria-label="<?= $escaper->escapeHtmlAttr(__('More articles')) ?>">
+            <?php if ($previousLink): ?>
+                <a href="<?= $escaper->escapeUrl($previousLink['url']) ?>" rel="prev"
+                   class="flex items-center group">
+                    <svg class="w-5 h-5 mr-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                    <span class="flex flex-col">
+                        <span class="text-sm text-gray-500"><?= $escaper->escapeHtml(__('Previous article')) ?></span>
+                        <span class="font-semibold text-gray-900 group-hover:text-primary">
+                            <?= $escaper->escapeHtml($previousLink['title']) ?>
+                        </span>
+                    </span>
+                </a>
+            <?php else: ?>
+                <span></span>
+            <?php endif; ?>
+            <?php if ($nextLink): ?>
+                <a href="<?= $escaper->escapeUrl($nextLink['url']) ?>" rel="next"
+                   class="flex items-center justify-end text-right group">
+                    <span class="flex flex-col">
+                        <span class="text-sm text-gray-500"><?= $escaper->escapeHtml(__('Next article')) ?></span>
+                        <span class="font-semibold text-gray-900 group-hover:text-primary">
+                            <?= $escaper->escapeHtml($nextLink['title']) ?>
+                        </span>
+                    </span>
+                    <svg class="w-5 h-5 ml-2 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </a>
+            <?php endif; ?>
+        </nav>
+    <?php endif; ?>
+
     <!--
         Comments. Same block API and same POST contract as the Luma template
         (view/frontend/templates/post/view.phtml) - Controller\Comment\Save reads

@@ -80,6 +80,7 @@ class Router implements RouterInterface
         'comment',
         'index',
         'post',
+        'search',
         'tag',
     ];
 
@@ -93,6 +94,7 @@ class Router implements RouterInterface
         'comment' => ['save'],
         'index' => ['index'],
         'post' => ['view'],
+        'search' => ['index'],
         'tag' => ['view'],
     ];
 

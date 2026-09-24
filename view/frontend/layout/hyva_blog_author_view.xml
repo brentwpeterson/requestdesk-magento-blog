@@ -24,5 +24,6 @@
              are deliberate, so one profile header serves both themes. Only the
              posts child swaps to the Tailwind card grid. -->
         <referenceBlock name="requestdesk.blog.author.posts" template="RequestDesk_Blog::hyva/list.phtml"/>
+        <referenceBlock name="requestdesk.blog.sidebar" template="RequestDesk_Blog::hyva/sidebar.phtml"/>
     </body>
 </page>

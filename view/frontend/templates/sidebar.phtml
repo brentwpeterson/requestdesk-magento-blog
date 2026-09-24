@@ -1,0 +1,49 @@
+<?php
+/**
+ * RequestDesk Blog - Sidebar Template (default / Luma)
+ *
+ * @var \RequestDesk\Blog\Block\Sidebar $block
+ * @var \Magento\Framework\Escaper $escaper
+ */
+
+$categories = $block->getCategories();
+?>
+<div class="rd-blog-sidebar">
+    <div class="block rd-blog-search">
+        <div class="block-title"><strong><?= $escaper->escapeHtml(__('Search the blog')) ?></strong></div>
+        <div class="block-content">
+            <form action="<?= $escaper->escapeUrl($block->getSearchUrl()) ?>" method="get" role="search">
+                <label for="rd-blog-search-input" class="label"><span><?= $escaper->escapeHtml(__('Search the blog')) ?></span></label>
+                <div style="display:flex;gap:8px;">
+                    <input type="search" id="rd-blog-search-input"
+                           name="<?= $escaper->escapeHtmlAttr($block->getSearchParamName()) ?>"
+                           value="<?= $escaper->escapeHtmlAttr($block->getSearchQuery()) ?>"
+                           maxlength="<?= (int) $block->getSearchMaxLength() ?>"
+                           placeholder="<?= $escaper->escapeHtmlAttr(__('Search posts')) ?>"
+                           required style="flex:1;" />
+                    <button type="submit" class="action primary"><?= $escaper->escapeHtml(__('Search')) ?></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <?php if ($categories !== []): ?>
+        <div class="block rd-blog-categories">
+            <div class="block-title"><strong><?= $escaper->escapeHtml(__('Categories')) ?></strong></div>
+            <div class="block-content">
+                <ul style="list-style:none;padding:0;margin:0;">
+                    <?php foreach ($categories as $category): ?>
+                        <?php $current = $block->isCurrentCategory($category['id']); ?>
+                        <li style="margin:0 0 8px;">
+                            <a href="<?= $escaper->escapeUrl($category['url']) ?>"
+                               <?= $current ? 'aria-current="page" style="font-weight:600;"' : '' ?>>
+                                <?= $escaper->escapeHtml($category['name']) ?>
+                            </a>
+                            <span style="color:#777;">(<?= (int) $category['count'] ?>)</span>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            </div>
+        </div>
+    <?php endif; ?>
+</div>

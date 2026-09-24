@@ -127,6 +127,46 @@ class PostCategoryResolver
     }
 
     /**
+     * Every category with at least one published post, with that count, for
+     * the blog sidebar. Largest first, then by name.
+     *
+     * Counts published posts only, so the number next to a category is the
+     * number of posts its archive page lists.
+     *
+     * @return array<int, array{id:int, name:string, url:string, count:int}>
+     */
+    public function getCategoriesWithPostCounts(): array
+    {
+        $connection = $this->resource->getConnection();
+        $select = $connection->select()
+            ->from(['link' => $this->resource->getTableName(self::LINK_TABLE)], ['category_id'])
+            ->join(
+                ['post' => $this->resource->getTableName('requestdesk_blog_post')],
+                'post.post_id = link.post_id',
+                ['count' => new \Zend_Db_Expr('COUNT(DISTINCT link.post_id)')]
+            )
+            ->where('post.status = ?', 1)
+            ->group('link.category_id');
+
+        $counts = [];
+        foreach ($connection->fetchAll($select) as $row) {
+            $counts[(int) $row['category_id']] = (int) $row['count'];
+        }
+
+        $result = [];
+        foreach ($this->loadCategories(array_keys($counts)) as $categoryId => $category) {
+            $result[] = $category + ['count' => $counts[$categoryId]];
+        }
+
+        usort(
+            $result,
+            static fn (array $a, array $b): int => [$b['count'], $a['name']] <=> [$a['count'], $b['name']]
+        );
+
+        return $result;
+    }
+
+    /**
      * Post ids assigned to a native category.
      *
      * @param int $categoryId

@@ -15,11 +15,11 @@ use RequestDesk\Blog\Model\Post;
 /**
  * The per-post Allow Comment toggle, added in 1.6.5.
  *
- * The whole risk in this feature is the default. The column arrived on a table
- * that already had rows, and every one of those posts had working comments
- * before it existed. If absent data read as "disabled", shipping the upgrade
- * would silently close comments on every existing post - a data-losing change
- * disguised as a feature. These tests exist to keep that from regressing.
+ * Until 1.12.0 the default was on, so posts that predated the column kept their
+ * comments. It is now off everywhere - the column, the admin form and this
+ * getter - because none of the stores running the module take comments and
+ * every new post had to be switched off by hand. Existing rows keep whatever
+ * they hold; only an absent value changed meaning.
  */
 class PostCommentsEnabledTest extends TestCase
 {
@@ -31,19 +31,19 @@ class PostCommentsEnabledTest extends TestCase
     }
 
     /**
-     * The one that matters: a row written before the column existed, or an
-     * object built in memory without it, keeps comments on.
+     * An object built in memory without the value matches the column default,
+     * so it does not show a comment form it would lose once saved.
      */
-    public function testAbsentValueReadsAsEnabled(): void
+    public function testAbsentValueReadsAsDisabled(): void
     {
-        $this->assertTrue($this->post->getCommentsEnabled());
+        $this->assertFalse($this->post->getCommentsEnabled());
     }
 
-    public function testExplicitNullReadsAsEnabled(): void
+    public function testExplicitNullReadsAsDisabled(): void
     {
         $this->post->setData(PostInterface::COMMENTS_ENABLED, null);
 
-        $this->assertTrue($this->post->getCommentsEnabled());
+        $this->assertFalse($this->post->getCommentsEnabled());
     }
 
     public function testZeroReadsAsDisabled(): void

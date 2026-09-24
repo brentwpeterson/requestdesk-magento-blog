@@ -543,7 +543,7 @@ Main blog posts table with RequestDesk sync tracking.
 | `meta_description` | text | SEO meta description |
 | `featured_image` | varchar(255) | Featured image path |
 | `status` | smallint | 0=Draft, 1=Published |
-| `comments_enabled` | smallint | 0=No, 1=Yes (default 1, so posts predating the column keep comments on) |
+| `comments_enabled` | smallint | 0=No, 1=Yes (default 0 since 1.12.0; before that 1, and posts saved under the old default keep their value) |
 | `author` | varchar(255) | Author name (free-text fallback byline) |
 | `author_id` | int | FK to `requestdesk_blog_author.author_id` (nullable, `SET NULL`). Not `admin_user.user_id` — that confusion is what 1.6.4's `repair-authors` command exists to undo |
 | `store_id` | int | Magento store ID |
@@ -883,6 +883,32 @@ Answer Engine Optimization (AEO) is the practice of structuring content so AI sy
 - Content not optimized for AI will become invisible
 
 ## Changelog
+
+### 1.12.0 (2026-09-24)
+
+Three of the four items from the 2026-09-24 call with Evrig. The fourth, the
+category's Include in Menu and the manual category grid, is Jeel's.
+
+- **New: blog sidebar** on every blog page (index, post, category, tag, author,
+  search), matching the Amasty blog's sidebar on evrig.com: a "Search the blog"
+  box and the category list with a published-post count, largest first. Blog
+  pages move from `1column` to `2columns-right`; the catalog's compare, wishlist
+  and reorder sidebar blocks are removed from them. `Block\Sidebar`, layout
+  handle `requestdesk_blog_sidebar`
+- **New: search results page** at `/<prefix>/search?query=...`. Every word has
+  to appear in the post's title or body. Kept out of search engines
+  (`NOINDEX,FOLLOW`). `Controller\Search\Index`, `Block\SearchView`,
+  `Model\PostSearch`
+- **New: previous / next article links** under each post. Previous is the next
+  older post, next the next newer one, as on evrig.com. Posts that share a
+  `created_at` are ordered by `post_id`, so none is skipped. `Model\AdjacentPostFinder`
+- **Change: Allow Comment now defaults to off** for new posts, in the admin form,
+  the `comments_enabled` column default and `Post::getCommentsEnabled()` for an
+  absent value. None of the stores running the module take comments, so every
+  post had to be switched off by hand. Existing posts keep their current value
+- Hyva listing grid is two across at most, since it now shares the row with the
+  sidebar
+- Unit suite 158 -> 159
 
 ### 1.11.0 (2026-09-21)
 

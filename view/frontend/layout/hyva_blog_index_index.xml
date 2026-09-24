@@ -21,5 +21,6 @@
       xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
     <body>
         <referenceBlock name="requestdesk.blog.list" template="RequestDesk_Blog::hyva/list.phtml"/>
+        <referenceBlock name="requestdesk.blog.sidebar" template="RequestDesk_Blog::hyva/sidebar.phtml"/>
     </body>
 </page>

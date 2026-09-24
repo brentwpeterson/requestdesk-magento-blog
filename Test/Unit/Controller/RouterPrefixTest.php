@@ -119,6 +119,15 @@ class RouterPrefixTest extends TestCase
         $this->assertSame('save', $this->written['action']);
     }
 
+    public function testCustomPrefixReachesTheSearchPage(): void
+    {
+        $this->blog(true, 'news');
+
+        $this->assertNotNull($this->router->match($this->request('/news/search')));
+        $this->assertSame('search', $this->written['controller']);
+        $this->assertSame('index', $this->written['action']);
+    }
+
     public function testCustomPrefixServesAPrettyPostUrl(): void
     {
         $this->blog(true, 'news');

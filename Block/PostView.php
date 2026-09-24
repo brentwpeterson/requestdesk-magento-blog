@@ -16,6 +16,7 @@ use Magento\Store\Model\StoreManagerInterface;
 use RequestDesk\Blog\Api\Data\PostInterface;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
 use Magento\Framework\Data\Form\FormKey;
+use RequestDesk\Blog\Model\AdjacentPostFinder;
 use RequestDesk\Blog\Model\AuthorResolver;
 use RequestDesk\Blog\Model\Comment;
 use RequestDesk\Blog\Model\CommentManager;
@@ -52,6 +53,7 @@ class PostView extends Template
         private readonly FormKey $formKey,
         private readonly \RequestDesk\Blog\Model\PostContent $postContent,
         private readonly Config $config,
+        private readonly AdjacentPostFinder $adjacentPostFinder,
         array $data = []
     ) {
         parent::__construct($context, $data);
@@ -185,6 +187,52 @@ class PostView extends Template
     {
         $post = $this->getPost();
         return $post ? ImageUrl::resolve($post->getFeaturedImage(), $this->storeManager) : '';
+    }
+
+    /**
+     * The next older post, for the "Previous article" link.
+     *
+     * @return array{title:string, url:string}|null
+     */
+    public function getPreviousPostLink(): ?array
+    {
+        $post = $this->getPost();
+        return $post ? $this->linkTo($this->adjacentPostFinder->findPreviousId($post)) : null;
+    }
+
+    /**
+     * The next newer post, for the "Next article" link.
+     *
+     * @return array{title:string, url:string}|null
+     */
+    public function getNextPostLink(): ?array
+    {
+        $post = $this->getPost();
+        return $post ? $this->linkTo($this->adjacentPostFinder->findNextId($post)) : null;
+    }
+
+    /**
+     * Title and URL for a neighbouring post, or null when there is none.
+     *
+     * @param int|null $postId
+     * @return array{title:string, url:string}|null
+     */
+    private function linkTo(?int $postId): ?array
+    {
+        if ($postId === null) {
+            return null;
+        }
+
+        try {
+            $post = $this->postRepository->getById($postId);
+        } catch (\Throwable $e) {
+            return null;
+        }
+
+        return [
+            'title' => (string) $post->getTitle(),
+            'url' => PostUrl::resolve($post, $this->_urlBuilder, $this->config->getUrlPrefix()),
+        ];
     }
 
     /**

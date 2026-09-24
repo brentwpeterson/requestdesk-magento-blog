@@ -128,12 +128,12 @@
             </formElements>
         </field>
 
-        <!-- Defaults to 1 to match the column default, so a new post behaves the
-             way every post did before this toggle existed. -->
+        <!-- Defaults to 0 to match the column default. None of the stores running
+             the module take comments, so a new post starts with them off. -->
         <field name="comments_enabled" sortOrder="50" formElement="checkbox">
             <argument name="data" xsi:type="array">
                 <item name="config" xsi:type="array">
-                    <item name="default" xsi:type="number">1</item>
+                    <item name="default" xsi:type="number">0</item>
                 </item>
             </argument>
             <settings>

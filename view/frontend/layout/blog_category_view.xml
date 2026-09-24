@@ -8,8 +8,9 @@
  */
 -->
 <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-      layout="1column"
+      layout="2columns-right"
       xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <update handle="requestdesk_blog_sidebar"/>
     <body>
         <!-- The list template renders its own h1 (the category name); drop the
              theme's page-title block so the title does not appear twice. -->

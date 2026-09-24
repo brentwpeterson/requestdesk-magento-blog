@@ -78,6 +78,28 @@ $faqPairs = ($schema && $post) ? $schema->getFaqPairs($post) : [];
             </section>
         <?php endif; ?>
 
+        <?php $previousLink = $block->getPreviousPostLink(); ?>
+        <?php $nextLink = $block->getNextPostLink(); ?>
+        <?php if ($previousLink || $nextLink): ?>
+            <nav class="rd-blog-post-nav" aria-label="<?= $escaper->escapeHtmlAttr(__('More articles')) ?>"
+                 style="margin-top:36px;border-top:1px solid #e5e5e5;padding-top:16px;display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;">
+                <?php if ($previousLink): ?>
+                    <a href="<?= $escaper->escapeUrl($previousLink['url']) ?>" rel="prev" style="max-width:48%;">
+                        <span style="display:block;color:#777;font-size:13px;">&larr; <?= $escaper->escapeHtml(__('Previous article')) ?></span>
+                        <strong><?= $escaper->escapeHtml($previousLink['title']) ?></strong>
+                    </a>
+                <?php else: ?>
+                    <span></span>
+                <?php endif; ?>
+                <?php if ($nextLink): ?>
+                    <a href="<?= $escaper->escapeUrl($nextLink['url']) ?>" rel="next" style="max-width:48%;text-align:right;">
+                        <span style="display:block;color:#777;font-size:13px;"><?= $escaper->escapeHtml(__('Next article')) ?> &rarr;</span>
+                        <strong><?= $escaper->escapeHtml($nextLink['title']) ?></strong>
+                    </a>
+                <?php endif; ?>
+            </nav>
+        <?php endif; ?>
+
         <?php if ($post->getCommentsEnabled()): ?>
         <?php $comments = $block->getComments(); ?>
         <section class="rd-blog-comments" style="margin-top:36px;border-top:1px solid #e5e5e5;padding-top:24px;">

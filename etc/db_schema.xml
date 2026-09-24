@@ -30,9 +30,11 @@
         <column xsi:type="text" name="meta_description" nullable="true" comment="Meta Description"/>
         <column xsi:type="varchar" name="featured_image" nullable="true" length="255" comment="Featured Image Path"/>
         <column xsi:type="smallint" name="status" unsigned="true" nullable="false" default="0" comment="Status (0=Draft, 1=Published)"/>
-        <!-- Defaults to 1 so existing posts keep the behaviour they had before this
-             column existed, which was comments always on. -->
-        <column xsi:type="smallint" name="comments_enabled" unsigned="true" nullable="false" default="1" comment="Comments Enabled (0=No, 1=Yes)"/>
+        <!-- Defaults to 0: none of the stores running the module take comments, so
+             every new post had to be switched off by hand (Evrig, 2026-09-24).
+             Changing a column default leaves existing rows alone, so a post that
+             has comments on today keeps them. -->
+        <column xsi:type="smallint" name="comments_enabled" unsigned="true" nullable="false" default="0" comment="Comments Enabled (0=No, 1=Yes)"/>
         <column xsi:type="varchar" name="author" nullable="true" length="255" comment="Author Name (legacy free-text fallback)"/>
         <column xsi:type="int" name="author_id" unsigned="true" nullable="true" comment="Author (requestdesk_blog_author.author_id)"/>
         <column xsi:type="int" name="store_id" unsigned="true" nullable="false" default="0" comment="Store ID"/>

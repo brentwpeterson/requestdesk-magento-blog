@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * RequestDesk Blog - Hyva Theme Layout for Search Results
+ *
+ * Re-templates the blocks the base handle defines; see hyva_blog_index_index.xml
+ * for why these handles reference rather than declare.
+ *
+ * @category  RequestDesk
+ * @package   RequestDesk_Blog
+ */
+-->
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <body>
+        <referenceBlock name="requestdesk.blog.search" template="RequestDesk_Blog::hyva/list.phtml"/>
+        <referenceBlock name="requestdesk.blog.sidebar" template="RequestDesk_Blog::hyva/sidebar.phtml"/>
+    </body>
+</page>

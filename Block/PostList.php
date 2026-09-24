@@ -299,6 +299,17 @@ class PostList extends Template
     }
 
     /**
+     * What the list templates say when there are no posts; empty means the
+     * template's own wording.
+     *
+     * @return string
+     */
+    public function getEmptyListMessage(): string
+    {
+        return '';
+    }
+
+    /**
      * URL for a given page. Page 1 drops the parameter to keep the page canonical.
      *
      * An active ?limit= has to be carried over explicitly or page 2 would
@@ -321,6 +332,8 @@ class PostList extends Template
             $query[self::LIMIT_VAR_NAME] = $limit;
         }
 
+        $query += $this->getPagerQuery();
+
         return BlogUrl::resolve($this->config->getUrlPrefix(), $this->getPagerPath(), $query, $this->_urlBuilder);
     }
 
@@ -333,6 +346,17 @@ class PostList extends Template
     protected function getPagerPath(): string
     {
         return '';
+    }
+
+    /**
+     * Extra query parameters the pager has to carry, such as the search
+     * results page's ?query=.
+     *
+     * @return array<string, string>
+     */
+    protected function getPagerQuery(): array
+    {
+        return [];
     }
 
     /**

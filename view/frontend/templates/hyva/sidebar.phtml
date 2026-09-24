@@ -1,0 +1,57 @@
+<?php
+/**
+ * RequestDesk Blog - Hyva Theme Sidebar Template
+ * Uses Tailwind CSS
+ */
+
+declare(strict_types=1);
+
+use Magento\Framework\Escaper;
+use RequestDesk\Blog\Block\Sidebar;
+
+/** @var Escaper $escaper */
+/** @var Sidebar $block */
+
+$categories = $block->getCategories();
+?>
+<div class="py-8">
+    <section class="mb-8">
+        <h2 class="text-xl font-bold text-gray-900 mb-4"><?= $escaper->escapeHtml(__('Search the blog')) ?></h2>
+        <form action="<?= $escaper->escapeUrl($block->getSearchUrl()) ?>" method="get" role="search" class="flex">
+            <label for="rd-blog-search-input" class="sr-only"><?= $escaper->escapeHtml(__('Search the blog')) ?></label>
+            <input type="search" id="rd-blog-search-input"
+                   name="<?= $escaper->escapeHtmlAttr($block->getSearchParamName()) ?>"
+                   value="<?= $escaper->escapeHtmlAttr($block->getSearchQuery()) ?>"
+                   maxlength="<?= (int) $block->getSearchMaxLength() ?>"
+                   placeholder="<?= $escaper->escapeHtmlAttr(__('Search posts')) ?>"
+                   required
+                   class="w-full rounded-l-lg border border-gray-300 px-3 py-2 focus:border-primary focus:ring-1 focus:ring-primary"/>
+            <button type="submit"
+                    class="px-4 rounded-r-lg bg-primary text-white hover:bg-primary-darker"
+                    aria-label="<?= $escaper->escapeHtmlAttr(__('Search')) ?>">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+            </button>
+        </form>
+    </section>
+
+    <?php if ($categories !== []): ?>
+        <section>
+            <h2 class="text-xl font-bold text-gray-900 mb-4"><?= $escaper->escapeHtml(__('Categories')) ?></h2>
+            <ul>
+                <?php foreach ($categories as $category): ?>
+                    <?php $current = $block->isCurrentCategory($category['id']); ?>
+                    <li class="mb-2">
+                        <a href="<?= $escaper->escapeUrl($category['url']) ?>"
+                           <?= $current ? 'aria-current="page"' : '' ?>
+                           class="flex justify-between items-center rounded-lg border p-3 hover:border-primary transition-colors duration-200 <?= $current ? 'border-primary font-semibold' : 'border-gray-200' ?>">
+                            <span><?= $escaper->escapeHtml($category['name']) ?></span>
+                            <span class="text-gray-500">(<?= (int) $category['count'] ?>)</span>
+                        </a>
+                    </li>
+                <?php endforeach; ?>
+            </ul>
+        </section>
+    <?php endif; ?>
+</div>

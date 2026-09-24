@@ -17,7 +17,7 @@ $title = $block->getListingTitle();
     <?php endif; ?>
 
     <?php if (empty($posts)): ?>
-        <p><?= $escaper->escapeHtml(__('No posts yet.')) ?></p>
+        <p><?= $escaper->escapeHtml($block->getEmptyListMessage() ?: __('No posts yet.')) ?></p>
     <?php else: ?>
         <ul class="rd-blog-grid" style="list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:24px;">
             <?php foreach ($posts as $post): ?>

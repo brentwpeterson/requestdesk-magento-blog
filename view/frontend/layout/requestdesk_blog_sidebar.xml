@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * RequestDesk Blog - Sidebar (shared by every blog page)
+ *
+ * Search box and category list, the two sections the Amasty blog's sidebar has
+ * on evrig.com. Each blog page layout sets 2columns-right and pulls this in
+ * with <update handle="requestdesk_blog_sidebar"/>; the hyva_ page handles
+ * swap the template.
+ *
+ * The catalog's own sidebar blocks (compare, wishlist, reorder) sit in the same
+ * container on a two-column page and have nothing to do with the blog.
+ *
+ * @category  RequestDesk
+ * @package   RequestDesk_Blog
+ */
+-->
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <body>
+        <referenceContainer name="sidebar.additional">
+            <block class="RequestDesk\Blog\Block\Sidebar"
+                   name="requestdesk.blog.sidebar"
+                   template="RequestDesk_Blog::sidebar.phtml"
+                   before="-"/>
+        </referenceContainer>
+        <referenceBlock name="catalog.compare.sidebar" remove="true"/>
+        <referenceBlock name="wishlist_sidebar" remove="true"/>
+        <referenceBlock name="sale.reorder.sidebar" remove="true"/>
+    </body>
+</page>
