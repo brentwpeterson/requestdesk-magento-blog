@@ -107,7 +107,7 @@ class MigrateAuthorProfiles implements DataPatchInterface
     /**
      * Copy each old profile into the new author table.
      *
-     * @param array<int, int> $map
+     * @param array $map array<int, int>
      * @return array<int, int>
      */
     private function migrateProfiles(array $map): array
@@ -153,10 +153,12 @@ class MigrateAuthorProfiles implements DataPatchInterface
     }
 
     /**
-     * Some posts reference an admin user that never had a profile row. Give those
-     * authors a record too, so the byline survives the migration.
+     * Give authors with no profile row a record too.
      *
-     * @param array<int, int> $map
+     * Some posts reference an admin user that never had a profile row; this
+     * keeps their byline through the migration.
+     *
+     * @param array $map array<int, int>
      * @return array<int, int>
      */
     private function createAuthorsForOrphanPosts(array $map): array
@@ -198,7 +200,7 @@ class MigrateAuthorProfiles implements DataPatchInterface
     /**
      * Repoint posts from admin-user ids to blog-author ids.
      *
-     * @param array<int, int> $map
+     * @param array $map array<int, int>
      * @return void
      */
     private function remapPosts(array $map): void
@@ -214,7 +216,7 @@ class MigrateAuthorProfiles implements DataPatchInterface
     /**
      * Insert an author, deriving a unique url_key from the name.
      *
-     * @param array<string, mixed> $data
+     * @param array $data array<string, mixed>
      * @return int
      */
     private function insertAuthor(array $data): int
@@ -272,7 +274,7 @@ class MigrateAuthorProfiles implements DataPatchInterface
         while ((int) $connection->fetchOne(
             $connection->select()->from($table, ['author_id'])->where('url_key = ?', $candidate)->limit(1)
         )) {
-            $candidate = $base . '-' . $i++;
+            $candidate = $base . '-' . ($i++);
         }
         return $candidate;
     }

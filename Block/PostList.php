@@ -299,8 +299,31 @@ class PostList extends Template
     }
 
     /**
-     * What the list templates say when there are no posts; empty means the
-     * template's own wording.
+     * Intro HTML under the heading, directives resolved; empty for none.
+     *
+     * @return string
+     */
+    public function getListingDescriptionHtml(): string
+    {
+        $description = trim($this->getListingDescription());
+
+        return $description === '' ? '' : $this->postContent->render($description);
+    }
+
+    /**
+     * Raw intro for the listing. CategoryView supplies the category description.
+     *
+     * @return string
+     */
+    protected function getListingDescription(): string
+    {
+        return '';
+    }
+
+    /**
+     * What the list templates say when there are no posts.
+     *
+     * Empty means the template's own wording.
      *
      * @return string
      */
@@ -338,8 +361,9 @@ class PostList extends Template
     }
 
     /**
-     * Path under the blog prefix the pager links to; the plain list answers on
-     * the prefix itself.
+     * Path under the blog prefix the pager links to.
+     *
+     * The plain list answers on the prefix itself.
      *
      * @return string
      */
@@ -349,8 +373,9 @@ class PostList extends Template
     }
 
     /**
-     * Extra query parameters the pager has to carry, such as the search
-     * results page's ?query=.
+     * Extra query parameters the pager has to carry.
+     *
+     * Such as the search results page's ?query=.
      *
      * @return array<string, string>
      */

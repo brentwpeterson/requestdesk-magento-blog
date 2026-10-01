@@ -5,6 +5,8 @@
  */
 declare(strict_types=1);
 
+// phpcs:disable Generic.Files.LineLength.TooLong
+
 namespace RequestDesk\Blog\Test\Unit\Controller;
 
 use Magento\Framework\App\Action\Forward;
@@ -40,6 +42,7 @@ class RouterPrefixTest extends TestCase
     /** @var array<string, mixed> what the router wrote onto the request */
     private array $written = [];
 
+    /** @var Router */
     private Router $router;
 
     protected function setUp(): void

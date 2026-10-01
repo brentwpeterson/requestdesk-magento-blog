@@ -14,6 +14,8 @@
  */
 declare(strict_types=1);
 
+// phpcs:disable Generic.Files.LineLength.TooLong
+
 namespace RequestDesk\Blog\Api;
 
 interface ExternalBlogInterface
@@ -42,7 +44,7 @@ interface ExternalBlogInterface
      * @param string[]|null $tags Post tags
      * @param bool $published Whether to publish immediately (default: false = draft)
      * @param string|null $requestdeskPostId RequestDesk post ID for sync tracking
-     * @param int[]|null $categoryIds Native Magento category IDs to file the post under
+     * @param int[]|null $categoryIds Blog category IDs (requestdesk_blog_category) to file the post under; unknown IDs are ignored
      * @param string|null $publishedAt Original publish date (any strtotime-parsable string).
      *                                 Preserves the date on a migrated or syndicated post
      *                                 instead of stamping it with the time it arrived.
@@ -78,7 +80,7 @@ interface ExternalBlogInterface
      * @param string|null $featuredImage Featured image URL
      * @param string[]|null $tags Post tags
      * @param bool|null $published Whether post is published
-     * @param int[]|null $categoryIds Native Magento category IDs to file the post under
+     * @param int[]|null $categoryIds Blog category IDs (requestdesk_blog_category) to file the post under; unknown IDs are ignored
      * @param string|null $publishedAt Original publish date (any strtotime-parsable string)
      * @return mixed[]
      */

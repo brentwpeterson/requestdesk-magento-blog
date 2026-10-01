@@ -25,6 +25,7 @@ class ConfigUrlPrefixTest extends TestCase
     /** @var LoggerInterface&MockObject */
     private LoggerInterface $logger;
 
+    /** @var Config */
     private Config $config;
 
     protected function setUp(): void

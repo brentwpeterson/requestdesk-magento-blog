@@ -8,6 +8,8 @@
 
 declare(strict_types=1);
 
+// phpcs:disable Generic.Files.LineLength.TooLong
+
 namespace RequestDesk\Blog\Controller\Comment;
 
 use Magento\Framework\App\Action\HttpPostActionInterface;
@@ -57,6 +59,8 @@ class Save implements HttpPostActionInterface
     }
 
     /**
+     * Execute the action
+     *
      * @return Redirect|Forward
      */
     public function execute()
@@ -115,8 +119,10 @@ class Save implements HttpPostActionInterface
     }
 
     /**
-     * Send the commenter back to the post they were reading, on its pretty URL so
-     * the address bar does not switch to the id form on the way back.
+     * Send the commenter back to the post they were reading.
+     *
+     * On its pretty URL, so the address bar does not switch to the id form on
+     * the way back.
      *
      * @param Redirect $redirect
      * @param int $postId

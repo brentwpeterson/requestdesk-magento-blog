@@ -62,6 +62,8 @@ class AdjacentPostFinder
     }
 
     /**
+     * Find
+     *
      * @param PostInterface $post
      * @param string $operator '<' or '>'
      * @param string $direction 'DESC' or 'ASC', matching the operator

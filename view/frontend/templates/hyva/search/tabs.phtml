@@ -1,0 +1,35 @@
+<?php
+/**
+ * RequestDesk Blog - Hyva search result tabs (Posts / Authors / Categories / Tags)
+ *
+ * Child of the search results list block; reads the tabs from it. Each tab is
+ * a link to the same search with ?tab=, so a tab survives paging, reloads and
+ * being shared.
+ */
+
+declare(strict_types=1);
+
+use Magento\Framework\Escaper;
+use Magento\Framework\View\Element\Template;
+use RequestDesk\Blog\Block\SearchView;
+
+/** @var Escaper $escaper */
+/** @var Template $block */
+
+$searchView = $block->getParentBlock();
+$tabs = $searchView instanceof SearchView ? $searchView->getSearchTabs() : [];
+?>
+<?php if ($tabs !== []): ?>
+    <nav class="flex flex-wrap border-b border-gray-200 mb-8"
+         aria-label="<?= $escaper->escapeHtmlAttr(__('Search results by type')) ?>">
+        <?php foreach ($tabs as $tab): ?>
+            <a href="<?= $escaper->escapeUrl($tab['url']) ?>"
+               <?= $tab['active'] ? 'aria-current="page"' : '' ?>
+               class="px-4 py-2 -mb-px border rounded-t-lg <?= $tab['active']
+                   ? 'border-gray-200 border-b-white bg-white font-semibold text-gray-900'
+                   : 'border-transparent text-gray-600 hover:text-primary' ?>">
+                <?= $escaper->escapeHtml($tab['label']) ?> (<?= (int) $tab['count'] ?>)
+            </a>
+        <?php endforeach; ?>
+    </nav>
+<?php endif; ?>

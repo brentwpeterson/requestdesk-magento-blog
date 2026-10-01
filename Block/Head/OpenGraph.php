@@ -45,6 +45,8 @@ class OpenGraph extends Template
     }
 
     /**
+     * Get post
+     *
      * @return PostInterface|null
      */
     public function getPost(): ?PostInterface
@@ -67,6 +69,8 @@ class OpenGraph extends Template
     }
 
     /**
+     * Get og title
+     *
      * @return string
      */
     public function getOgTitle(): string
@@ -76,6 +80,8 @@ class OpenGraph extends Template
     }
 
     /**
+     * Get og description
+     *
      * @return string
      */
     public function getOgDescription(): string
@@ -85,6 +91,8 @@ class OpenGraph extends Template
     }
 
     /**
+     * Get og image url
+     *
      * @return string
      */
     public function getOgImageUrl(): string

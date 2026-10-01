@@ -1,6 +1,6 @@
 <?php
 /**
- * RequestDesk Blog - Native Categories Source
+ * RequestDesk Blog - Blog Categories Source
  *
  * @category  RequestDesk
  * @package   RequestDesk_Blog
@@ -10,19 +10,22 @@ declare(strict_types=1);
 
 namespace RequestDesk\Blog\Model\Source;
 
-use Magento\Catalog\Model\ResourceModel\Category\CollectionFactory;
 use Magento\Framework\Data\OptionSourceInterface;
+use RequestDesk\Blog\Model\Category;
+use RequestDesk\Blog\Model\CategoryTree;
 
 /**
- * Native Magento categories, indented by depth, for assigning to a post.
+ * Blog categories, indented by depth, for assigning to a post and for the
+ * posts widget. Disabled ones are listed and marked, so a post filed under one
+ * does not silently lose it on its next save.
  */
 class Categories implements OptionSourceInterface
 {
     /**
-     * @param CollectionFactory $categoryCollectionFactory
+     * @param CategoryTree $categoryTree
      */
     public function __construct(
-        private readonly CollectionFactory $categoryCollectionFactory
+        private readonly CategoryTree $categoryTree
     ) {
     }
 
@@ -31,18 +34,13 @@ class Categories implements OptionSourceInterface
      */
     public function toOptionArray(): array
     {
-        $collection = $this->categoryCollectionFactory->create();
-        $collection->addAttributeToSelect('name')
-            ->addFieldToFilter('level', ['gt' => 1])
-            ->addAttributeToSort('path', 'ASC');
-
         $options = [];
-        foreach ($collection as $category) {
-            $depth = max(0, (int) $category->getLevel() - 2);
-            $options[] = [
-                'value' => (int) $category->getId(),
-                'label' => str_repeat('- ', $depth) . $category->getName(),
-            ];
+        foreach ($this->categoryTree->getFlatTree() as $category) {
+            $label = str_repeat('- ', $category['depth']) . $category['name'];
+            if ($category['status'] !== Category::STATUS_ENABLED) {
+                $label .= ' ' . __('(disabled)');
+            }
+            $options[] = ['value' => $category['id'], 'label' => $label];
         }
         return $options;
     }

@@ -14,6 +14,8 @@
  */
 declare(strict_types=1);
 
+// phpcs:disable Generic.Files.LineLength.TooLong
+
 namespace RequestDesk\Blog\Console\Command;
 
 use Magento\Framework\App\Area;
@@ -112,7 +114,7 @@ class RepairAuthorsCommand extends Command
 
         try {
             $this->appState->setAreaCode(Area::AREA_ADMINHTML);
-        } catch (\Exception $e) {
+        } catch (\Exception $e) { // phpcs:ignore Magento2.CodeAnalysis.EmptyBlock
             // area already set - fine
         }
 

@@ -39,7 +39,13 @@ class PostView extends Template
      * @param PostRepositoryInterface $postRepository
      * @param StoreManagerInterface $storeManager
      * @param PostCategoryResolver $categoryResolver
+     * @param AuthorResolver $authorResolver
+     * @param TagResolver $tagResolver
+     * @param CommentManager $commentManager
+     * @param FormKey $formKey
+     * @param \RequestDesk\Blog\Model\PostContent $postContent
      * @param Config $config
+     * @param AdjacentPostFinder $adjacentPostFinder
      * @param array $data
      */
     public function __construct(
@@ -192,10 +198,17 @@ class PostView extends Template
     /**
      * The next older post, for the "Previous article" link.
      *
+     * Both links answer null while Enable Previous-Next Navigation is off, so
+     * every template - including a theme's own copy - hides them without
+     * checking the setting itself.
+     *
      * @return array{title:string, url:string}|null
      */
     public function getPreviousPostLink(): ?array
     {
+        if (!$this->config->isPreviousNextEnabled()) {
+            return null;
+        }
         $post = $this->getPost();
         return $post ? $this->linkTo($this->adjacentPostFinder->findPreviousId($post)) : null;
     }
@@ -207,6 +220,9 @@ class PostView extends Template
      */
     public function getNextPostLink(): ?array
     {
+        if (!$this->config->isPreviousNextEnabled()) {
+            return null;
+        }
         $post = $this->getPost();
         return $post ? $this->linkTo($this->adjacentPostFinder->findNextId($post)) : null;
     }

@@ -13,10 +13,10 @@ $image = $block->getOgImageUrl();
 <?php if ($title !== ''): ?>
 <meta property="og:type" content="article" />
 <meta property="og:title" content="<?= $escaper->escapeHtmlAttr($title) ?>" />
-<?php if ($description !== ''): ?>
+    <?php if ($description !== ''): ?>
 <meta property="og:description" content="<?= $escaper->escapeHtmlAttr($description) ?>" />
 <?php endif; ?>
-<?php if ($image !== ''): ?>
+    <?php if ($image !== ''): ?>
 <meta property="og:image" content="<?= $escaper->escapeUrl($image) ?>" />
 <?php endif; ?>
 <?php endif; ?>

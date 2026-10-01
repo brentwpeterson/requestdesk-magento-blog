@@ -8,6 +8,8 @@
 
 declare(strict_types=1);
 
+// phpcs:disable Generic.Files.LineLength.TooLong
+
 namespace RequestDesk\Blog\Block;
 
 use Magento\Framework\UrlInterface;
@@ -36,12 +38,29 @@ class PostUrl
      * @param string $prefix from Model\Config::getUrlPrefix()
      * @return string
      */
-    public static function resolve(PostInterface $post, UrlInterface $urlBuilder, string $prefix): string
+    public static function resolve(PostInterface $post, UrlInterface $urlBuilder, string $prefix): string // phpcs:ignore Magento2.Functions.StaticFunction
     {
-        $urlKey = trim((string) $post->getUrlKey());
+        return self::fromKey((int) $post->getPostId(), $post->getUrlKey(), $urlBuilder, $prefix);
+    }
+
+    /**
+     * The same URL from the two columns it depends on.
+     *
+     * For callers that read post rows straight from the table (live search)
+     * rather than loading posts.
+     *
+     * @param int $postId
+     * @param string|null $urlKey
+     * @param UrlInterface $urlBuilder
+     * @param string $prefix from Model\Config::getUrlPrefix()
+     * @return string
+     */
+    public static function fromKey(int $postId, ?string $urlKey, UrlInterface $urlBuilder, string $prefix): string // phpcs:ignore Magento2.Functions.StaticFunction
+    {
+        $urlKey = trim((string) $urlKey);
 
         if ($urlKey === '') {
-            return BlogUrl::resolve($prefix, 'post/view/id/' . (int) $post->getPostId(), [], $urlBuilder);
+            return BlogUrl::resolve($prefix, 'post/view/id/' . $postId, [], $urlBuilder);
         }
 
         // _direct emits the path verbatim under the store base URL. Passing

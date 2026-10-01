@@ -24,6 +24,9 @@ class Config
     public const XML_PATH_ENABLED = 'requestdesk_blog/general/enabled';
     public const XML_PATH_URL_PREFIX = 'requestdesk_blog/seo/url_prefix';
     public const XML_PATH_INCLUDE_IN_MENU = 'requestdesk_blog/general/include_in_menu';
+    public const XML_PATH_PREVIOUS_NEXT = 'requestdesk_blog/general/previous_next_navigation';
+    public const XML_PATH_SEARCH_MIN_CHARACTERS = 'requestdesk_blog/search/min_characters';
+    public const XML_PATH_SEARCH_ITEMS_PER_GROUP = 'requestdesk_blog/search/items_per_group';
 
     /**
      * The front name in etc/frontend/routes.xml. The configured prefix is what
@@ -120,6 +123,55 @@ class Config
     }
 
     /**
+     * Whether a post page links to its previous and next post.
+     *
+     * Same setting as Amasty's "Enable Previous-Next Navigation"; on by default.
+     *
+     * @param int|string|null $store
+     * @return bool
+     */
+    public function isPreviousNextEnabled($store = null): bool
+    {
+        return $this->scopeConfig->isSetFlag(
+            self::XML_PATH_PREVIOUS_NEXT,
+            ScopeInterface::SCOPE_STORE,
+            $store
+        );
+    }
+
+    /**
+     * Characters typed before the live search asks for suggestions.
+     *
+     * Never below 1, so a blank or zero setting cannot fire a search on every key.
+     *
+     * @param int|string|null $store
+     * @return int
+     */
+    public function getSearchMinCharacters($store = null): int
+    {
+        return max(1, (int) $this->scopeConfig->getValue(
+            self::XML_PATH_SEARCH_MIN_CHARACTERS,
+            ScopeInterface::SCOPE_STORE,
+            $store
+        ));
+    }
+
+    /**
+     * Suggestions per group (posts, authors, categories, tags), 1 to 20.
+     *
+     * @param int|string|null $store
+     * @return int
+     */
+    public function getSearchItemsPerGroup($store = null): int
+    {
+        return min(20, max(1, (int) $this->scopeConfig->getValue(
+            self::XML_PATH_SEARCH_ITEMS_PER_GROUP,
+            ScopeInterface::SCOPE_STORE,
+            $store
+        )));
+    }
+
+    /**
      * Whether the blog is switched on for the storefront.
      *
      * Off means every blog page, the comment endpoint and the blog widgets
@@ -208,7 +260,7 @@ class Config
      * @param string|null $value
      * @return string
      */
-    public static function normalizeUrlPrefix(?string $value): string
+    public static function normalizeUrlPrefix(?string $value): string // phpcs:ignore Magento2.Functions.StaticFunction
     {
         return strtolower(trim(trim((string) $value), '/'));
     }

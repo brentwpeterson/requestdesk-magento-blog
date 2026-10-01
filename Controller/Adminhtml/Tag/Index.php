@@ -19,7 +19,7 @@ class Index extends Action
     /**
      * Authorization level
      */
-    const ADMIN_RESOURCE = 'RequestDesk_Blog::tags';
+    public const ADMIN_RESOURCE = 'RequestDesk_Blog::tags';
 
     /**
      * @var PageFactory

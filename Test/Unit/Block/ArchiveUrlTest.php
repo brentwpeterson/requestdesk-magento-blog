@@ -5,6 +5,8 @@
  */
 declare(strict_types=1);
 
+// phpcs:disable Generic.Files.LineLength.TooLong
+
 namespace RequestDesk\Blog\Test\Unit\Block;
 
 use Magento\Framework\UrlInterface;
@@ -102,13 +104,11 @@ class ArchiveUrlTest extends TestCase
      */
     public function testEachTypeKeepsItsOwnSegment(): void
     {
-        foreach (
-            [
+        foreach ([
                 ArchiveUrl::TYPE_CATEGORY => 'blog/category/news',
                 ArchiveUrl::TYPE_TAG => 'blog/tag/news',
                 ArchiveUrl::TYPE_AUTHOR => 'blog/author/news',
-            ] as $type => $expectedPath
-        ) {
+            ] as $type => $expectedPath) {
             $urlBuilder = $this->urlBuilder();
             $urlBuilder->expects($this->once())
                 ->method('getUrl')

@@ -39,6 +39,7 @@ class ExternalBlogUpdateTest extends TestCase
     /** @var PostCategoryResolver&MockObject */
     private PostCategoryResolver $postCategoryResolver;
 
+    /** @var ExternalBlog */
     private ExternalBlog $externalBlog;
 
     protected function setUp(): void

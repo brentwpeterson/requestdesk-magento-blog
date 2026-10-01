@@ -73,6 +73,8 @@ class RepairContentCommand extends Command
     }
 
     /**
+     * Execute the action
+     *
      * @param InputInterface $input
      * @param OutputInterface $output
      * @return int

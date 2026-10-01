@@ -41,6 +41,8 @@ class View implements HttpGetActionInterface
     }
 
     /**
+     * Execute the action
+     *
      * @return Page|Forward
      */
     public function execute()

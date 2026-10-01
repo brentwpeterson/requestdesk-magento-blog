@@ -1,0 +1,27 @@
+<?php
+// phpcs:disable Generic.Files.LineLength.TooLong
+/**
+ * RequestDesk Blog - Search result tabs (default / Luma)
+ *
+ * Child of the search results list block; reads the tabs from it. Each tab is
+ * a link to the same search with ?tab=, so a tab survives paging and reloads.
+ *
+ * @var \Magento\Framework\View\Element\Template $block
+ * @var \Magento\Framework\Escaper $escaper
+ */
+
+$searchView = $block->getParentBlock();
+$tabs = $searchView instanceof \RequestDesk\Blog\Block\SearchView ? $searchView->getSearchTabs() : [];
+?>
+<?php if ($tabs !== []): ?>
+    <nav class="rd-blog-search-tabs" aria-label="<?= $escaper->escapeHtmlAttr(__('Search results by type')) ?>"
+         style="display:flex;flex-wrap:wrap;border-bottom:1px solid #ddd;margin:0 0 24px;">
+        <?php foreach ($tabs as $tab): ?>
+            <a href="<?= $escaper->escapeUrl($tab['url']) ?>"
+               <?= $tab['active'] ? 'aria-current="page"' : '' ?>
+               style="padding:8px 16px;margin-bottom:-1px;border:1px solid <?= $tab['active'] ? '#ddd' : 'transparent' ?>;<?= $tab['active'] ? 'border-bottom-color:#fff;background:#fff;font-weight:600;' : '' ?>">
+                <?= $escaper->escapeHtml($tab['label']) ?> (<?= (int) $tab['count'] ?>)
+            </a>
+        <?php endforeach; ?>
+    </nav>
+<?php endif; ?>

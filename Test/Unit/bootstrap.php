@@ -35,7 +35,7 @@ foreach ($generatedFactories as $factory) {
     $shortName = array_pop($parts);
     $namespace = implode('\\', $parts);
 
-    eval(
+    eval( // phpcs:ignore Magento2.Security.InsecureFunction,Squiz.PHP.Eval
         sprintf(
             'namespace %s; class %s { public function create(array $data = []) { return null; } }',
             $namespace,

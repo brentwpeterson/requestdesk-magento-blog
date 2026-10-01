@@ -56,7 +56,7 @@ class GenericButton
             if ($postId) {
                 return $postId;
             }
-        } catch (NoSuchEntityException $e) {
+        } catch (NoSuchEntityException $e) { // phpcs:ignore Magento2.CodeAnalysis.EmptyBlock
             // Do nothing
         }
         return null;

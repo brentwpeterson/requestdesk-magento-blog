@@ -37,6 +37,11 @@ class BlogSchema implements ArgumentInterface
      * @param StoreManagerInterface $storeManager
      * @param Json $json
      * @param LoggerInterface $logger
+     * @param QaLinkResolverInterface $qaLinkResolver
+     * @param FaqSchemaBuilderInterface $faqSchemaBuilder
+     * @param AuthorResolver $authorResolver
+     * @param TagResolver $tagResolver
+     * @param CommentManager $commentManager
      * @param Config $config
      */
     public function __construct(
@@ -98,6 +103,8 @@ class BlogSchema implements ArgumentInterface
     }
 
     /**
+     * Build blog posting node
+     *
      * @param PostInterface $post
      * @return array<string, mixed>
      */
@@ -159,7 +166,7 @@ class BlogSchema implements ArgumentInterface
                 '@type' => 'Organization',
                 'name' => $this->storeManager->getStore()->getName(),
             ];
-        } catch (\Throwable $e) {
+        } catch (\Throwable $e) { // phpcs:ignore Magento2.CodeAnalysis.EmptyBlock
             // store name unavailable — publisher omitted
         }
 
@@ -167,6 +174,8 @@ class BlogSchema implements ArgumentInterface
     }
 
     /**
+     * Build faq node
+     *
      * @param PostInterface $post
      * @return array<string, mixed>|null
      */

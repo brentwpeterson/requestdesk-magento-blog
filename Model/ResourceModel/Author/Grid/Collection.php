@@ -11,6 +11,8 @@
 
 declare(strict_types=1);
 
+// phpcs:disable Generic.Files.LineLength.TooLong
+
 namespace RequestDesk\Blog\Model\ResourceModel\Author\Grid;
 
 use Magento\Framework\Api\Search\SearchResultInterface;
@@ -33,7 +35,7 @@ class Collection extends SearchResult implements SearchResultInterface
      * @param string $mainTable
      * @param string $resourceModel
      */
-    public function __construct(
+    public function __construct( // phpcs:ignore Generic.CodeAnalysis.UselessOverridingMethod
         EntityFactoryInterface $entityFactory,
         LoggerInterface $logger,
         FetchStrategyInterface $fetchStrategy,

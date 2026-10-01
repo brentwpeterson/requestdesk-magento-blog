@@ -37,6 +37,8 @@ class Index extends Action
     }
 
     /**
+     * Execute the action
+     *
      * @return Page
      */
     public function execute(): Page

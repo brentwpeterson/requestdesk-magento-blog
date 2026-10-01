@@ -165,7 +165,7 @@
             <settings>
                 <dataType>text</dataType>
                 <label translate="true">Categories</label>
-                <notice translate="true">Native Magento categories.</notice>
+                <notice translate="true">Blog categories. Manage them under Content > RequestDesk Blog > Categories.</notice>
             </settings>
             <formElements>
                 <multiselect>

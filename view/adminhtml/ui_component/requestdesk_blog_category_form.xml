@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+/**
+ * RequestDesk Blog Category Form UI Component
+ *
+ * Mirrors Amasty Blog's category form: General (name, URL key, status, parent,
+ * sort order, description) and Search Engine Optimization. Global scope only,
+ * so there is no store switcher.
+ *
+ * @category  RequestDesk
+ * @package   RequestDesk_Blog
+ */
+-->
+<form xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Ui:etc/ui_configuration.xsd">
+    <argument name="data" xsi:type="array">
+        <item name="js_config" xsi:type="array">
+            <item name="provider" xsi:type="string">requestdesk_blog_category_form.requestdesk_blog_category_form_data_source</item>
+        </item>
+        <item name="label" xsi:type="string" translate="true">Category Information</item>
+        <item name="template" xsi:type="string">templates/form/collapsible</item>
+    </argument>
+
+    <settings>
+        <buttons>
+            <button name="back" class="RequestDesk\Blog\Block\Adminhtml\Category\Edit\BackButton"/>
+            <button name="delete" class="RequestDesk\Blog\Block\Adminhtml\Category\Edit\DeleteButton"/>
+            <button name="save" class="RequestDesk\Blog\Block\Adminhtml\Category\Edit\SaveButton"/>
+            <button name="save_and_continue" class="RequestDesk\Blog\Block\Adminhtml\Category\Edit\SaveAndContinueButton"/>
+        </buttons>
+        <namespace>requestdesk_blog_category_form</namespace>
+        <dataScope>data</dataScope>
+        <deps>
+            <dep>requestdesk_blog_category_form.requestdesk_blog_category_form_data_source</dep>
+        </deps>
+    </settings>
+
+    <dataSource name="requestdesk_blog_category_form_data_source">
+        <argument name="data" xsi:type="array">
+            <item name="js_config" xsi:type="array">
+                <item name="component" xsi:type="string">Magento_Ui/js/form/provider</item>
+            </item>
+        </argument>
+        <settings>
+            <submitUrl path="requestdesk_blog/category/save"/>
+        </settings>
+        <dataProvider class="RequestDesk\Blog\Model\Category\DataProvider"
+                      name="requestdesk_blog_category_form_data_source">
+            <settings>
+                <requestFieldName>category_id</requestFieldName>
+                <primaryFieldName>category_id</primaryFieldName>
+            </settings>
+        </dataProvider>
+    </dataSource>
+
+    <fieldset name="general">
+        <settings>
+            <label translate="true">General</label>
+        </settings>
+
+        <field name="category_id" formElement="input">
+            <settings>
+                <dataType>text</dataType>
+                <visible>false</visible>
+            </settings>
+        </field>
+
+        <field name="name" sortOrder="10" formElement="input">
+            <settings>
+                <validation>
+                    <rule name="required-entry" xsi:type="boolean">true</rule>
+                </validation>
+                <dataType>text</dataType>
+                <label translate="true">Name</label>
+            </settings>
+        </field>
+
+        <field name="url_key" sortOrder="20" formElement="input">
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">URL Key</label>
+                <notice translate="true">Leave blank to generate from the name. Used in the category archive URL.</notice>
+            </settings>
+        </field>
+
+        <field name="status" sortOrder="30" formElement="checkbox">
+            <argument name="data" xsi:type="array">
+                <item name="config" xsi:type="array">
+                    <item name="default" xsi:type="number">1</item>
+                </item>
+            </argument>
+            <settings>
+                <dataType>boolean</dataType>
+                <label translate="true">Enabled</label>
+                <notice translate="true">A disabled category keeps its posts but has no archive page and is hidden on the storefront.</notice>
+            </settings>
+            <formElements>
+                <checkbox>
+                    <settings>
+                        <valueMap>
+                            <map name="false" xsi:type="number">0</map>
+                            <map name="true" xsi:type="number">1</map>
+                        </valueMap>
+                        <prefer>toggle</prefer>
+                    </settings>
+                </checkbox>
+            </formElements>
+        </field>
+
+        <field name="parent_id" sortOrder="40" formElement="select">
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">Parent Category</label>
+            </settings>
+            <formElements>
+                <select>
+                    <settings>
+                        <options class="RequestDesk\Blog\Model\Category\Source\ParentCategory"/>
+                    </settings>
+                </select>
+            </formElements>
+        </field>
+
+        <field name="sort_order" sortOrder="50" formElement="input">
+            <settings>
+                <validation>
+                    <rule name="validate-digits" xsi:type="boolean">true</rule>
+                </validation>
+                <dataType>text</dataType>
+                <label translate="true">Sort Order</label>
+            </settings>
+        </field>
+
+        <!-- Same wysiwyg rules as the post form: formElement="wysiwyg" alone, no
+             <wysiwyg> element and no class attribute. See requestdesk_blog_post_form.xml. -->
+        <field name="description" sortOrder="60" formElement="wysiwyg">
+            <argument name="data" xsi:type="array">
+                <item name="config" xsi:type="array">
+                    <item name="wysiwygConfigData" xsi:type="array">
+                        <item name="height" xsi:type="string">200px</item>
+                        <item name="add_variables" xsi:type="boolean">false</item>
+                        <item name="add_widgets" xsi:type="boolean">false</item>
+                        <item name="add_images" xsi:type="boolean">true</item>
+                        <item name="add_directives" xsi:type="boolean">true</item>
+                    </item>
+                </item>
+            </argument>
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">Description</label>
+            </settings>
+        </field>
+    </fieldset>
+
+    <fieldset name="seo">
+        <settings>
+            <label translate="true">Search Engine Optimization</label>
+            <collapsible>true</collapsible>
+            <opened>false</opened>
+        </settings>
+
+        <field name="meta_title" sortOrder="10" formElement="input">
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">Meta Title</label>
+                <notice translate="true">Leave blank to use the category name.</notice>
+            </settings>
+        </field>
+
+        <field name="meta_tags" sortOrder="20" formElement="input">
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">Meta Keywords</label>
+            </settings>
+        </field>
+
+        <field name="meta_description" sortOrder="30" formElement="textarea">
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">Meta Description</label>
+            </settings>
+        </field>
+
+        <field name="meta_robots" sortOrder="40" formElement="select">
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">Meta Robots</label>
+            </settings>
+            <formElements>
+                <select>
+                    <settings>
+                        <options class="RequestDesk\Blog\Model\Category\Source\MetaRobots"/>
+                    </settings>
+                </select>
+            </formElements>
+        </field>
+    </fieldset>
+</form>

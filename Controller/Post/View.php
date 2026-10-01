@@ -77,6 +77,8 @@ class View implements HttpGetActionInterface
     }
 
     /**
+     * Not found
+     *
      * @return Forward
      */
     private function notFound(): Forward

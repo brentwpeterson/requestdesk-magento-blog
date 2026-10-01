@@ -25,7 +25,7 @@ class Delete extends Action
     /**
      * Authorization level
      */
-    const ADMIN_RESOURCE = 'RequestDesk_Blog::authors';
+    public const ADMIN_RESOURCE = 'RequestDesk_Blog::authors';
 
     /**
      * @param Context $context

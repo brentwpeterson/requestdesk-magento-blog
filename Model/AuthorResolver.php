@@ -215,7 +215,7 @@ class AuthorResolver
         while ((int) $connection->fetchOne(
             $connection->select()->from($table, ['author_id'])->where('url_key = ?', $candidate)->limit(1)
         )) {
-            $candidate = $base . '-' . $i++;
+            $candidate = $base . '-' . ($i++);
         }
         return $candidate;
     }

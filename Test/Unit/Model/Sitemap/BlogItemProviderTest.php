@@ -40,6 +40,7 @@ class BlogItemProviderTest extends TestCase
     /** @var Config&MockObject */
     private Config $config;
 
+    /** @var BlogItemProvider */
     private BlogItemProvider $provider;
 
     protected function setUp(): void

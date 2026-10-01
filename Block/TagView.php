@@ -79,6 +79,8 @@ class TagView extends PostList
     }
 
     /**
+     * Get tag
+     *
      * @return array{id:int, name:string, url:string}|null
      */
     public function getTag(): ?array

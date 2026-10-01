@@ -40,6 +40,7 @@ class PostListPerPageTest extends TestCase
     /** @var RequestInterface&MockObject */
     private RequestInterface $request;
 
+    /** @var PostList */
     private PostList $block;
 
     protected function setUp(): void

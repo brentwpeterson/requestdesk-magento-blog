@@ -14,6 +14,8 @@
  */
 declare(strict_types=1);
 
+// phpcs:disable Generic.Files.LineLength.TooLong
+
 namespace RequestDesk\Blog\Service;
 
 use Magento\Catalog\Api\CategoryRepositoryInterface;
@@ -81,6 +83,7 @@ class ProductExportService
      * @param Curl $curl
      * @param LoggerInterface $logger
      * @param CategoryRepositoryInterface $categoryRepository
+     * @param EncryptorInterface $encryptor
      */
     public function __construct(
         ProductCollectionFactory $productCollectionFactory,
@@ -348,7 +351,7 @@ class ProductExportService
                     try {
                         $category = $this->categoryRepository->get($categoryId);
                         $categories[] = $category->getName();
-                    } catch (\Exception $e) {
+                    } catch (\Exception $e) { // phpcs:ignore Magento2.CodeAnalysis.EmptyBlock
                         // Skip invalid categories
                     }
                 }
@@ -373,7 +376,7 @@ class ProductExportService
         $storeUrl = $this->storeManager->getStore()->getBaseUrl();
 
         // Clean store URL for use as identifier
-        $storeIdentifier = parse_url($storeUrl, PHP_URL_HOST) ?? 'magento-store';
+        $storeIdentifier = parse_url($storeUrl, PHP_URL_HOST) ?? 'magento-store'; // phpcs:ignore Magento2.Functions.DiscouragedFunction
 
         $payload = [
             'store_url' => $storeIdentifier,

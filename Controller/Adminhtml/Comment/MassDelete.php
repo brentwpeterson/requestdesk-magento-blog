@@ -44,6 +44,8 @@ class MassDelete extends Action implements HttpPostActionInterface
     }
 
     /**
+     * Execute the action
+     *
      * @return Redirect
      */
     public function execute(): Redirect

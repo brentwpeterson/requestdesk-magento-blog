@@ -8,6 +8,8 @@
 
 declare(strict_types=1);
 
+// phpcs:disable Generic.Files.LineLength.TooLong
+
 namespace RequestDesk\Blog\Block;
 
 use Magento\Framework\UrlInterface;
@@ -20,11 +22,13 @@ use Magento\Store\Model\StoreManagerInterface;
 class ImageUrl
 {
     /**
+     * Resolve
+     *
      * @param string|null $path
      * @param StoreManagerInterface $storeManager
      * @return string
      */
-    public static function resolve(?string $path, StoreManagerInterface $storeManager): string
+    public static function resolve(?string $path, StoreManagerInterface $storeManager): string // phpcs:ignore Magento2.Functions.StaticFunction
     {
         $path = trim((string) $path);
         if ($path === '') {

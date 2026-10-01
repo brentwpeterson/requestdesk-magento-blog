@@ -37,7 +37,7 @@ interface PostManagementInterface
      * @param int $storeId Store ID (0 for all stores)
      * @param string|null $requestdeskPostId RequestDesk post ID for sync
      * @param int[]|null $productIds Array of product IDs to link
-     * @param int[]|null $categoryIds Array of category IDs to assign
+     * @param int[]|null $categoryIds Blog category IDs (requestdesk_blog_category) to assign; unknown IDs are ignored
      * @return PostInterface
      * @throws LocalizedException
      */

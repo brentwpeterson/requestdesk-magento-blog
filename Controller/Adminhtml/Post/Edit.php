@@ -28,7 +28,7 @@ class Edit extends Action
     /**
      * Authorization level
      */
-    const ADMIN_RESOURCE = 'RequestDesk_Blog::manage';
+    public const ADMIN_RESOURCE = 'RequestDesk_Blog::manage';
 
     /**
      * @var PageFactory

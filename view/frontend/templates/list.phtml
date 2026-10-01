@@ -1,4 +1,5 @@
 <?php
+// phpcs:disable Generic.Files.LineLength.TooLong
 /**
  * RequestDesk Blog - Post List Template (default / Luma)
  *
@@ -14,6 +15,14 @@ $title = $block->getListingTitle();
     <?php /* Skipped when a wrapper block (author page) already renders the h1. */ ?>
     <?php if (!$block->getSuppressTitle()): ?>
         <h1 class="page-title"><?= $escaper->escapeHtml($title !== '' ? $title : __('Blog')) ?></h1>
+    <?php endif; ?>
+
+    <?php /* Filled on the search page only: the Posts / Authors / Categories / Tags tabs. */ ?>
+    <?= $block->getChildHtml('listing_header') ?>
+
+    <?php /* Category description: admin-authored HTML, already filtered. */ ?>
+    <?php if (($description = $block->getListingDescriptionHtml()) !== ''): ?>
+        <div class="rd-blog-category-description"><?= /* @noEscape */ $description ?></div>
     <?php endif; ?>
 
     <?php if (empty($posts)): ?>
@@ -64,7 +73,7 @@ $title = $block->getListingTitle();
                                 <?php foreach ($categories as $i => $category): ?><?php
                                     /* Comma emitted inside the tag run so the browser
                                        does not render a space before it. */
-                                    ?><?= $i > 0 ? ', ' : '' ?><a href="<?= $escaper->escapeUrl($category['url']) ?>" style="color:#1979c3;"><?= $escaper->escapeHtml($category['name']) ?></a><?php endforeach; ?>
+                                ?><?= $i > 0 ? ', ' : '' ?><a href="<?= $escaper->escapeUrl($category['url']) ?>" style="color:#1979c3;"><?= $escaper->escapeHtml($category['name']) ?></a><?php endforeach; ?>
                             </p>
                         <?php endif; ?>
                         <!--

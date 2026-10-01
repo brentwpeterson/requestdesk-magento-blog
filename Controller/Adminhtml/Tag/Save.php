@@ -22,7 +22,7 @@ class Save extends Action
     /**
      * Authorization level
      */
-    const ADMIN_RESOURCE = 'RequestDesk_Blog::tags';
+    public const ADMIN_RESOURCE = 'RequestDesk_Blog::tags';
 
     /**
      * @param Context $context

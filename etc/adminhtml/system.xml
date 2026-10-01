@@ -59,6 +59,26 @@
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>Show a pager on the blog, category, author and tag listing pages. When disabled, all posts render on a single page.</comment>
                 </field>
+
+                <field id="previous_next_navigation" translate="label comment" type="select" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Previous-Next Navigation</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Show links to the previous (older) and next (newer) post under each post, based on publish date.</comment>
+                </field>
+            </group>
+
+            <group id="search" translate="label" type="text" sortOrder="15" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Blog Search</label>
+                <field id="min_characters" translate="label comment" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Live Search Minimum Characters</label>
+                    <validate>required-entry validate-digits validate-greater-than-zero</validate>
+                    <comment>Suggestions appear under the blog search box once this many characters are typed.</comment>
+                </field>
+                <field id="items_per_group" translate="label comment" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Live Search Results per Group</label>
+                    <validate>required-entry validate-digits validate-greater-than-zero</validate>
+                    <comment>How many posts, authors, categories and tags each group of suggestions lists.</comment>
+                </field>
             </group>
 
             <group id="api" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="0" showInStore="0">

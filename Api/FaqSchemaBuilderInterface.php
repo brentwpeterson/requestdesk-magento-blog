@@ -20,7 +20,7 @@ interface FaqSchemaBuilderInterface
     /**
      * Build a schema.org FAQPage node from Q&A pairs, or null when there are none.
      *
-     * @param array<int, array{question:string, answer:string}> $pairs
+     * @param array $pairs array<int, array{question:string, answer:string}>
      * @param bool $withContext Include the @context key (false when nested in a @graph)
      * @return array<string, mixed>|null
      */

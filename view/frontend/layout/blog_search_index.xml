@@ -20,7 +20,12 @@
         <referenceContainer name="content">
             <block class="RequestDesk\Blog\Block\SearchView"
                    name="requestdesk.blog.search"
-                   template="RequestDesk_Blog::list.phtml"/>
+                   template="RequestDesk_Blog::list.phtml">
+                <block class="Magento\Framework\View\Element\Template"
+                       name="requestdesk.blog.search.tabs"
+                       as="listing_header"
+                       template="RequestDesk_Blog::search/tabs.phtml"/>
+            </block>
         </referenceContainer>
     </body>
 </page>
