@@ -25,9 +25,18 @@ class TestConnection extends Action
 {
     public const ADMIN_RESOURCE = 'RequestDesk_Blog::config';
 
+    /** @var JsonFactory */
     private JsonFactory $resultJsonFactory;
+    /** @var Curl */
     private Curl $curl;
 
+    /**
+     * Constructor
+     *
+     * @param Context $context
+     * @param JsonFactory $resultJsonFactory
+     * @param Curl $curl
+     */
     public function __construct(
         Context $context,
         JsonFactory $resultJsonFactory,
@@ -38,6 +47,9 @@ class TestConnection extends Action
         $this->curl = $curl;
     }
 
+    /**
+     * Execute the action
+     */
     public function execute()
     {
         $result = $this->resultJsonFactory->create();

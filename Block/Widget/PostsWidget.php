@@ -10,10 +10,8 @@ declare(strict_types=1);
 
 namespace RequestDesk\Blog\Block\Widget;
 
-use Magento\Catalog\Model\Product;
 use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Framework\Api\SortOrderBuilder;
-use Magento\Framework\Registry;
 use Magento\Framework\View\Element\Template;
 use Magento\Framework\View\Element\Template\Context;
 use Magento\Store\Model\StoreManagerInterface;
@@ -27,10 +25,14 @@ use RequestDesk\Blog\Model\Config;
 
 /**
  * A native Magento widget that surfaces blog posts anywhere widgets are allowed
- * (CMS pages, blocks, layout, the PDP). Three modes:
+ * (CMS pages, blocks, layout, the PDP). Two modes:
  *  - recent:  newest published posts
- *  - category: posts in a chosen native category
- *  - related: posts sharing the current product's categories (the AEO cross-link)
+ *  - category: posts in a chosen blog category
+ *
+ * A third mode, related, showed posts sharing the current product's catalog
+ * categories. It went when posts moved to blog categories (1.13.0): there is no
+ * longer anything tying a post to a product's categories. A widget instance
+ * still saved with mode=related renders nothing rather than unrelated posts.
  */
 class PostsWidget extends Template implements BlockInterface
 {
@@ -46,7 +48,6 @@ class PostsWidget extends Template implements BlockInterface
      * @param SortOrderBuilder $sortOrderBuilder
      * @param StoreManagerInterface $storeManager
      * @param PostCategoryResolver $categoryResolver
-     * @param Registry $registry
      * @param \RequestDesk\Blog\Model\PostContent $postContent
      * @param Config $config
      * @param array $data
@@ -58,7 +59,6 @@ class PostsWidget extends Template implements BlockInterface
         private readonly SortOrderBuilder $sortOrderBuilder,
         private readonly StoreManagerInterface $storeManager,
         private readonly PostCategoryResolver $categoryResolver,
-        private readonly Registry $registry,
         private readonly \RequestDesk\Blog\Model\PostContent $postContent,
         private readonly Config $config,
         array $data = []
@@ -78,13 +78,15 @@ class PostsWidget extends Template implements BlockInterface
             case 'category':
                 return $this->postsInCategories([(int) $this->getData('category_id')], $count);
             case 'related':
-                return $this->relatedPosts($count);
+                return [];
             default:
                 return $this->recentPosts($count);
         }
     }
 
     /**
+     * Get title
+     *
      * @return string
      */
     public function getTitle(): string
@@ -93,6 +95,8 @@ class PostsWidget extends Template implements BlockInterface
     }
 
     /**
+     * Recent posts
+     *
      * @param int $count
      * @return PostInterface[]
      */
@@ -109,6 +113,8 @@ class PostsWidget extends Template implements BlockInterface
     }
 
     /**
+     * Posts in categories
+     *
      * @param int[] $categoryIds
      * @param int $count
      * @return PostInterface[]
@@ -137,24 +143,10 @@ class PostsWidget extends Template implements BlockInterface
     }
 
     /**
-     * Posts sharing the current product's categories.
+     * Render nothing while the blog is switched off.
      *
-     * @param int $count
-     * @return PostInterface[]
-     */
-    private function relatedPosts(int $count): array
-    {
-        $product = $this->registry->registry('current_product');
-        if (!$product instanceof Product) {
-            return [];
-        }
-        $categoryIds = array_map('intval', (array) $product->getCategoryIds());
-        return $categoryIds === [] ? [] : $this->postsInCategories($categoryIds, $count);
-    }
-
-    /**
-     * Render nothing while the blog is switched off, so a widget placed on a CMS
-     * page or a product page does not keep linking to posts that now 404.
+     * So a widget placed on a CMS page or a product page does not keep linking
+     * to posts that now 404.
      *
      * @return string
      */
@@ -168,6 +160,8 @@ class PostsWidget extends Template implements BlockInterface
     }
 
     /**
+     * Get post url
+     *
      * @param PostInterface $post
      * @return string
      */
@@ -177,6 +171,8 @@ class PostsWidget extends Template implements BlockInterface
     }
 
     /**
+     * Get image url
+     *
      * @param PostInterface $post
      * @return string
      */
@@ -186,6 +182,8 @@ class PostsWidget extends Template implements BlockInterface
     }
 
     /**
+     * Get excerpt
+     *
      * @param PostInterface $post
      * @param int $length
      * @return string

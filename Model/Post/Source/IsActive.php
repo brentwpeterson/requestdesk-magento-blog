@@ -23,8 +23,8 @@ class IsActive implements OptionSourceInterface
     /**
      * Status values
      */
-    const STATUS_ENABLED = 1;
-    const STATUS_DISABLED = 0;
+    public const STATUS_ENABLED = 1;
+    public const STATUS_DISABLED = 0;
 
     /**
      * Get options

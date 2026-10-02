@@ -30,26 +30,51 @@ class Comment extends AbstractModel
         $this->_init(CommentResource::class);
     }
 
+    /**
+     * Get post id
+     *
+     * @return int
+     */
     public function getPostId(): int
     {
         return (int) $this->getData('post_id');
     }
 
+    /**
+     * Get author name
+     *
+     * @return string
+     */
     public function getAuthorName(): string
     {
         return (string) $this->getData('author_name');
     }
 
+    /**
+     * Get author email
+     *
+     * @return string
+     */
     public function getAuthorEmail(): string
     {
         return (string) $this->getData('author_email');
     }
 
+    /**
+     * Get content
+     *
+     * @return string
+     */
     public function getContent(): string
     {
         return (string) $this->getData('content');
     }
 
+    /**
+     * Get status
+     *
+     * @return string
+     */
     public function getStatus(): string
     {
         return (string) $this->getData('status');

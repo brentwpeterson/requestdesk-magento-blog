@@ -97,7 +97,7 @@ class DataProvider extends AbstractDataProvider
         }
 
         return [[
-            'name' => basename($path),
+            'name' => basename($path), // phpcs:ignore Magento2.Functions.DiscouragedFunction
             'url' => ImageUrl::resolve($path, $this->storeManager),
         ]];
     }

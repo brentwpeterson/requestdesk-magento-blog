@@ -1,4 +1,5 @@
 <?php
+// phpcs:disable Generic.Files.LineLength.TooLong
 /**
  * RequestDesk Blog - Sidebar Template (default / Luma)
  *
@@ -12,7 +13,8 @@ $categories = $block->getCategories();
     <div class="block rd-blog-search">
         <div class="block-title"><strong><?= $escaper->escapeHtml(__('Search the blog')) ?></strong></div>
         <div class="block-content">
-            <form action="<?= $escaper->escapeUrl($block->getSearchUrl()) ?>" method="get" role="search">
+            <form action="<?= $escaper->escapeUrl($block->getSearchUrl()) ?>" method="get" role="search"
+                  class="rd-blog-search-form" style="position:relative;">
                 <label for="rd-blog-search-input" class="label"><span><?= $escaper->escapeHtml(__('Search the blog')) ?></span></label>
                 <div style="display:flex;gap:8px;">
                     <input type="search" id="rd-blog-search-input"
@@ -20,10 +22,99 @@ $categories = $block->getCategories();
                            value="<?= $escaper->escapeHtmlAttr($block->getSearchQuery()) ?>"
                            maxlength="<?= (int) $block->getSearchMaxLength() ?>"
                            placeholder="<?= $escaper->escapeHtmlAttr(__('Search posts')) ?>"
+                           autocomplete="off"
+                           aria-controls="rd-blog-search-suggest"
+                           aria-expanded="false"
+                           data-suggest-url="<?= $escaper->escapeUrl($block->getSuggestUrl()) ?>"
+                           data-min-chars="<?= (int) $block->getSearchMinCharacters() ?>"
                            required style="flex:1;" />
                     <button type="submit" class="action primary"><?= $escaper->escapeHtml(__('Search')) ?></button>
                 </div>
+                <div id="rd-blog-search-suggest" hidden
+                     style="position:absolute;z-index:20;left:0;right:0;margin-top:4px;background:#fff;border:1px solid #ccc;box-shadow:0 4px 12px rgba(0,0,0,.1);max-height:420px;overflow:auto;"></div>
             </form>
+            <script>
+                /* Live search like Amasty's: suggestions after the minimum
+                   characters, without leaving the page. Plain JS, so it needs
+                   neither RequireJS nor jQuery. */
+                (function () {
+                    var input = document.getElementById('rd-blog-search-input');
+                    var box = document.getElementById('rd-blog-search-suggest');
+                    var form = input.form;
+                    var timer = null;
+                    var controller = null;
+
+                    function show(visible) {
+                        box.hidden = !visible;
+                        input.setAttribute('aria-expanded', visible ? 'true' : 'false');
+                    }
+
+                    function render(result) {
+                        box.textContent = '';
+                        if (result.message) {
+                            var p = document.createElement('p');
+                            p.style.cssText = 'margin:0;padding:10px 14px;color:#666;';
+                            p.textContent = result.message;
+                            box.appendChild(p);
+                        }
+                        (result.groups || []).forEach(function (group) {
+                            var title = document.createElement('strong');
+                            title.style.cssText = 'display:block;padding:10px 14px 4px;font-size:12px;text-transform:uppercase;color:#777;';
+                            title.textContent = group.label;
+                            var list = document.createElement('ul');
+                            list.style.cssText = 'list-style:none;margin:0;padding:0 0 6px;';
+                            group.items.forEach(function (item) {
+                                var li = document.createElement('li');
+                                li.style.margin = '0';
+                                var a = document.createElement('a');
+                                a.href = item.url;
+                                a.textContent = item.title;
+                                a.style.cssText = 'display:block;padding:6px 14px;';
+                                li.appendChild(a);
+                                list.appendChild(li);
+                            });
+                            box.appendChild(title);
+                            box.appendChild(list);
+                        });
+                        show(box.childNodes.length > 0);
+                    }
+
+                    input.addEventListener('input', function () {
+                        clearTimeout(timer);
+                        if (controller) {
+                            controller.abort();
+                        }
+                        var query = input.value.trim();
+                        if (query.length < parseInt(input.dataset.minChars, 10)) {
+                            show(false);
+                            return;
+                        }
+                        timer = setTimeout(function () {
+                            controller = new AbortController();
+                            fetch(input.dataset.suggestUrl + '?query=' + encodeURIComponent(query), {
+                                headers: {'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json'},
+                                signal: controller.signal
+                            })
+                                .then(function (response) { return response.json(); })
+                                .then(render)
+                                .catch(function () {});
+                        }, 300);
+                    });
+                    input.addEventListener('focus', function () {
+                        show(box.childNodes.length > 0 && input.value.trim() !== '');
+                    });
+                    document.addEventListener('click', function (event) {
+                        if (!form.contains(event.target)) {
+                            show(false);
+                        }
+                    });
+                    form.addEventListener('keydown', function (event) {
+                        if (event.key === 'Escape') {
+                            show(false);
+                        }
+                    });
+                }());
+            </script>
         </div>
     </div>
 

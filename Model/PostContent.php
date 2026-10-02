@@ -14,6 +14,8 @@
  */
 declare(strict_types=1);
 
+// phpcs:disable Generic.Files.LineLength.TooLong
+
 namespace RequestDesk\Blog\Model;
 
 use Magento\Cms\Model\Template\FilterProvider;
@@ -76,7 +78,7 @@ class PostContent
         // excerpt. Drop those elements whole, first.
         $html = (string) preg_replace('#<(script|style)\b[^>]*>.*?</\1>#si', ' ', $html);
 
-        $text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8'); // phpcs:ignore Magento2.Functions.DiscouragedFunction
 
         return trim((string) preg_replace('/\s+/u', ' ', $text));
     }
@@ -151,6 +153,12 @@ class PostContent
         return trim($decoded);
     }
 
+    /**
+     * Decode escaped markup
+     *
+     * @param string $content
+     * @return string
+     */
     private function decodeEscapedMarkup(string $content): string
     {
         if ($content === '' || !str_contains($content, '&lt;')) {
@@ -165,7 +173,7 @@ class PostContent
                     return $matches[0];
                 }
                 return $matches[1]
-                    . html_entity_decode($matches[2], ENT_QUOTES | ENT_HTML5, 'UTF-8')
+                    . html_entity_decode($matches[2], ENT_QUOTES | ENT_HTML5, 'UTF-8') // phpcs:ignore Magento2.Functions.DiscouragedFunction
                     . $matches[3];
             },
             $content
@@ -173,7 +181,7 @@ class PostContent
 
         // Content escaped in full, with no real markup around it.
         if ($decoded === $content && !str_contains($content, '<')) {
-            return html_entity_decode($content, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            return html_entity_decode($content, ENT_QUOTES | ENT_HTML5, 'UTF-8'); // phpcs:ignore Magento2.Functions.DiscouragedFunction
         }
 
         return $decoded;

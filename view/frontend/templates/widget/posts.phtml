@@ -1,4 +1,5 @@
 <?php
+// phpcs:disable Generic.Files.LineLength.TooLong
 /**
  * RequestDesk Blog - Posts Widget Template
  *
@@ -17,7 +18,8 @@ $title = $block->getTitle();
 
         <ul style="list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;">
             <?php foreach ($posts as $post): ?>
-                <?php $url = $block->getPostUrl($post); $img = $block->getImageUrl($post); ?>
+                <?php $url = $block->getPostUrl($post);
+                $img = $block->getImageUrl($post); ?>
                 <li style="border:1px solid #e5e5e5;border-radius:6px;overflow:hidden;">
                     <?php if ($img !== ''): ?>
                         <a href="<?= $escaper->escapeUrl($url) ?>">

@@ -14,7 +14,7 @@
             is_email_compatible="false"
             placeholder_image="RequestDesk_Blog::images/widget.png">
         <label translate="true">RequestDesk Blog Posts</label>
-        <description translate="true">Show recent, category, or product-related blog posts anywhere widgets are allowed.</description>
+        <description translate="true">Show recent or blog-category posts anywhere widgets are allowed.</description>
         <parameters>
             <parameter name="title" xsi:type="text" visible="true" sort_order="10">
                 <label translate="true">Heading</label>
@@ -28,24 +28,18 @@
                     <option name="category" value="category">
                         <label translate="true">By Category</label>
                     </option>
-                    <option name="related" value="related">
-                        <label translate="true">Related to Current Product (PDP)</label>
-                    </option>
                 </options>
             </parameter>
             <parameter name="posts_count" xsi:type="text" visible="true" sort_order="30">
                 <label translate="true">Number of Posts</label>
                 <value>3</value>
             </parameter>
-            <parameter name="category_id" xsi:type="block" visible="true" sort_order="40">
-                <label translate="true">Category (for "By Category" mode)</label>
-                <block class="Magento\Catalog\Block\Adminhtml\Category\Widget\Chooser">
-                    <data>
-                        <item name="button" xsi:type="array">
-                            <item name="open" xsi:type="string" translate="true">Choose Category</item>
-                        </item>
-                    </data>
-                </block>
+            <parameter name="category_id" xsi:type="select" visible="true" sort_order="40"
+                       source_model="RequestDesk\Blog\Model\Source\Categories">
+                <label translate="true">Blog Category (for "By Category" mode)</label>
+                <depends>
+                    <parameter name="mode" value="category"/>
+                </depends>
             </parameter>
         </parameters>
     </widget>

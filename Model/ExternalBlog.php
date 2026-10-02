@@ -43,6 +43,10 @@ class ExternalBlog implements ExternalBlogInterface
      * @param EncryptorInterface $encryptor
      * @param SearchCriteriaBuilderFactory $searchCriteriaBuilderFactory
      * @param LoggerInterface $logger
+     * @param ApiKeyValidator $apiKeyValidator
+     * @param TagResolver $tagResolver
+     * @param PostCategoryResolver $postCategoryResolver
+     * @param UrlInterface $urlBuilder
      * @param Config $config
      */
     public function __construct(
@@ -63,6 +67,8 @@ class ExternalBlog implements ExternalBlogInterface
     }
 
     /**
+     * Validate api key
+     *
      * @throws AuthorizationException
      */
     private function validateApiKey(): void
@@ -189,7 +195,7 @@ class ExternalBlog implements ExternalBlogInterface
                         'category_ids' => $categoryIds,
                         'published_at' => $publishedAt
                     ]);
-                } catch (NoSuchEntityException $e) {
+                } catch (NoSuchEntityException $e) { // phpcs:ignore Magento2.CodeAnalysis.EmptyBlock
                     // Post doesn't exist, continue with creation
                 }
             }

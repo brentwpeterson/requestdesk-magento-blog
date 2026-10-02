@@ -10,11 +10,10 @@
  * Source tables: amasty_blog_posts (+ _tag / _tags_store, _author_store,
  * _posts_category, _categories, _categories_store).
  *
- * Categories map onto NATIVE Magento categories rather than arriving as a second
- * taxonomy, so the blog reuses Magento's own admin, URL rewrites and store
- * scoping. Everything imported hangs off one dedicated parent with
- * include_in_menu and is_anchor off, so blog categories stay out of product
- * navigation. See AmastyCategoryMapper.
+ * Categories become blog categories (requestdesk_blog_category), tree kept.
+ * See AmastyCategoryImporter. Before 1.13.0 they became native catalog
+ * categories; requestdesk:blog:migrate-amasty-categories re-files posts
+ * migrated back then.
  *
  * @category  RequestDesk
  * @package   RequestDesk_Blog
@@ -22,13 +21,15 @@
 
 declare(strict_types=1);
 
+// phpcs:disable Generic.Files.LineLength.TooLong
+
 namespace RequestDesk\Blog\Console\Command;
 
 use Magento\Framework\App\Area;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\App\State;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
-use RequestDesk\Blog\Model\AmastyCategoryMapper;
+use RequestDesk\Blog\Model\AmastyCategoryImporter;
 use RequestDesk\Blog\Model\AmastyMediaPath;
 use RequestDesk\Blog\Model\AuthorResolver;
 use RequestDesk\Blog\Model\PostCategoryResolver;
@@ -43,7 +44,6 @@ class MigrateAmastyCommand extends Command
 {
     private const OPT_LIMIT = 'limit';
     private const OPT_DRY_RUN = 'dry-run';
-    private const OPT_PARENT = 'parent-category';
 
     /** Amasty status: 2 = published/enabled. */
     private const AMASTY_STATUS_PUBLISHED = 2;
@@ -60,10 +60,18 @@ class MigrateAmastyCommand extends Command
      */
     private const AMASTY_SHORT_COLUMNS = ['short_content', 'short_description', 'post_teaser', 'teaser', 'excerpt'];
 
-    /** Resolved once per run; null means the source has no such column. */
+    /**
+     * Resolved once per run; null means the source has no such column.
+     *
+     * @var ?string
+     */
     private ?string $amastyShortColumn = null;
 
-    /** Separate flag, because null is a real answer and not "not looked yet". */
+    /**
+     * Separate flag, because null is a real answer and not "not looked yet".
+     *
+     * @var bool
+     */
     private bool $amastyShortColumnResolved = false;
 
     /**
@@ -73,6 +81,8 @@ class MigrateAmastyCommand extends Command
      * @param PostFactory $postFactory
      * @param TagResolver $tagResolver
      * @param AuthorResolver $authorResolver
+     * @param AmastyCategoryImporter $categoryImporter
+     * @param PostCategoryResolver $postCategoryResolver
      */
     public function __construct(
         private readonly State $appState,
@@ -81,7 +91,7 @@ class MigrateAmastyCommand extends Command
         private readonly PostFactory $postFactory,
         private readonly TagResolver $tagResolver,
         private readonly AuthorResolver $authorResolver,
-        private readonly AmastyCategoryMapper $categoryMapper,
+        private readonly AmastyCategoryImporter $categoryImporter,
         private readonly PostCategoryResolver $postCategoryResolver
     ) {
         parent::__construct();
@@ -96,12 +106,6 @@ class MigrateAmastyCommand extends Command
         $this->setDescription('Migrate Amasty Blog posts into the RequestDesk blog (reads Amasty DB tables directly).');
         $this->addOption(self::OPT_LIMIT, 'l', InputOption::VALUE_REQUIRED, 'Max posts to migrate (default: all published)');
         $this->addOption(self::OPT_DRY_RUN, null, InputOption::VALUE_NONE, 'Report what would migrate without writing');
-        $this->addOption(
-            self::OPT_PARENT,
-            'p',
-            InputOption::VALUE_REQUIRED,
-            'Native category id to create imported blog categories under (default: find or create "Blog" under the store root)'
-        );
     }
 
     /**
@@ -118,43 +122,14 @@ class MigrateAmastyCommand extends Command
 
         try {
             $this->appState->setAreaCode(Area::AREA_ADMINHTML);
-        } catch (\Exception $e) {
+        } catch (\Exception $e) { // phpcs:ignore Magento2.CodeAnalysis.EmptyBlock
             // area already set — fine
         }
 
         $limit = $input->getOption(self::OPT_LIMIT) !== null ? (int) $input->getOption(self::OPT_LIMIT) : 0;
         $dryRun = (bool) $input->getOption(self::OPT_DRY_RUN);
 
-        // Resolve the one parent every imported blog category hangs under. Doing
-        // this up front means a bad --parent-category fails before anything is
-        // written, rather than half way through the run.
-        $parentOption = $input->getOption(self::OPT_PARENT);
-        $rootParentId = 0;
-        if ($parentOption !== null) {
-            if (!is_numeric($parentOption) || (int) $parentOption <= 0) {
-                $output->writeln(sprintf(
-                    '<error>--parent-category must be a positive category id, got "%s".</error>',
-                    $parentOption
-                ));
-                return Command::FAILURE;
-            }
-            $rootParentId = (int) $parentOption;
-            if (!$this->categoryMapper->categoryExists($rootParentId)) {
-                $output->writeln(sprintf(
-                    '<error>--parent-category %d does not exist.</error>',
-                    $rootParentId
-                ));
-                return Command::FAILURE;
-            }
-        }
-        $canMapCategories = $this->categoryMapper->sourceExists();
-        if ($canMapCategories && !$dryRun && $rootParentId <= 0) {
-            $rootParentId = (int) $this->categoryMapper->getOrCreateRootParent();
-            if ($rootParentId <= 0) {
-                $output->writeln('<error>Could not resolve or create the parent blog category.</error>');
-                return Command::FAILURE;
-            }
-        }
+        $canMapCategories = $this->categoryImporter->sourceExists();
         if (!$canMapCategories) {
             $output->writeln('<comment>No amasty_blog_categories table — categories will be skipped.</comment>');
         }
@@ -256,7 +231,7 @@ class MigrateAmastyCommand extends Command
                 // Reading the source is safe; mapCategory is what creates, and
                 // it is deliberately not called here.
                 $srcCategoryIds = $canMapCategories
-                    ? $this->categoryMapper->getSourceCategoryIds($srcId)
+                    ? $this->categoryImporter->getSourceCategoryIds($srcId)
                     : [];
                 foreach ($srcCategoryIds as $srcCategoryId) {
                     $previewCategoryIds[$srcCategoryId] = true;
@@ -277,9 +252,8 @@ class MigrateAmastyCommand extends Command
             // transaction opens: tags, authors and categories are all
             // get-or-create keyed on name or url_key, so a leftover from a
             // failed post is harmless and gets reused rather than duplicated.
-            // Holding them inside the transaction instead would drag catalog
-            // category writes into a rollback, which is not something the
-            // category repository is safe to be wrapped in.
+            // Keeping them out of the transaction also means a rolled-back
+            // post does not take a category shared with other posts with it.
             $tagIds = [];
             $categoryIds = [];
             try {
@@ -290,10 +264,10 @@ class MigrateAmastyCommand extends Command
                     }
                 }
                 if ($canMapCategories) {
-                    foreach ($this->categoryMapper->getSourceCategoryIds($srcId) as $srcCategoryId) {
-                        $nativeId = $this->categoryMapper->mapCategory($srcCategoryId, $rootParentId);
-                        if ($nativeId) {
-                            $categoryIds[] = $nativeId;
+                    foreach ($this->categoryImporter->getSourceCategoryIds($srcId) as $srcCategoryId) {
+                        $blogCategoryId = $this->categoryImporter->mapCategory($srcCategoryId);
+                        if ($blogCategoryId) {
+                            $categoryIds[] = $blogCategoryId;
                         }
                     }
                 }
@@ -391,8 +365,7 @@ class MigrateAmastyCommand extends Command
             $output->writeln("  category links:  {$categoryLinks}");
         }
         if (!$dryRun) {
-            $output->writeln('  categories made: ' . count($this->categoryMapper->getMapping())
-                . ($rootParentId > 0 ? " (under category {$rootParentId})" : ''));
+            $output->writeln('  categories made: ' . $this->categoryImporter->getCreatedCount());
         }
 
         return Command::SUCCESS;
@@ -504,10 +477,11 @@ class MigrateAmastyCommand extends Command
         return array_filter(array_map('trim', $connection->fetchCol($select)));
     }
 
-
     /**
-     * The RequestDesk post already holding this url_key, or 0. Keeps re-runs
-     * idempotent, and gives the caller the id it needs to backfill in place.
+     * The RequestDesk post already holding this url_key, or 0.
+     *
+     * Keeps re-runs idempotent, and gives the caller the id it needs to
+     * backfill in place.
      *
      * @param string $urlKey
      * @return int
@@ -554,7 +528,7 @@ class MigrateAmastyCommand extends Command
     /**
      * The teaser on one Amasty row, or null when there is none worth writing.
      *
-     * @param array<string, mixed> $row
+     * @param array $row array<string, mixed>
      * @return string|null
      */
     private function shortDescriptionFrom(array $row): ?string
@@ -572,12 +546,12 @@ class MigrateAmastyCommand extends Command
     /**
      * The original publish date on one Amasty row, as 'Y-m-d H:i:s'.
      *
-     * published_at is Amasty's own field for this and is what its front end
-     * shows. created_at is the fallback for a row where published_at was never
+     * Amasty's own field for this is published_at, and it is what its front
+     * end shows. created_at is the fallback for a row where published_at was never
      * set: still the truth about when the post appeared, and far closer than
      * the moment our import ran.
      *
-     * @param array<string, mixed> $row
+     * @param array $row array<string, mixed>
      * @return string|null null when the source has no usable date
      */
     private function publishedAtFrom(array $row): ?string
@@ -600,7 +574,7 @@ class MigrateAmastyCommand extends Command
     /**
      * Correct created_at on an existing post to the source's publish date.
      *
-     * created_at can never be "empty" the way short_description can - the column
+     * The created_at column can never be "empty" the way short_description can - it
      * defaults to CURRENT_TIMESTAMP - so emptiness cannot be the test for
      * whether a value is ours to replace. The test is that ours is LATER than
      * the source: an import stamp always is, because it was written long after

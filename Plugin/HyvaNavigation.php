@@ -40,6 +40,8 @@ class HyvaNavigation
     }
 
     /**
+     * After plugin for get navigation
+     *
      * @param object $subject
      * @param array|false $result
      * @return array|false
@@ -54,7 +56,9 @@ class HyvaNavigation
     }
 
     /**
-     * @param array<string, mixed> $items
+     * Prune
+     *
+     * @param array $items array<string, mixed>
      * @return array<string, mixed>
      */
     private function prune(array $items): array

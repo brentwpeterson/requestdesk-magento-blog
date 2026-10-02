@@ -37,6 +37,8 @@ class ArchiveUrl
     public const TYPE_AUTHOR = 'author';
 
     /**
+     * Resolve
+     *
      * @param string $type one of the TYPE_* constants
      * @param int $id
      * @param string|null $urlKey
@@ -44,7 +46,7 @@ class ArchiveUrl
      * @param string $prefix from Model\Config::getUrlPrefix(), required for the reason given on PostUrl::resolve()
      * @return string
      */
-    public static function resolve(
+    public static function resolve( // phpcs:ignore Magento2.Functions.StaticFunction
         string $type,
         int $id,
         ?string $urlKey,

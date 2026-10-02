@@ -15,7 +15,7 @@ use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
 use RequestDesk\Blog\Console\Command\MigrateAmastyCommand;
-use RequestDesk\Blog\Model\AmastyCategoryMapper;
+use RequestDesk\Blog\Model\AmastyCategoryImporter;
 use RequestDesk\Blog\Model\AuthorResolver;
 use RequestDesk\Blog\Model\PostCategoryResolver;
 use RequestDesk\Blog\Model\PostFactory;
@@ -36,6 +36,7 @@ class MigrateAmastyMediaPathTest extends TestCase
     /** @var AdapterInterface&MockObject */
     private AdapterInterface $connection;
 
+    /** @var MigrateAmastyCommand */
     private MigrateAmastyCommand $command;
 
     protected function setUp(): void
@@ -59,7 +60,7 @@ class MigrateAmastyMediaPathTest extends TestCase
             $this->createMock(PostFactory::class),
             $this->createMock(TagResolver::class),
             $this->createMock(AuthorResolver::class),
-            $this->createMock(AmastyCategoryMapper::class),
+            $this->createMock(AmastyCategoryImporter::class),
             $this->createMock(PostCategoryResolver::class)
         );
     }

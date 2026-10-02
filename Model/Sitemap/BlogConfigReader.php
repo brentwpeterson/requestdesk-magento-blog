@@ -35,6 +35,8 @@ class BlogConfigReader implements ConfigReaderInterface
     }
 
     /**
+     * Whether enabled
+     *
      * @param int $storeId
      * @return bool
      */

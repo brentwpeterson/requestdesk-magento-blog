@@ -8,6 +8,8 @@
 
 declare(strict_types=1);
 
+// phpcs:disable Generic.Files.LineLength.TooLong
+
 namespace RequestDesk\Blog\Model\Sitemap;
 
 use Magento\Framework\App\Config\ScopeConfigInterface;
@@ -127,6 +129,8 @@ class BlogItemProvider implements ItemProviderInterface
     }
 
     /**
+     * Fetch tag archives
+     *
      * @param int $storeId
      * @return array<int, array{id:string, url_key:?string, updated_at:string}>
      */
@@ -148,6 +152,8 @@ class BlogItemProvider implements ItemProviderInterface
     }
 
     /**
+     * Fetch author archives
+     *
      * @param int $storeId
      * @return array<int, array{id:string, url_key:?string, updated_at:string}>
      */
@@ -168,8 +174,7 @@ class BlogItemProvider implements ItemProviderInterface
     }
 
     /**
-     * Native catalog categories with a published post, keyed by their
-     * store-default url_key - the same value Controller\Router matches on.
+     * Enabled blog categories with a published post.
      *
      * @param int $storeId
      * @return array<int, array{id:string, url_key:?string, updated_at:string}>
@@ -177,37 +182,22 @@ class BlogItemProvider implements ItemProviderInterface
     private function fetchCategoryArchives(int $storeId): array
     {
         $connection = $this->resource->getConnection();
-        $linkField = $this->categoryLinkField();
 
         return $connection->fetchAll(
             $this->publishedPostSelect($storeId)
                 ->join(
-                    ['l' => $this->resource->getTableName('requestdesk_blog_post_category')],
+                    ['l' => $this->resource->getTableName('requestdesk_blog_category_post')],
                     'l.post_id = p.post_id',
                     []
                 )
                 ->join(
-                    ['e' => $this->resource->getTableName('catalog_category_entity')],
-                    'e.entity_id = l.category_id',
-                    ['id' => 'e.entity_id', 'updated_at' => new \Zend_Db_Expr('MAX(p.updated_at)')]
+                    ['c' => $this->resource->getTableName('requestdesk_blog_category')],
+                    'c.category_id = l.category_id',
+                    ['id' => 'c.category_id', 'url_key' => 'c.url_key', 'updated_at' => new \Zend_Db_Expr('MAX(p.updated_at)')]
                 )
-                ->joinLeft(
-                    ['v' => $this->resource->getTableName('catalog_category_entity_varchar')],
-                    'v.' . $linkField . ' = e.' . $linkField . ' AND v.store_id = 0 AND v.attribute_id = ('
-                    . $connection->select()
-                        ->from(['a' => $this->resource->getTableName('eav_attribute')], ['attribute_id'])
-                        ->join(
-                            ['t' => $this->resource->getTableName('eav_entity_type')],
-                            't.entity_type_id = a.entity_type_id',
-                            []
-                        )
-                        ->where('a.attribute_code = ?', 'url_key')
-                        ->where('t.entity_type_code = ?', 'catalog_category')
-                    . ')',
-                    ['url_key' => 'v.value']
-                )
-                ->group('e.entity_id')
-                ->order('e.entity_id ASC')
+                ->where('c.status = ?', 1)
+                ->group('c.category_id')
+                ->order('c.category_id ASC')
         );
     }
 
@@ -235,7 +225,7 @@ class BlogItemProvider implements ItemProviderInterface
      *
      * @param string $prefix
      * @param string $type
-     * @param array<int, array{id:string, url_key:?string, updated_at:string}> $rows
+     * @param array $rows array<int, array{id:string, url_key:?string, updated_at:string}>
      * @return array<string, string> url => updated_at
      */
     private function archiveUrls(string $prefix, string $type, array $rows): array
@@ -260,6 +250,8 @@ class BlogItemProvider implements ItemProviderInterface
     }
 
     /**
+     * Item
+     *
      * @param string $url store-relative
      * @param string|null $updatedAt
      * @param int $storeId
@@ -273,19 +265,5 @@ class BlogItemProvider implements ItemProviderInterface
             'priority' => $this->configReader->getPriority($storeId),
             'changeFrequency' => $this->configReader->getChangeFrequency($storeId),
         ]);
-    }
-
-    /**
-     * Open Source keys category EAV values on entity_id, Commerce on row_id.
-     *
-     * @return string
-     */
-    private function categoryLinkField(): string
-    {
-        $columns = $this->resource->getConnection()->describeTable(
-            $this->resource->getTableName('catalog_category_entity_varchar')
-        );
-
-        return isset($columns['row_id']) ? 'row_id' : 'entity_id';
     }
 }

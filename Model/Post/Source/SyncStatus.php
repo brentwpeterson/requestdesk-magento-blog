@@ -23,10 +23,10 @@ class SyncStatus implements OptionSourceInterface
     /**
      * Sync status values
      */
-    const STATUS_PENDING = 'pending';
-    const STATUS_SYNCED = 'synced';
-    const STATUS_FAILED = 'failed';
-    const STATUS_NOT_SYNCED = 'not_synced';
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_SYNCED = 'synced';
+    public const STATUS_FAILED = 'failed';
+    public const STATUS_NOT_SYNCED = 'not_synced';
 
     /**
      * Get options

@@ -26,7 +26,7 @@ class Save extends Action
     /**
      * Authorization level
      */
-    const ADMIN_RESOURCE = 'RequestDesk_Blog::authors';
+    public const ADMIN_RESOURCE = 'RequestDesk_Blog::authors';
 
     /**
      * @param Context $context
@@ -262,7 +262,7 @@ class Save extends Action
             if ($owner === 0 || $owner === $authorId) {
                 return $candidate;
             }
-            $candidate = $base . '-' . $i++;
+            $candidate = $base . '-' . ($i++);
         }
     }
 }

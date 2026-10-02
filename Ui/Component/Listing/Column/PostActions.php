@@ -26,9 +26,9 @@ class PostActions extends Column
     /**
      * URL paths
      */
-    const URL_PATH_VIEW = 'requestdesk_blog/post/view';
-    const URL_PATH_EDIT = 'requestdesk_blog/post/edit';
-    const URL_PATH_DELETE = 'requestdesk_blog/post/delete';
+    public const URL_PATH_VIEW = 'requestdesk_blog/post/view';
+    public const URL_PATH_EDIT = 'requestdesk_blog/post/edit';
+    public const URL_PATH_DELETE = 'requestdesk_blog/post/delete';
 
     /**
      * @var UrlInterface

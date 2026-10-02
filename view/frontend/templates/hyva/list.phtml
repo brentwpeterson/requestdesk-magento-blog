@@ -1,4 +1,5 @@
 <?php
+// phpcs:disable Generic.Files.LineLength.TooLong
 /**
  * RequestDesk Blog - Hyva Theme Blog Listing Template
  * Uses Tailwind CSS and Alpine.js
@@ -23,6 +24,14 @@ $title = $block->getListingTitle();
         <h1 class="text-3xl md:text-4xl font-bold text-gray-900 mb-8">
             <?= $escaper->escapeHtml($title !== '' ? $title : __('Blog')) ?>
         </h1>
+    <?php endif; ?>
+
+    <?php /* Filled on the search page only: the Posts / Authors / Categories / Tags tabs. */ ?>
+    <?= $block->getChildHtml('listing_header') ?>
+
+    <?php /* Category description: admin-authored HTML, already filtered. */ ?>
+    <?php if (($description = $block->getListingDescriptionHtml()) !== ''): ?>
+        <div class="prose max-w-none mb-8"><?= /* @noEscape */ $description ?></div>
     <?php endif; ?>
 
     <?php if (!empty($posts)): ?>

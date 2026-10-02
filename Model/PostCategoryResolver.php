@@ -1,6 +1,6 @@
 <?php
 /**
- * RequestDesk Blog - Post Category Resolver (native Magento categories)
+ * RequestDesk Blog - Post Category Resolver (blog categories)
  *
  * @category  RequestDesk
  * @package   RequestDesk_Blog
@@ -10,38 +10,39 @@ declare(strict_types=1);
 
 namespace RequestDesk\Blog\Model;
 
-use Magento\Catalog\Api\CategoryRepositoryInterface;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\UrlInterface;
 use RequestDesk\Blog\Block\ArchiveUrl;
-use Psr\Log\LoggerInterface;
 
 /**
- * Links blog posts to NATIVE Magento catalog categories (catalog_category_entity)
- * instead of an invented blog taxonomy. Reads category name/URL from the real
- * category tree so the blog reuses whatever categories the store already has.
+ * Links blog posts to blog categories (requestdesk_blog_category).
+ *
+ * Until 1.13.0 posts were filed under native catalog categories; that link
+ * table (requestdesk_blog_post_category) is no longer read or written.
+ *
+ * Everything the storefront sees goes through the enabled filter: a disabled
+ * category keeps its links, so enabling it again restores it, but it shows on
+ * no card, no sidebar and no archive in the meantime.
  */
 class PostCategoryResolver
 {
-    private const LINK_TABLE = 'requestdesk_blog_post_category';
+    private const LINK_TABLE = 'requestdesk_blog_category_post';
+    private const CATEGORY_TABLE = 'requestdesk_blog_category';
 
     /**
      * @param ResourceConnection $resource
-     * @param CategoryRepositoryInterface $categoryRepository
-     * @param LoggerInterface $logger
+     * @param UrlInterface $urlBuilder
      * @param Config $config
      */
     public function __construct(
         private readonly ResourceConnection $resource,
-        private readonly CategoryRepositoryInterface $categoryRepository,
-        private readonly LoggerInterface $logger,
         private readonly UrlInterface $urlBuilder,
         private readonly Config $config
     ) {
     }
 
     /**
-     * Native categories assigned to a post, as [id, name, url].
+     * Enabled categories assigned to a post, as [id, name, url].
      *
      * @param int $postId
      * @return array<int, array{id:int, name:string, url:string}>
@@ -52,10 +53,7 @@ class PostCategoryResolver
     }
 
     /**
-     * Native categories for a whole page of posts in one pass.
-     *
-     * The listing calls this for every card it renders; one link-table query
-     * and one load per unique category beats a round trip per post.
+     * Enabled categories for a whole page of posts in one query.
      *
      * @param int[] $postIds
      * @return array<int, array<int, array{id:int, name:string, url:string}>> post_id => categories
@@ -69,69 +67,27 @@ class PostCategoryResolver
 
         $connection = $this->resource->getConnection();
         $select = $connection->select()
-            ->from($this->resource->getTableName(self::LINK_TABLE), ['post_id', 'category_id'])
-            ->where('post_id IN (?)', $postIds);
-
-        $categoryIdsByPost = [];
-        foreach ($connection->fetchAll($select) as $row) {
-            $categoryIdsByPost[(int) $row['post_id']][] = (int) $row['category_id'];
-        }
-
-        $categoriesById = $this->loadCategories(
-            array_unique(array_merge(...array_values($categoryIdsByPost ?: [[]])))
-        );
+            ->from(['l' => $this->resource->getTableName(self::LINK_TABLE)], ['post_id'])
+            ->join(
+                ['c' => $this->resource->getTableName(self::CATEGORY_TABLE)],
+                'c.category_id = l.category_id',
+                ['category_id', 'name', 'url_key']
+            )
+            ->where('l.post_id IN (?)', $postIds)
+            ->where('c.status = ?', Category::STATUS_ENABLED)
+            ->order(['c.sort_order ASC', 'c.name ASC']);
 
         $result = [];
-        foreach ($categoryIdsByPost as $postId => $categoryIds) {
-            foreach ($categoryIds as $categoryId) {
-                if (isset($categoriesById[$categoryId])) {
-                    $result[$postId][] = $categoriesById[$categoryId];
-                }
-            }
+        foreach ($connection->fetchAll($select) as $row) {
+            $result[(int) $row['post_id']][] = $this->toCategory($row);
         }
         return $result;
     }
 
     /**
-     * Load the category records behind the link rows, skipping ids that no
-     * longer exist in the catalog.
+     * Every enabled category with a published post, with its post count.
      *
-     * @param int[] $categoryIds
-     * @return array<int, array{id:int, name:string, url:string}>
-     */
-    private function loadCategories(array $categoryIds): array
-    {
-        $categories = [];
-        foreach ($categoryIds as $categoryId) {
-            try {
-                $category = $this->categoryRepository->get($categoryId);
-                $categories[$categoryId] = [
-                    'id' => $categoryId,
-                    'name' => (string) $category->getName(),
-                    'url' => ArchiveUrl::resolve(
-                        ArchiveUrl::TYPE_CATEGORY,
-                        $categoryId,
-                        $category->getUrlKey(),
-                        $this->urlBuilder,
-                        $this->config->getUrlPrefix()
-                    ),
-                ];
-            } catch (\Throwable $e) {
-                // category removed from the catalog — skip it
-                $this->logger->debug('RequestDesk Blog: linked category missing', [
-                    'category_id' => $categoryId,
-                ]);
-            }
-        }
-        return $categories;
-    }
-
-    /**
-     * Every category with at least one published post, with that count, for
-     * the blog sidebar. Largest first, then by name.
-     *
-     * Counts published posts only, so the number next to a category is the
-     * number of posts its archive page lists.
+     * For the blog sidebar. Largest first, then by name.
      *
      * @return array<int, array{id:int, name:string, url:string, count:int}>
      */
@@ -139,23 +95,24 @@ class PostCategoryResolver
     {
         $connection = $this->resource->getConnection();
         $select = $connection->select()
-            ->from(['link' => $this->resource->getTableName(self::LINK_TABLE)], ['category_id'])
+            ->from(['l' => $this->resource->getTableName(self::LINK_TABLE)], [])
+            ->join(
+                ['c' => $this->resource->getTableName(self::CATEGORY_TABLE)],
+                'c.category_id = l.category_id',
+                ['category_id', 'name', 'url_key']
+            )
             ->join(
                 ['post' => $this->resource->getTableName('requestdesk_blog_post')],
-                'post.post_id = link.post_id',
-                ['count' => new \Zend_Db_Expr('COUNT(DISTINCT link.post_id)')]
+                'post.post_id = l.post_id',
+                ['count' => new \Zend_Db_Expr('COUNT(DISTINCT l.post_id)')]
             )
             ->where('post.status = ?', 1)
-            ->group('link.category_id');
-
-        $counts = [];
-        foreach ($connection->fetchAll($select) as $row) {
-            $counts[(int) $row['category_id']] = (int) $row['count'];
-        }
+            ->where('c.status = ?', Category::STATUS_ENABLED)
+            ->group('c.category_id');
 
         $result = [];
-        foreach ($this->loadCategories(array_keys($counts)) as $categoryId => $category) {
-            $result[] = $category + ['count' => $counts[$categoryId]];
+        foreach ($connection->fetchAll($select) as $row) {
+            $result[] = $this->toCategory($row) + ['count' => (int) $row['count']];
         }
 
         usort(
@@ -167,7 +124,7 @@ class PostCategoryResolver
     }
 
     /**
-     * Post ids assigned to a native category.
+     * Post ids assigned to a category.
      *
      * @param int $categoryId
      * @return int[]
@@ -182,7 +139,10 @@ class PostCategoryResolver
     }
 
     /**
-     * Assign a post to a native category (idempotent).
+     * Assign a post to a category (idempotent).
+     *
+     * An id with no category behind it is ignored rather than tripping the
+     * foreign key.
      *
      * @param int $postId
      * @param int $categoryId
@@ -190,8 +150,11 @@ class PostCategoryResolver
      */
     public function attach(int $postId, int $categoryId): void
     {
-        $connection = $this->resource->getConnection();
-        $connection->insertOnDuplicate(
+        if ($this->existingCategoryIds([$categoryId]) === []) {
+            return;
+        }
+
+        $this->resource->getConnection()->insertOnDuplicate(
             $this->resource->getTableName(self::LINK_TABLE),
             ['post_id' => $postId, 'category_id' => $categoryId],
             ['post_id']
@@ -199,7 +162,7 @@ class PostCategoryResolver
     }
 
     /**
-     * Native category ids assigned to a post.
+     * Category ids assigned to a post, enabled or not (the admin form).
      *
      * @param int $postId
      * @return int[]
@@ -216,6 +179,10 @@ class PostCategoryResolver
     /**
      * Replace a post's category links with exactly the given set.
      *
+     * Ids with no category behind them are dropped. The REST API passes caller
+     * input straight through here, and callers that still send the old native
+     * catalog ids would otherwise fail the whole publish on the foreign key.
+     *
      * @param int $postId
      * @param int[] $categoryIds
      * @return void
@@ -227,11 +194,56 @@ class PostCategoryResolver
         $connection->delete($table, ['post_id = ?' => $postId]);
 
         $rows = [];
-        foreach (array_unique(array_filter(array_map('intval', $categoryIds))) as $categoryId) {
+        foreach ($this->existingCategoryIds($categoryIds) as $categoryId) {
             $rows[] = ['post_id' => $postId, 'category_id' => $categoryId];
         }
         if ($rows !== []) {
             $connection->insertMultiple($table, $rows);
         }
+    }
+
+    /**
+     * The subset of ids that are real categories.
+     *
+     * @param array $categoryIds array<int|string>
+     * @return int[]
+     */
+    private function existingCategoryIds(array $categoryIds): array
+    {
+        $categoryIds = array_values(array_unique(array_filter(array_map('intval', $categoryIds))));
+        if ($categoryIds === []) {
+            return [];
+        }
+
+        $connection = $this->resource->getConnection();
+
+        return array_map('intval', $connection->fetchCol(
+            $connection->select()
+                ->from($this->resource->getTableName(self::CATEGORY_TABLE), ['category_id'])
+                ->where('category_id IN (?)', $categoryIds)
+        ));
+    }
+
+    /**
+     * To category
+     *
+     * @param array $row category_id, name, url_key - array<string, mixed>
+     * @return array{id:int, name:string, url:string}
+     */
+    private function toCategory(array $row): array
+    {
+        $categoryId = (int) $row['category_id'];
+
+        return [
+            'id' => $categoryId,
+            'name' => (string) $row['name'],
+            'url' => ArchiveUrl::resolve(
+                ArchiveUrl::TYPE_CATEGORY,
+                $categoryId,
+                (string) $row['url_key'],
+                $this->urlBuilder,
+                $this->config->getUrlPrefix()
+            ),
+        ];
     }
 }

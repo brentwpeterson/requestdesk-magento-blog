@@ -56,7 +56,7 @@ class AmastyMediaPath
      * @param string|null $value post_thumbnail as Amasty stored it
      * @return string|null null when there is no image
      */
-    public static function featuredImage(?string $value): ?string
+    public static function featuredImage(?string $value): ?string // phpcs:ignore Magento2.Functions.StaticFunction
     {
         $value = trim((string) $value);
         if ($value === '') {
@@ -83,7 +83,7 @@ class AmastyMediaPath
      * @param string $content
      * @return string
      */
-    public static function rewriteContent(string $content): string
+    public static function rewriteContent(string $content): string // phpcs:ignore Magento2.Functions.StaticFunction
     {
         $rewritten = preg_replace(self::CONTENT_PATTERN, '$1' . self::TARGET_DIR, $content);
 

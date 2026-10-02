@@ -33,6 +33,7 @@ class PostManagement implements PostManagementInterface
      * @param PostFactory $postFactory
      * @param ResourceConnection $resourceConnection
      * @param LoggerInterface $logger
+     * @param PostCategoryResolver $postCategoryResolver
      */
     public function __construct(
         private readonly PostRepositoryInterface $postRepository,
@@ -72,7 +73,7 @@ class PostManagement implements PostManagementInterface
             try {
                 $post = $this->postRepository->getByRequestdeskPostId($requestdeskPostId);
                 $this->logger->info('RequestDesk Blog: Found existing post', ['post_id' => $post->getPostId()]);
-            } catch (NoSuchEntityException $e) {
+            } catch (NoSuchEntityException $e) { // phpcs:ignore Magento2.CodeAnalysis.EmptyBlock
                 // Post doesn't exist, will create new
             }
         }
@@ -190,7 +191,7 @@ class PostManagement implements PostManagementInterface
         foreach ($postIds as $postId) {
             try {
                 $posts[] = $this->postRepository->getById((int) $postId);
-            } catch (NoSuchEntityException $e) {
+            } catch (NoSuchEntityException $e) { // phpcs:ignore Magento2.CodeAnalysis.EmptyBlock
                 // Post was deleted, skip
             }
         }

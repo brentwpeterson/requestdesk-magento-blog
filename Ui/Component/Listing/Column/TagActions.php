@@ -8,6 +8,8 @@
 
 declare(strict_types=1);
 
+// phpcs:disable Generic.Files.LineLength.TooLong
+
 namespace RequestDesk\Blog\Ui\Component\Listing\Column;
 
 use Magento\Framework\UrlInterface;
@@ -20,8 +22,8 @@ class TagActions extends Column
     /**
      * URL paths
      */
-    const URL_PATH_EDIT = 'requestdesk_blog/tag/edit';
-    const URL_PATH_DELETE = 'requestdesk_blog/tag/delete';
+    public const URL_PATH_EDIT = 'requestdesk_blog/tag/edit';
+    public const URL_PATH_DELETE = 'requestdesk_blog/tag/delete';
 
     /**
      * @var UrlInterface

@@ -22,6 +22,7 @@ use RequestDesk\Blog\Model\PostContent;
  */
 class PostContentTest extends TestCase
 {
+    /** @var PostContent */
     private PostContent $postContent;
 
     /** @var FilterProvider&MockObject */

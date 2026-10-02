@@ -1,4 +1,5 @@
 <?php
+// phpcs:disable Generic.Files.LineLength.TooLong
 /**
  * RequestDesk Blog - Hyva Theme Post View Template
  * Uses Tailwind CSS and Alpine.js
@@ -27,7 +28,7 @@ $faqPairs = ($schema && $post) ? $schema->getFaqPairs($post) : [];
 ?>
 
 <?php if ($post && $post->getId()): ?>
-<?php if ($jsonLd !== ''): ?>
+    <?php if ($jsonLd !== ''): ?>
     <script type="application/ld+json"><?= /* @noEscape */ $jsonLd ?></script>
 <?php endif; ?>
 <article class="container mx-auto px-4 py-8 max-w-4xl">
@@ -163,7 +164,7 @@ $faqPairs = ($schema && $post) ? $schema->getFaqPairs($post) : [];
         plain HTML form that posts and succeeds.
     -->
     <?php if ($post->getCommentsEnabled()): ?>
-    <?php $comments = $block->getComments(); ?>
+        <?php $comments = $block->getComments(); ?>
     <section class="mt-12 pt-8 border-t border-gray-200" id="comments">
         <h2 class="text-2xl font-bold text-gray-900 mb-6">
             <?= $escaper->escapeHtml(__('Comments')) ?>

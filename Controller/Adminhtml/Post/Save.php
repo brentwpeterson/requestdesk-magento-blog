@@ -32,7 +32,7 @@ class Save extends Action
     /**
      * Authorization level
      */
-    const ADMIN_RESOURCE = 'RequestDesk_Blog::manage';
+    public const ADMIN_RESOURCE = 'RequestDesk_Blog::manage';
 
     /**
      * @var PostRepositoryInterface
@@ -52,6 +52,7 @@ class Save extends Action
      * @param TagResolver $tagResolver
      * @param QaLinkResolverInterface $qaLinkResolver
      * @param LoggerInterface $logger
+     * @param ResourceConnection $resource
      */
     public function __construct(
         Context $context,
@@ -177,8 +178,10 @@ class Save extends Action
     }
 
     /**
-     * Suffix -2, -3, ... until the key is free. url_key drives routing, so two
-     * posts sharing one would make the second unreachable.
+     * Suffix -2, -3, ... until the key is free.
+     *
+     * The url_key drives routing, so two posts sharing one would make the
+     * second unreachable.
      *
      * @param string $base
      * @param int $postId
@@ -206,7 +209,7 @@ class Save extends Action
                     return $candidate;
                 }
 
-                $candidate = $base . '-' . $i++;
+                $candidate = $base . '-' . ($i++);
             }
         } catch (\Throwable $e) {
             $this->logger->error(
@@ -220,7 +223,7 @@ class Save extends Action
     /**
      * Stamp updated_at so the grid reflects the edit.
      *
-     * updated_at is ON UPDATE CURRENT_TIMESTAMP, which MySQL only fires when a
+     * The updated_at column is ON UPDATE CURRENT_TIMESTAMP, which MySQL only fires when a
      * column on the post row actually changes. Categories, tags and Q&A pairs all
      * live in their own pivot tables, so editing only those left the post row
      * untouched and the grid's Updated column stale — the post visibly changed but

@@ -8,6 +8,8 @@
 
 declare(strict_types=1);
 
+// phpcs:disable Generic.Files.LineLength.TooLong
+
 namespace RequestDesk\Blog\Model;
 
 use Magento\Framework\App\Config\ScopeConfigInterface;
@@ -110,15 +112,17 @@ class MenuGate
     }
 
     /**
-     * Path of a URL, without the leading or trailing slash, without a query or
-     * fragment, and without the category URL suffix on its last segment.
+     * Path of a URL, without the leading or trailing slash.
+     *
+     * Also without a query or fragment, and without the category URL suffix on
+     * its last segment.
      *
      * @param string $url
      * @return string
      */
     private function normalizePath(string $url): string
     {
-        $path = trim((string) (parse_url($url, PHP_URL_PATH) ?: ''), '/');
+        $path = trim((string) (parse_url($url, PHP_URL_PATH) ?: ''), '/'); // phpcs:ignore Magento2.Functions.DiscouragedFunction
 
         $suffix = (string) $this->scopeConfig->getValue(
             self::XML_PATH_CATEGORY_URL_SUFFIX,

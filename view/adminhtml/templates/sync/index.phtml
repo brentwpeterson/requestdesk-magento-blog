@@ -1,4 +1,5 @@
 <?php
+// phpcs:disable Generic.Files.LineLength.TooLong
 /**
  * RequestDesk Product Sync Template
  *
@@ -13,35 +14,35 @@ $endpointUrl = $block->getEndpointUrl();
 <div class="requestdesk-sync-container">
     <div class="admin__page-section">
         <div class="admin__page-section-title">
-            <span class="title"><?= $block->escapeHtml(__('Sync Products to RequestDesk')) ?></span>
+            <span class="title"><?= $escaper->escapeHtml(__('Sync Products to RequestDesk')) ?></span>
         </div>
         <div class="admin__page-section-content">
-            <p><?= $block->escapeHtml(__('Export your Magento products to RequestDesk\'s AI knowledge base for analysis and content generation.')) ?></p>
+            <p><?= $escaper->escapeHtml(__('Export your Magento products to RequestDesk\'s AI knowledge base for analysis and content generation.')) ?></p>
 
             <?php if (!$isConfigured): ?>
                 <div class="message message-warning">
-                    <strong><?= $block->escapeHtml(__('API Not Configured')) ?></strong>
-                    <p><?= $block->escapeHtml(__('Please configure your RequestDesk API key before syncing products.')) ?></p>
-                    <a href="<?= $block->escapeUrl($block->getConfigUrl()) ?>" class="action-secondary">
-                        <?= $block->escapeHtml(__('Configure API')) ?>
+                    <strong><?= $escaper->escapeHtml(__('API Not Configured')) ?></strong>
+                    <p><?= $escaper->escapeHtml(__('Please configure your RequestDesk API key before syncing products.')) ?></p>
+                    <a href="<?= $escaper->escapeUrl($block->getConfigUrl()) ?>" class="action-secondary">
+                        <?= $escaper->escapeHtml(__('Configure API')) ?>
                     </a>
                 </div>
             <?php else: ?>
                 <div class="admin__field">
                     <div class="admin__field-label">
-                        <label><?= $block->escapeHtml(__('Products to Sync')) ?></label>
+                        <label><?= $escaper->escapeHtml(__('Products to Sync')) ?></label>
                     </div>
                     <div class="admin__field-value">
-                        <strong><?= (int)$productCount ?></strong> <?= $block->escapeHtml(__('enabled, visible products')) ?>
+                        <strong><?= (int)$productCount ?></strong> <?= $escaper->escapeHtml(__('enabled, visible products')) ?>
                     </div>
                 </div>
 
                 <div class="admin__field">
                     <div class="admin__field-label">
-                        <label><?= $block->escapeHtml(__('RequestDesk Endpoint')) ?></label>
+                        <label><?= $escaper->escapeHtml(__('RequestDesk Endpoint')) ?></label>
                     </div>
                     <div class="admin__field-value">
-                        <?= $block->escapeHtml($endpointUrl) ?>
+                        <?= $escaper->escapeHtml($endpointUrl) ?>
                     </div>
                 </div>
 
@@ -51,14 +52,14 @@ $endpointUrl = $block->getEndpointUrl();
                                 id="requestdesk-test-btn"
                                 class="action-secondary"
                                 onclick="testConnection()">
-                            <span><?= $block->escapeHtml(__('Test Connection')) ?></span>
+                            <span><?= $escaper->escapeHtml(__('Test Connection')) ?></span>
                         </button>
 
                         <button type="button"
                                 id="requestdesk-sync-btn"
                                 class="action-primary"
                                 onclick="syncProducts()">
-                            <span><?= $block->escapeHtml(__('Sync All Products')) ?></span>
+                            <span><?= $escaper->escapeHtml(__('Sync All Products')) ?></span>
                         </button>
                     </div>
                 </div>
@@ -70,36 +71,36 @@ $endpointUrl = $block->getEndpointUrl();
 
     <div class="admin__page-section" style="margin-top: 20px;">
         <div class="admin__page-section-title">
-            <span class="title"><?= $block->escapeHtml(__('What Gets Synced')) ?></span>
+            <span class="title"><?= $escaper->escapeHtml(__('What Gets Synced')) ?></span>
         </div>
         <div class="admin__page-section-content">
             <ul style="margin-left: 20px;">
-                <li><?= $block->escapeHtml(__('Product names and descriptions')) ?></li>
-                <li><?= $block->escapeHtml(__('SKUs and pricing information')) ?></li>
-                <li><?= $block->escapeHtml(__('Category assignments')) ?></li>
-                <li><?= $block->escapeHtml(__('Product images and media')) ?></li>
-                <li><?= $block->escapeHtml(__('Meta keywords and attributes')) ?></li>
+                <li><?= $escaper->escapeHtml(__('Product names and descriptions')) ?></li>
+                <li><?= $escaper->escapeHtml(__('SKUs and pricing information')) ?></li>
+                <li><?= $escaper->escapeHtml(__('Category assignments')) ?></li>
+                <li><?= $escaper->escapeHtml(__('Product images and media')) ?></li>
+                <li><?= $escaper->escapeHtml(__('Meta keywords and attributes')) ?></li>
             </ul>
         </div>
     </div>
 
     <div class="admin__page-section" style="margin-top: 20px;">
         <div class="admin__page-section-title">
-            <span class="title"><?= $block->escapeHtml(__('Use Cases')) ?></span>
+            <span class="title"><?= $escaper->escapeHtml(__('Use Cases')) ?></span>
         </div>
         <div class="admin__page-section-content">
             <div style="display: flex; gap: 20px; flex-wrap: wrap;">
                 <div style="flex: 1; min-width: 250px; padding: 15px; background: #f5f5f5; border-radius: 4px;">
-                    <h4 style="margin-top: 0;"><?= $block->escapeHtml(__('Product Analysis')) ?></h4>
-                    <p><?= $block->escapeHtml(__('Get AI-powered GEO/AEO/AIO analysis on your product content for improved SEO.')) ?></p>
+                    <h4 style="margin-top: 0;"><?= $escaper->escapeHtml(__('Product Analysis')) ?></h4>
+                    <p><?= $escaper->escapeHtml(__('Get AI-powered GEO/AEO/AIO analysis on your product content for improved SEO.')) ?></p>
                 </div>
                 <div style="flex: 1; min-width: 250px; padding: 15px; background: #f5f5f5; border-radius: 4px;">
-                    <h4 style="margin-top: 0;"><?= $block->escapeHtml(__('Blog Generation')) ?></h4>
-                    <p><?= $block->escapeHtml(__('Generate topic-based blog posts that reference your products naturally.')) ?></p>
+                    <h4 style="margin-top: 0;"><?= $escaper->escapeHtml(__('Blog Generation')) ?></h4>
+                    <p><?= $escaper->escapeHtml(__('Generate topic-based blog posts that reference your products naturally.')) ?></p>
                 </div>
                 <div style="flex: 1; min-width: 250px; padding: 15px; background: #f5f5f5; border-radius: 4px;">
-                    <h4 style="margin-top: 0;"><?= $block->escapeHtml(__('AI Responses')) ?></h4>
-                    <p><?= $block->escapeHtml(__('Use product knowledge to power AI chatbots and customer service.')) ?></p>
+                    <h4 style="margin-top: 0;"><?= $escaper->escapeHtml(__('AI Responses')) ?></h4>
+                    <p><?= $escaper->escapeHtml(__('Use product knowledge to power AI chatbots and customer service.')) ?></p>
                 </div>
             </div>
         </div>
@@ -112,9 +113,9 @@ $endpointUrl = $block->getEndpointUrl();
         var resultDiv = document.getElementById('sync-result');
 
         btn.disabled = true;
-        btn.querySelector('span').textContent = '<?= $block->escapeJs(__('Testing...')) ?>';
+        btn.querySelector('span').textContent = '<?= $escaper->escapeJs(__('Testing...')) ?>';
 
-        fetch('<?= $block->escapeUrl($block->getTestUrl()) ?>', {
+        fetch('<?= $escaper->escapeUrl($block->getTestUrl()) ?>', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -126,22 +127,22 @@ $endpointUrl = $block->getEndpointUrl();
             resultDiv.style.display = 'block';
             if (data.success) {
                 resultDiv.className = 'message message-success';
-                resultDiv.innerHTML = '<strong><?= $block->escapeJs(__('Connection Successful!')) ?></strong>' +
+                resultDiv.innerHTML = '<strong><?= $escaper->escapeJs(__('Connection Successful!')) ?></strong>' +
                     (data.agent_name ? '<br>Agent: ' + data.agent_name : '');
             } else {
                 resultDiv.className = 'message message-error';
-                resultDiv.innerHTML = '<strong><?= $block->escapeJs(__('Connection Failed')) ?></strong><br>' +
-                    (data.error || '<?= $block->escapeJs(__('Unknown error')) ?>');
+                resultDiv.innerHTML = '<strong><?= $escaper->escapeJs(__('Connection Failed')) ?></strong><br>' +
+                    (data.error || '<?= $escaper->escapeJs(__('Unknown error')) ?>');
             }
         })
         .catch(error => {
             resultDiv.style.display = 'block';
             resultDiv.className = 'message message-error';
-            resultDiv.innerHTML = '<strong><?= $block->escapeJs(__('Request Failed')) ?></strong><br>' + error.message;
+            resultDiv.innerHTML = '<strong><?= $escaper->escapeJs(__('Request Failed')) ?></strong><br>' + error.message;
         })
         .finally(() => {
             btn.disabled = false;
-            btn.querySelector('span').textContent = '<?= $block->escapeJs(__('Test Connection')) ?>';
+            btn.querySelector('span').textContent = '<?= $escaper->escapeJs(__('Test Connection')) ?>';
         });
     }
 
@@ -149,17 +150,17 @@ $endpointUrl = $block->getEndpointUrl();
         var btn = document.getElementById('requestdesk-sync-btn');
         var resultDiv = document.getElementById('sync-result');
 
-        if (!confirm('<?= $block->escapeJs(__('This will sync all %1 products to RequestDesk. Continue?', $productCount)) ?>')) {
+        if (!confirm('<?= $escaper->escapeJs(__('This will sync all %1 products to RequestDesk. Continue?', $productCount)) ?>')) {
             return;
         }
 
         btn.disabled = true;
-        btn.querySelector('span').textContent = '<?= $block->escapeJs(__('Syncing...')) ?>';
+        btn.querySelector('span').textContent = '<?= $escaper->escapeJs(__('Syncing...')) ?>';
         resultDiv.style.display = 'block';
         resultDiv.className = 'message message-info';
-        resultDiv.innerHTML = '<?= $block->escapeJs(__('Syncing products... This may take a few minutes.')) ?>';
+        resultDiv.innerHTML = '<?= $escaper->escapeJs(__('Syncing products... This may take a few minutes.')) ?>';
 
-        fetch('<?= $block->escapeUrl($block->getSyncUrl()) ?>', {
+        fetch('<?= $escaper->escapeUrl($block->getSyncUrl()) ?>', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -170,22 +171,22 @@ $endpointUrl = $block->getEndpointUrl();
         .then(data => {
             if (data.success) {
                 resultDiv.className = 'message message-success';
-                resultDiv.innerHTML = '<strong><?= $block->escapeJs(__('Sync Complete!')) ?></strong><br>' +
-                    '<?= $block->escapeJs(__('Products synced:')) ?> ' + (data.total_synced || 0) +
-                    (data.collection_id ? '<br><?= $block->escapeJs(__('Collection ID:')) ?> ' + data.collection_id : '');
+                resultDiv.innerHTML = '<strong><?= $escaper->escapeJs(__('Sync Complete!')) ?></strong><br>' +
+                    '<?= $escaper->escapeJs(__('Products synced:')) ?> ' + (data.total_synced || 0) +
+                    (data.collection_id ? '<br><?= $escaper->escapeJs(__('Collection ID:')) ?> ' + data.collection_id : '');
             } else {
                 resultDiv.className = 'message message-error';
-                resultDiv.innerHTML = '<strong><?= $block->escapeJs(__('Sync Failed')) ?></strong><br>' +
-                    (data.error || '<?= $block->escapeJs(__('Unknown error')) ?>');
+                resultDiv.innerHTML = '<strong><?= $escaper->escapeJs(__('Sync Failed')) ?></strong><br>' +
+                    (data.error || '<?= $escaper->escapeJs(__('Unknown error')) ?>');
             }
         })
         .catch(error => {
             resultDiv.className = 'message message-error';
-            resultDiv.innerHTML = '<strong><?= $block->escapeJs(__('Request Failed')) ?></strong><br>' + error.message;
+            resultDiv.innerHTML = '<strong><?= $escaper->escapeJs(__('Request Failed')) ?></strong><br>' + error.message;
         })
         .finally(() => {
             btn.disabled = false;
-            btn.querySelector('span').textContent = '<?= $block->escapeJs(__('Sync All Products')) ?>';
+            btn.querySelector('span').textContent = '<?= $escaper->escapeJs(__('Sync All Products')) ?>';
         });
     }
 </script>

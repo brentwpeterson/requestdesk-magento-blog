@@ -51,6 +51,47 @@
             "REQUESTDESK_BLOG_POST_CTGR_CTGR_ID_CAT_CTGR_ENTT_ENTT_ID": true
         }
     },
+    "requestdesk_blog_category": {
+        "column": {
+            "category_id": true,
+            "parent_id": true,
+            "name": true,
+            "url_key": true,
+            "description": true,
+            "status": true,
+            "sort_order": true,
+            "meta_title": true,
+            "meta_tags": true,
+            "meta_description": true,
+            "meta_robots": true,
+            "amasty_category_id": true,
+            "created_at": true,
+            "updated_at": true
+        },
+        "index": {
+            "REQUESTDESK_BLOG_CATEGORY_PARENT_ID": true,
+            "REQUESTDESK_BLOG_CATEGORY_STATUS": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "REQUESTDESK_BLOG_CATEGORY_URL_KEY": true,
+            "REQUESTDESK_BLOG_CATEGORY_AMASTY_CATEGORY_ID": true
+        }
+    },
+    "requestdesk_blog_category_post": {
+        "column": {
+            "category_id": true,
+            "post_id": true
+        },
+        "index": {
+            "REQUESTDESK_BLOG_CATEGORY_POST_POST_ID": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "REQUESTDESK_BLOG_CATEGORY_POST_CATEGORY_ID_FK": true,
+            "REQUESTDESK_BLOG_CATEGORY_POST_POST_ID_FK": true
+        }
+    },
     "requestdesk_blog_product": {
         "column": {
             "id": true,

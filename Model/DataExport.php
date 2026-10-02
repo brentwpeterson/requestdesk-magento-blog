@@ -72,6 +72,7 @@ class DataExport implements DataExportInterface
      * @var EncryptorInterface
      */
     private EncryptorInterface $encryptor;
+    /** @var ApiKeyValidator */
     private ApiKeyValidator $apiKeyValidator;
 
     /**
@@ -83,6 +84,7 @@ class DataExport implements DataExportInterface
      * @param Request $request
      * @param LoggerInterface $logger
      * @param EncryptorInterface $encryptor
+     * @param ApiKeyValidator $apiKeyValidator
      */
     public function __construct(
         ProductCollectionFactory $productCollectionFactory,
@@ -107,6 +109,8 @@ class DataExport implements DataExportInterface
     }
 
     /**
+     * Validate api key
+     *
      * @throws AuthorizationException
      */
     private function validateApiKey(): void

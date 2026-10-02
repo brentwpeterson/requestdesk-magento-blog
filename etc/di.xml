@@ -68,6 +68,7 @@
                 <item name="requestdesk_blog_comment_listing_data_source" xsi:type="string">RequestDesk\Blog\Model\ResourceModel\Comment\Grid\Collection</item>
                 <item name="requestdesk_blog_tag_listing_data_source" xsi:type="string">RequestDesk\Blog\Model\ResourceModel\Tag\Grid\Collection</item>
                 <item name="requestdesk_blog_author_listing_data_source" xsi:type="string">RequestDesk\Blog\Model\ResourceModel\Author\Grid\Collection</item>
+                <item name="requestdesk_blog_category_listing_data_source" xsi:type="string">RequestDesk\Blog\Model\ResourceModel\Category\Grid\Collection</item>
             </argument>
         </arguments>
     </type>
@@ -150,7 +151,8 @@
 
     <!--
         The author grid has no virtualType: RequestDesk\Blog\Model\ResourceModel\Author\Grid\Collection
-        is a concrete class, because it adds the admin_user join.
+        is a concrete class, because it adds the admin_user join. The category grid
+        is concrete for the same reason (parent name and post count).
     -->
 
     <!-- Clean up polymorphic Q&A links when a post is deleted -->
@@ -176,6 +178,9 @@
         <arguments>
             <argument name="commands" xsi:type="array">
                 <item name="requestdesk_blog_migrate_amasty" xsi:type="object">RequestDesk\Blog\Console\Command\MigrateAmastyCommand</item>
+                <item name="requestdesk_blog_migrate_amasty_categories" xsi:type="object">RequestDesk\Blog\Console\Command\MigrateAmastyCategoriesCommand</item>
+                <item name="requestdesk_blog_disable_comments" xsi:type="object">RequestDesk\Blog\Console\Command\DisableCommentsCommand</item>
+                <item name="requestdesk_blog_migrate_media" xsi:type="object">RequestDesk\Blog\Console\Command\MigrateMediaCommand</item>
                 <item name="requestdesk_blog_repair_schema" xsi:type="object">RequestDesk\Blog\Console\Command\RepairSchemaCommand</item>
                 <item name="requestdesk_blog_repair_content" xsi:type="object">RequestDesk\Blog\Console\Command\RepairContentCommand</item>
                 <item name="requestdesk_blog_repair_authors" xsi:type="object">RequestDesk\Blog\Console\Command\RepairAuthorsCommand</item>

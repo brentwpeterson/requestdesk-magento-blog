@@ -28,13 +28,15 @@ use Magento\Framework\UrlInterface;
 class BlogUrl
 {
     /**
+     * Resolve
+     *
      * @param string $prefix from Model\Config::getUrlPrefix()
      * @param string $path under the prefix, e.g. "category/view/id/77"; empty for the index
-     * @param array<string, mixed> $query null values are dropped
+     * @param array $query null values are dropped - array<string, mixed>
      * @param UrlInterface $urlBuilder
      * @return string
      */
-    public static function resolve(
+    public static function resolve( // phpcs:ignore Magento2.Functions.StaticFunction
         string $prefix,
         string $path,
         array $query,

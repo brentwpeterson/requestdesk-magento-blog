@@ -55,6 +55,26 @@ class Sidebar extends Template
     }
 
     /**
+     * Where the search box fetches live suggestions from.
+     *
+     * @return string
+     */
+    public function getSuggestUrl(): string
+    {
+        return BlogUrl::resolve($this->config->getUrlPrefix(), 'search/suggest', [], $this->_urlBuilder);
+    }
+
+    /**
+     * Characters typed before suggestions are fetched.
+     *
+     * @return int
+     */
+    public function getSearchMinCharacters(): int
+    {
+        return $this->config->getSearchMinCharacters();
+    }
+
+    /**
      * Name of the search box's field.
      *
      * @return string
@@ -75,6 +95,8 @@ class Sidebar extends Template
     }
 
     /**
+     * Get search max length
+     *
      * @return int
      */
     public function getSearchMaxLength(): int

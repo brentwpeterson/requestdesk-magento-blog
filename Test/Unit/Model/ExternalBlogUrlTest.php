@@ -45,6 +45,7 @@ class ExternalBlogUrlTest extends TestCase
     /** @var UrlInterface&MockObject */
     private UrlInterface $urlBuilder;
 
+    /** @var ExternalBlog */
     private ExternalBlog $externalBlog;
 
     protected function setUp(): void

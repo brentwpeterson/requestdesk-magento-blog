@@ -10,7 +10,6 @@ declare(strict_types=1);
 
 namespace RequestDesk\Blog\Block;
 
-use Magento\Catalog\Api\CategoryRepositoryInterface;
 use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Framework\Api\SortOrderBuilder;
 use Magento\Framework\View\Element\Template\Context;
@@ -18,12 +17,15 @@ use Magento\Store\Model\StoreManagerInterface;
 use RequestDesk\Blog\Api\Data\PostSearchResultsInterface;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
 use RequestDesk\Blog\Model\AuthorResolver;
+use RequestDesk\Blog\Model\Category;
+use RequestDesk\Blog\Model\CategoryFactory;
 use RequestDesk\Blog\Model\Config;
 use RequestDesk\Blog\Model\PostCategoryResolver;
 use RequestDesk\Blog\Model\PostContent;
+use RequestDesk\Blog\Model\ResourceModel\Category as CategoryResource;
 
 /**
- * Supplies a native category name + the blog posts in it.
+ * Supplies a blog category's name and description + the blog posts in it.
  *
  * Extends PostList so the category page reuses the exact list template the
  * blog index uses: every card helper (image url, author name, summary html)
@@ -34,7 +36,8 @@ class CategoryView extends PostList
 {
     /**
      * @param Context $context
-     * @param CategoryRepositoryInterface $categoryRepository
+     * @param CategoryFactory $categoryFactory
+     * @param CategoryResource $categoryResource
      * @param PostCategoryResolver $categoryResolver
      * @param PostRepositoryInterface $postRepository
      * @param SearchCriteriaBuilder $searchCriteriaBuilder
@@ -47,7 +50,8 @@ class CategoryView extends PostList
      */
     public function __construct(
         Context $context,
-        private readonly CategoryRepositoryInterface $categoryRepository,
+        private readonly CategoryFactory $categoryFactory,
+        private readonly CategoryResource $categoryResource,
         PostCategoryResolver $categoryResolver,
         PostRepositoryInterface $postRepository,
         SearchCriteriaBuilder $searchCriteriaBuilder,
@@ -73,18 +77,59 @@ class CategoryView extends PostList
     }
 
     /**
+     * The category being viewed; null when there is none.
+     *
+     * @var Category|null
+     */
+    private ?Category $category = null;
+
+    /**
+     * Whether $category has been looked up, since null is also a real answer.
+     *
+     * @var bool
+     */
+    private bool $categoryLoaded = false;
+
+    /**
+     * The category being viewed, or null when the id matches nothing.
+     *
+     * @return Category|null
+     */
+    public function getCategory(): ?Category
+    {
+        if (!$this->categoryLoaded) {
+            $this->categoryLoaded = true;
+            $category = $this->categoryFactory->create();
+            $this->categoryResource->load($category, $this->getCategoryId());
+            $this->category = $category->getId() ? $category : null;
+        }
+
+        return $this->category;
+    }
+
+    /**
+     * Get category name
+     *
      * @return string
      */
     public function getCategoryName(): string
     {
-        try {
-            return (string) $this->categoryRepository->get($this->getCategoryId())->getName();
-        } catch (\Throwable $e) {
-            return '';
-        }
+        return $this->getCategory()?->getName() ?? '';
     }
 
     /**
+     * The category's description, as authored in the admin WYSIWYG.
+     *
+     * @return string
+     */
+    protected function getListingDescription(): string
+    {
+        return $this->getCategory()?->getDescription() ?? '';
+    }
+
+    /**
+     * Get category id
+     *
      * @return int
      */
     public function getCategoryId(): int

@@ -60,14 +60,16 @@ class Router implements RouterInterface
      * Archive front names this router resolves by url_key. Anything else in the
      * second segment is left to the standard router.
      */
-    private const TYPE_CATEGORY = 'category';
+    private const ARCHIVE_TYPES = ['category', 'tag', 'author'];
 
-    private const ARCHIVE_TYPES = [self::TYPE_CATEGORY, 'tag', 'author'];
-
-    /** Own-table archives, keyed by type. Categories are native, so not here. */
+    /**
+     * Archive tables, keyed by type: [table, id column, enabled-only].
+     * A disabled category keeps its row but must not resolve, so it 404s.
+     */
     private const ARCHIVE_TABLES = [
-        'tag' => ['requestdesk_blog_tag', 'tag_id'],
-        'author' => ['requestdesk_blog_author', 'author_id'],
+        'category' => ['requestdesk_blog_category', 'category_id', true],
+        'tag' => ['requestdesk_blog_tag', 'tag_id', false],
+        'author' => ['requestdesk_blog_author', 'author_id', false],
     ];
 
     /**
@@ -94,7 +96,7 @@ class Router implements RouterInterface
         'comment' => ['save'],
         'index' => ['index'],
         'post' => ['view'],
-        'search' => ['index'],
+        'search' => ['index', 'suggest'],
         'tag' => ['view'],
     ];
 
@@ -242,9 +244,7 @@ class Router implements RouterInterface
             return null;
         }
 
-        $id = $type === self::TYPE_CATEGORY
-            ? $this->findBlogCategoryIdByUrlKey($urlKey)
-            : $this->findArchiveIdByUrlKey($type, $urlKey);
+        $id = $this->findArchiveIdByUrlKey($type, $urlKey);
 
         if ($id === 0) {
             return null;
@@ -261,9 +261,12 @@ class Router implements RouterInterface
     }
 
     /**
-     * Look up a tag or author by its url_key.
+     * Look up a category, tag or author by its url_key.
      *
-     * Both tables carry a unique index on url_key, so at most one row matches.
+     * All three tables carry a unique index on url_key, so at most one row
+     * matches. Categories used to be native catalog categories, whose url_key
+     * is unique only among siblings and needed an EAV query with a tie-break;
+     * blog categories have their own table and none of that.
      *
      * @param string $type
      * @param string $urlKey
@@ -271,101 +274,22 @@ class Router implements RouterInterface
      */
     private function findArchiveIdByUrlKey(string $type, string $urlKey): int
     {
-        [$table, $idColumn] = self::ARCHIVE_TABLES[$type];
+        [$table, $idColumn, $enabledOnly] = self::ARCHIVE_TABLES[$type];
 
         try {
             $connection = $this->resource->getConnection();
-
-            return (int) $connection->fetchOne(
-                $connection->select()
-                    ->from($this->resource->getTableName($table), [$idColumn])
-                    ->where('url_key = ?', $urlKey)
-                    ->limit(1)
-            );
-        } catch (\Throwable $e) {
-            return 0;
-        }
-    }
-
-    /**
-     * Look up a native Magento category by url_key, among those the blog uses.
-     *
-     * Blog categories are native catalog categories, and Magento enforces
-     * url_key uniqueness only among siblings - this store has two catalog
-     * categories called "ecommerce" and two called "hyva". A plain url_key
-     * lookup across the whole tree would be a coin flip.
-     *
-     * Restricting the search to categories with at least one post attached
-     * settles it: that is the only set whose archive has anything to show, and
-     * within it the keys are distinct. A genuine tie is resolved by lowest id
-     * rather than left to row order, so the same URL always opens the same
-     * archive, and /blog/category/view/id/N stays available to address the other
-     * one exactly.
-     *
-     * @param string $urlKey
-     * @return int 0 when no blog category has that key
-     */
-    private function findBlogCategoryIdByUrlKey(string $urlKey): int
-    {
-        try {
-            $connection = $this->resource->getConnection();
-
             $select = $connection->select()
-                ->from(['e' => $this->resource->getTableName('catalog_category_entity')], ['entity_id'])
-                ->join(
-                    ['v' => $this->resource->getTableName('catalog_category_entity_varchar')],
-                    'v.' . $this->categoryLinkField() . ' = e.' . $this->categoryLinkField()
-                    . ' AND v.store_id = 0',
-                    []
-                )
-                ->join(
-                    ['a' => $this->resource->getTableName('eav_attribute')],
-                    'a.attribute_id = v.attribute_id',
-                    []
-                )
-                ->join(
-                    ['t' => $this->resource->getTableName('eav_entity_type')],
-                    't.entity_type_id = a.entity_type_id',
-                    []
-                )
-                ->where('a.attribute_code = ?', 'url_key')
-                ->where('t.entity_type_code = ?', 'catalog_category')
-                ->where('v.value = ?', $urlKey)
-                ->where(
-                    'e.entity_id IN (?)',
-                    new \Zend_Db_Expr(
-                        (string) $connection->select()->from(
-                            $this->resource->getTableName('requestdesk_blog_post_category'),
-                            ['category_id']
-                        )
-                    )
-                )
-                ->order('e.entity_id ASC')
+                ->from($this->resource->getTableName($table), [$idColumn])
+                ->where('url_key = ?', $urlKey)
                 ->limit(1);
+            if ($enabledOnly) {
+                $select->where('status = ?', 1);
+            }
 
             return (int) $connection->fetchOne($select);
         } catch (\Throwable $e) {
             return 0;
         }
-    }
-
-    /**
-     * The column catalog_category_entity_varchar joins on.
-     *
-     * Open Source keys EAV value rows on entity_id; Commerce keys them on
-     * row_id for staging. Reading it from the table rather than hard-coding
-     * entity_id keeps this working on both.
-     *
-     * @return string
-     */
-    private function categoryLinkField(): string
-    {
-        $connection = $this->resource->getConnection();
-        $columns = $connection->describeTable(
-            $this->resource->getTableName('catalog_category_entity_varchar')
-        );
-
-        return isset($columns['row_id']) ? 'row_id' : 'entity_id';
     }
 
     /**

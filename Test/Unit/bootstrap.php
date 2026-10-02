@@ -22,6 +22,7 @@ require_once __DIR__ . '/../../vendor/autoload.php';
 $generatedFactories = [
     'Magento\Catalog\Model\CategoryFactory',
     'Magento\Framework\Api\SearchCriteriaBuilderFactory',
+    'Magento\Framework\Controller\Result\ForwardFactory',
     'Magento\Sitemap\Model\SitemapItemInterfaceFactory',
     'RequestDesk\Blog\Model\PostFactory',
 ];
@@ -35,7 +36,7 @@ foreach ($generatedFactories as $factory) {
     $shortName = array_pop($parts);
     $namespace = implode('\\', $parts);
 
-    eval(
+    eval( // phpcs:ignore Magento2.Security.InsecureFunction,Squiz.PHP.Eval
         sprintf(
             'namespace %s; class %s { public function create(array $data = []) { return null; } }',
             $namespace,

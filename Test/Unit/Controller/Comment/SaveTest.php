@@ -54,12 +54,17 @@ class SaveTest extends TestCase
     /** @var StorefrontGate&MockObject */
     private StorefrontGate $storefrontGate;
 
-    /** What the gate answers; a test that needs the blog off flips it. */
+    /**
+     * What the gate answers; a test that needs the blog off flips it.
+     *
+     * @var bool
+     */
     private bool $blogReachable = true;
 
     /** @var Forward&MockObject */
     private Forward $forward;
 
+    /** @var Save */
     private Save $controller;
 
     protected function setUp(): void

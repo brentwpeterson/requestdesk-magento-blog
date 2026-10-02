@@ -104,12 +104,12 @@ class TagResolver
             'id' => (int) $row['tag_id'],
             'name' => (string) $row['name'],
             'url' => ArchiveUrl::resolve(
-                    ArchiveUrl::TYPE_TAG,
-                    (int) $row['tag_id'],
-                    $row['url_key'] ?? null,
-                    $this->urlBuilder,
-                    $this->config->getUrlPrefix()
-                ),
+                ArchiveUrl::TYPE_TAG,
+                (int) $row['tag_id'],
+                $row['url_key'] ?? null,
+                $this->urlBuilder,
+                $this->config->getUrlPrefix()
+            ),
         ];
     }
 
@@ -169,6 +169,7 @@ class TagResolver
 
     /**
      * Find a tag by name (case-insensitive), or create it. Returns its id.
+     *
      * Used by the importer so incoming tag names become real tag entities.
      *
      * @param string $name
@@ -228,7 +229,7 @@ class TagResolver
         while ((int) $connection->fetchOne(
             $connection->select()->from($table, ['tag_id'])->where('url_key = ?', $candidate)->limit(1)
         )) {
-            $candidate = $base . '-' . $i++;
+            $candidate = $base . '-' . ($i++);
         }
         return $candidate;
     }

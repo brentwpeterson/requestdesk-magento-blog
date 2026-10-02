@@ -26,11 +26,21 @@ class Tag extends AbstractModel
         $this->_init(TagResource::class);
     }
 
+    /**
+     * Get name
+     *
+     * @return string
+     */
     public function getName(): string
     {
         return (string) $this->getData('name');
     }
 
+    /**
+     * Get url key
+     *
+     * @return string
+     */
     public function getUrlKey(): string
     {
         return (string) $this->getData('url_key');

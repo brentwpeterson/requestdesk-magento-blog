@@ -77,6 +77,12 @@ class Post extends AbstractModel implements PostInterface
         return $value === null ? null : (int) $value;
     }
 
+    /**
+     * Set author id
+     *
+     * @param ?int $authorId
+     * @return PostInterface
+     */
     public function setAuthorId(?int $authorId): PostInterface
     {
         return $this->setData(self::AUTHOR_ID, $authorId);
@@ -93,6 +99,8 @@ class Post extends AbstractModel implements PostInterface
     }
 
     /**
+     * Set is active
+     *
      * @param int|bool $isActive
      * @return PostInterface
      */
@@ -101,6 +109,11 @@ class Post extends AbstractModel implements PostInterface
         return $this->setData(self::STATUS, (int) $isActive);
     }
 
+    /**
+     * Get content
+     *
+     * @return ?string
+     */
     public function getContent(): ?string
     {
         return $this->getData(self::CONTENT);

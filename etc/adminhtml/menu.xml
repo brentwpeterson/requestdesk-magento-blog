@@ -59,6 +59,16 @@
              action="requestdesk_blog/comment/index"
              resource="RequestDesk_Blog::comments"/>
 
+        <!-- Categories Submenu -->
+        <add id="RequestDesk_Blog::categories_menu"
+             title="Categories"
+             translate="title"
+             module="RequestDesk_Blog"
+             parent="RequestDesk_Blog::blog"
+             sortOrder="11"
+             action="requestdesk_blog/category/index"
+             resource="RequestDesk_Blog::categories"/>
+
         <!-- Tags Submenu -->
         <add id="RequestDesk_Blog::tags_menu"
              title="Tags"

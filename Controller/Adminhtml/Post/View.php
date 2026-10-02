@@ -28,7 +28,7 @@ class View extends Action
     /**
      * Authorization level
      */
-    const ADMIN_RESOURCE = 'RequestDesk_Blog::view';
+    public const ADMIN_RESOURCE = 'RequestDesk_Blog::view';
 
     /**
      * @var PageFactory

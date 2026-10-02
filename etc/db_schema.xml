@@ -5,7 +5,9 @@
  *
  * Tables:
  * - requestdesk_blog_post: Blog posts with RequestDesk sync fields
- * - requestdesk_blog_post_category: Links posts to NATIVE Magento categories
+ * - requestdesk_blog_category: Blog categories (own taxonomy, Amasty-style)
+ * - requestdesk_blog_category_post: Links posts to blog categories
+ * - requestdesk_blog_post_category: LEGACY native-category links, unused
  * - requestdesk_blog_product: Product-to-post linking (critical for Magento)
  *
  * @category  RequestDesk
@@ -120,8 +122,78 @@
          MigrateAuthorProfiles already guards with isTableExists(), so it stays a
          no-op on installs that upgrade past this point. -->
 
-    <!-- Post-Category link — references NATIVE Magento categories, not an invented blog taxonomy -->
-    <table name="requestdesk_blog_post_category" resource="default" engine="innodb" comment="Blog Post to Native Category Link">
+    <!-- Blog categories — the blog's own taxonomy, modelled on Amasty Blog's.
+         Replaces the native catalog categories posts used to be filed under:
+         those dragged blog-only entries into the catalog tree and gave every
+         archive URL an EAV lookup. Global scope, like tags and authors.
+         parent_id 0 is top level; there is no FK on it so a category can be
+         moved without ordering the writes, and the admin Save refuses a cycle. -->
+    <table name="requestdesk_blog_category" resource="default" engine="innodb" comment="RequestDesk Blog Categories">
+        <column xsi:type="int" name="category_id" unsigned="true" nullable="false" identity="true" comment="Category ID"/>
+        <column xsi:type="int" name="parent_id" unsigned="true" nullable="false" default="0" comment="Parent Category ID (0 = top level)"/>
+        <column xsi:type="varchar" name="name" nullable="false" length="255" comment="Name"/>
+        <column xsi:type="varchar" name="url_key" nullable="false" length="255" comment="URL Key"/>
+        <column xsi:type="mediumtext" name="description" nullable="true" comment="Description"/>
+        <column xsi:type="smallint" name="status" unsigned="true" nullable="false" default="1" comment="Status (0=Disabled, 1=Enabled)"/>
+        <column xsi:type="int" name="sort_order" unsigned="true" nullable="false" default="0" comment="Sort Order"/>
+        <column xsi:type="varchar" name="meta_title" nullable="true" length="255" comment="Meta Title"/>
+        <column xsi:type="varchar" name="meta_tags" nullable="true" length="255" comment="Meta Keywords"/>
+        <column xsi:type="text" name="meta_description" nullable="true" comment="Meta Description"/>
+        <column xsi:type="varchar" name="meta_robots" nullable="true" length="50" comment="Meta Robots"/>
+        <!-- Set by requestdesk:blog:migrate-amasty-categories, so a re-run finds
+             the category it made rather than making another. -->
+        <column xsi:type="int" name="amasty_category_id" unsigned="true" nullable="true" comment="Source amasty_blog_categories.category_id"/>
+        <column xsi:type="timestamp" name="created_at" nullable="false" default="CURRENT_TIMESTAMP" comment="Created At"/>
+        <column xsi:type="timestamp" name="updated_at" nullable="false" default="CURRENT_TIMESTAMP" on_update="true" comment="Updated At"/>
+
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="category_id"/>
+        </constraint>
+        <constraint xsi:type="unique" referenceId="REQUESTDESK_BLOG_CATEGORY_URL_KEY">
+            <column name="url_key"/>
+        </constraint>
+        <constraint xsi:type="unique" referenceId="REQUESTDESK_BLOG_CATEGORY_AMASTY_CATEGORY_ID">
+            <column name="amasty_category_id"/>
+        </constraint>
+        <index referenceId="REQUESTDESK_BLOG_CATEGORY_PARENT_ID" indexType="btree">
+            <column name="parent_id"/>
+        </index>
+        <index referenceId="REQUESTDESK_BLOG_CATEGORY_STATUS" indexType="btree">
+            <column name="status"/>
+        </index>
+    </table>
+
+    <!-- Post-Category link onto requestdesk_blog_category.
+         A new table rather than repointing requestdesk_blog_post_category:
+         declarative schema adds FKs before any patch can run, and every row in
+         the old table holds a catalog id, so swapping its FK would fail the
+         upgrade. Links are rebuilt from Amasty by
+         requestdesk:blog:migrate-amasty-categories. -->
+    <table name="requestdesk_blog_category_post" resource="default" engine="innodb" comment="Blog Post to Blog Category Link">
+        <column xsi:type="int" name="category_id" unsigned="true" nullable="false" comment="Category ID"/>
+        <column xsi:type="int" name="post_id" unsigned="true" nullable="false" comment="Post ID"/>
+
+        <constraint xsi:type="primary" referenceId="PRIMARY">
+            <column name="category_id"/>
+            <column name="post_id"/>
+        </constraint>
+        <constraint xsi:type="foreign" referenceId="REQUESTDESK_BLOG_CATEGORY_POST_CATEGORY_ID_FK"
+                    table="requestdesk_blog_category_post" column="category_id"
+                    referenceTable="requestdesk_blog_category" referenceColumn="category_id" onDelete="CASCADE"/>
+        <constraint xsi:type="foreign" referenceId="REQUESTDESK_BLOG_CATEGORY_POST_POST_ID_FK"
+                    table="requestdesk_blog_category_post" column="post_id"
+                    referenceTable="requestdesk_blog_post" referenceColumn="post_id" onDelete="CASCADE"/>
+        <index referenceId="REQUESTDESK_BLOG_CATEGORY_POST_POST_ID" indexType="btree">
+            <column name="post_id"/>
+        </index>
+    </table>
+
+    <!-- LEGACY: post links onto NATIVE catalog categories. Nothing reads or
+         writes it since blog categories replaced native ones (1.13.0). Kept one
+         release, the way requestdesk_blog_author_profile was, so the old links
+         are still there to inspect if a migration needs checking; drop it in
+         the next release. -->
+    <table name="requestdesk_blog_post_category" resource="default" engine="innodb" comment="LEGACY Blog Post to Native Category Link (unused)">
         <column xsi:type="int" name="post_id" unsigned="true" nullable="false" comment="Post ID"/>
         <column xsi:type="int" name="category_id" unsigned="true" nullable="false" comment="Category ID"/>
 

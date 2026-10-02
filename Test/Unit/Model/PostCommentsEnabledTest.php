@@ -23,6 +23,7 @@ use RequestDesk\Blog\Model\Post;
  */
 class PostCommentsEnabledTest extends TestCase
 {
+    /** @var Post */
     private Post $post;
 
     protected function setUp(): void

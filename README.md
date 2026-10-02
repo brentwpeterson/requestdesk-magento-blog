@@ -38,9 +38,11 @@ Unlike Shopify or WordPress, **Magento has no built-in blog functionality**. Thi
 
 ### Taxonomy & authorship (reuse-first)
 This extension reuses native Magento constructs instead of inventing parallel ones:
-- **Categories** reuse **native Magento categories** — assign posts to real catalog
-  categories on the post form; a post links back to its category page and the blog
-  can be filtered by category.
+- **Categories** are a blog-owned tree modelled on Amasty Blog's (since 1.13.0;
+  native catalog categories before that). Managed at Content → RequestDesk Blog →
+  Categories: name, URL key, status, parent, sort order, description, meta title,
+  keywords, description and robots. Assign them on the post form; each enabled
+  category gets an archive page at `/<prefix>/category/<url-key>`.
 - **Authors** reuse **native admin users**, extended by a public **Author Profile**
   (display name, bio, avatar, link). Managed at Content → RequestDesk Blog → Authors;
   bylines, author pages, and schema all resolve through it, with a free-text fallback.
@@ -59,8 +61,7 @@ This extension reuses native Magento constructs instead of inventing parallel on
   library, so the same pair can appear on a post *and* a product
 
 ### Blocks / widget
-- Native Magento widget: recent posts, by-category, or **related-to-current-product**
-  (an AEO cross-link that surfaces posts sharing the product's categories on the PDP)
+- Native Magento widget: recent posts, or posts in a chosen blog category
 
 ### RequestDesk Integration
 - **Product Export**: Sync your Magento product catalog to RequestDesk's knowledge base
@@ -347,6 +348,30 @@ Settings are under **Stores > Configuration > Catalog > XML Sitemap > Blog
 Options (RequestDesk)**: on/off (default on), frequency (default weekly) and
 priority (default 0.5). Regenerate the sitemap after upgrading.
 
+### Blog categories, live search and comments (1.13.0)
+
+Posts move from native catalog categories to the blog's own categories. After
+deploying:
+
+```bash
+bin/magento setup:upgrade
+bin/magento setup:di:compile            # production / compiled installs
+bin/magento requestdesk:blog:migrate-amasty --dry-run
+bin/magento requestdesk:blog:migrate-amasty
+bin/magento requestdesk:blog:migrate-amasty-categories --dry-run
+bin/magento requestdesk:blog:migrate-amasty-categories
+bin/magento requestdesk:blog:migrate-media
+bin/magento requestdesk:blog:disable-comments   # optional: comments off on every post
+bin/magento cache:flush
+```
+
+`migrate-amasty-categories` re-links posts migrated before 1.13.0. Until it
+runs those posts show no categories. The old "Blog" catalog category and its
+children are no longer used and can be deleted from Catalog > Categories.
+
+On a Hyva theme, rebuild the theme CSS so the new search box and tabs are
+styled: `npm run build` in `web/tailwind`.
+
 ## Configuration
 
 Navigate to **Stores > Configuration > RequestDesk > Blog**
@@ -463,6 +488,12 @@ Export products to RequestDesk:
 - Sync all products or limited batches
 - View sync statistics
 
+### Content > RequestDesk Blog > Categories
+
+Grid and form for blog categories, laid out like Amasty Blog's: enable, disable
+and delete in bulk, see each category's parent and post count. A disabled
+category keeps its posts but has no archive and shows nowhere on the storefront.
+
 ### Content > RequestDesk Blog > Tags
 
 Create, edit, and delete blog tags (auto-generated URL keys). Tags are assigned
@@ -565,11 +596,18 @@ Public profile that extends a native admin user (keyed by `admin_user_id`).
 | `avatar` | varchar(255) | Avatar image path |
 | `url` | varchar(255) | Author link (site / social) |
 
-### `requestdesk_blog_post_category`
+### `requestdesk_blog_category` / `requestdesk_blog_category_post`
 
-Links posts to **native Magento categories** — `category_id` is an FK to
-`catalog_category_entity.entity_id` (`CASCADE`). There is no separate blog
-category table; the invented taxonomy was removed in favor of catalog reuse.
+Blog categories (`category_id`, `parent_id` with 0 for top level, `name`,
+unique `url_key`, `description`, `status`, `sort_order`, the four meta fields,
+and `amasty_category_id` for imported rows) and their many-to-many link to
+posts. Deleting a category cascades its post links and moves its subcategories
+up one level.
+
+### `requestdesk_blog_post_category` (legacy)
+
+Post links onto native catalog categories, used until 1.13.0. Nothing reads or
+writes it now; it stays one release so old links can still be inspected.
 
 ### `requestdesk_blog_tag` / `requestdesk_blog_post_tag`
 
@@ -883,6 +921,61 @@ Answer Engine Optimization (AEO) is the practice of structuring content so AI sy
 - Content not optimized for AI will become invisible
 
 ## Changelog
+
+### 1.13.0 (2026-10-01)
+
+The category grid from the 2026-09-24 call, Amasty-style live search, and a
+Magento coding-standard pass.
+
+- **New: blog categories.** Posts are filed under the blog's own category tree,
+  not native catalog categories. Admin grid and form at Content → RequestDesk
+  Blog → Categories, with Amasty's fields (name, URL key, status, parent, sort
+  order, WYSIWYG description, meta title / keywords / description / robots).
+  Tables `requestdesk_blog_category` and `requestdesk_blog_category_post`; ACL
+  `RequestDesk_Blog::categories`
+- **New: `bin/magento requestdesk:blog:migrate-amasty-categories`** copies every
+  Amasty category across, tree kept, then re-creates Amasty's post links on the
+  migrated posts (matched by `url_key`). Adds links, never removes them;
+  re-runnable. `--dry-run`, `--skip-links`. Run it once after upgrading to
+  re-file posts migrated before 1.13.0
+- **Change: `requestdesk:blog:migrate-amasty`** files new posts under blog
+  categories. `--parent-category` is gone with the native categories it
+  created; any made by earlier runs are left in the catalog to delete by hand
+- **Change: category archive** reads the blog table. A disabled category 404s;
+  meta title, description, keywords and robots come from the category, and its
+  description shows under the heading. Router and XML sitemap lose their EAV
+  queries
+- **Breaking: REST API `category_ids`** are blog category IDs now. IDs with no
+  blog category are dropped rather than failing the publish
+- **Breaking: posts widget.** "By Category" picks a blog category; "Related to
+  Current Product" is removed, since nothing ties blog categories to products.
+  An existing instance set to it renders nothing
+- `requestdesk_blog_post_category` (native links) is no longer used and is kept
+  one release
+- **New: live search like Amasty's.** The sidebar box shows suggestions after
+  3 characters without leaving the page, grouped Posts / Authors / Categories /
+  Tags; Enter still opens the results page. `Controller\Search\Suggest`
+  (`/<prefix>/search/suggest?query=`), `Model\BlogSearch`. Settings: Stores →
+  Configuration → RequestDesk Blog → Blog Search (minimum characters, results
+  per group; both default 3)
+- **New: search results tabs** - Posts, Authors, Categories, Tags, each with the
+  number of published posts it lists, as on Amasty. `?tab=` picks one and the
+  pager keeps it. Post search now also matches the short description
+- **New: Enable Previous-Next Navigation** (Stores → Configuration → RequestDesk
+  Blog → General), default Yes, as on Amasty
+- **New: `bin/magento requestdesk:blog:disable-comments`** turns "Allow
+  Comment" off on every post (`--dry-run` to count first). New posts already
+  start with comments off; this is for posts migrated before 1.12.0, which kept
+  theirs on. Existing comments are not deleted
+- **New: `bin/magento requestdesk:blog:migrate-media`** copies the Amasty image
+  files (`pub/media/amasty/blog` and `.renditions/amasty/blog`) into the blog's
+  media folder. Never overwrites; `--source`, `--dry-run`
+- **Change: category pages show the category description** under the heading
+- Code passes `phpcs --standard=Magento2` with no errors or warnings. Long lines
+  are allowed per file (`phpcs:disable Generic.Files.LineLength.TooLong`);
+  intentional exceptions (static URL helpers, deliberately empty catches,
+  `parse_url` / `html_entity_decode`) carry a one-line `phpcs:ignore`.
+  `MigrateMediaCommand` now uses Magento's filesystem driver
 
 ### 1.12.0 (2026-09-24)
 

@@ -31,6 +31,8 @@ class PostRepositoryQaCleanup
     }
 
     /**
+     * After plugin for delete
+     *
      * @param PostRepositoryInterface $subject
      * @param bool $result
      * @param PostInterface $post
@@ -43,6 +45,8 @@ class PostRepositoryQaCleanup
     }
 
     /**
+     * After plugin for delete by id
+     *
      * @param PostRepositoryInterface $subject
      * @param bool $result
      * @param int $postId

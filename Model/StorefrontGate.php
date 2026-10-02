@@ -8,6 +8,8 @@
 
 declare(strict_types=1);
 
+// phpcs:disable Generic.Files.LineLength.TooLong
+
 namespace RequestDesk\Blog\Model;
 
 use Magento\Framework\App\RequestInterface;
@@ -43,6 +45,8 @@ class StorefrontGate
     }
 
     /**
+     * Allows
+     *
      * @param RequestInterface $request
      * @return bool
      */
@@ -70,7 +74,7 @@ class StorefrontGate
      * @param RequestInterface $request
      * @return string
      */
-    public static function firstSegment(RequestInterface $request): string
+    public static function firstSegment(RequestInterface $request): string // phpcs:ignore Magento2.Functions.StaticFunction
     {
         $path = method_exists($request, 'getPathInfo') ? (string) $request->getPathInfo() : '';
 

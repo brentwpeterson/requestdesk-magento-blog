@@ -1,4 +1,5 @@
 <?php
+// phpcs:disable Generic.Files.LineLength.TooLong
 /** @var \RequestDesk\Blog\Block\Adminhtml\System\Config\TestConnection $block */
 ?>
 <div class="requestdesk-test-connection">
@@ -6,7 +7,7 @@
     <span id="requestdesk_test_result" style="margin-left: 10px;"></span>
 </div>
 
-<script type="text/javascript">
+<script>
     require(['jquery', 'Magento_Ui/js/modal/alert'], function($, alert) {
         $('#requestdesk_test_connection').on('click', function() {
             var $button = $(this);
@@ -25,7 +26,7 @@
             $result.html('<span style="color: #666;">Testing connection...</span>');
 
             $.ajax({
-                url: '<?= $block->escapeUrl($block->getAjaxUrl()) ?>',
+                url: '<?= $escaper->escapeUrl($block->getAjaxUrl()) ?>',
                 type: 'POST',
                 dataType: 'json',
                 data: {

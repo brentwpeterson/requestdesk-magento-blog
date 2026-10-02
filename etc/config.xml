@@ -17,7 +17,12 @@
                 <blog_title>Blog</blog_title>
                 <posts_per_page>10</posts_per_page>
                 <enable_pagination>1</enable_pagination>
+                <previous_next_navigation>1</previous_next_navigation>
             </general>
+            <search>
+                <min_characters>3</min_characters>
+                <items_per_group>3</items_per_group>
+            </search>
             <api>
                 <endpoint_url>https://api.requestdesk.ai</endpoint_url>
             </api>

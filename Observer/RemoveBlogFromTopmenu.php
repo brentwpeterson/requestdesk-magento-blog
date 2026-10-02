@@ -42,6 +42,8 @@ class RemoveBlogFromTopmenu implements ObserverInterface
     }
 
     /**
+     * Execute the action
+     *
      * @param Observer $observer
      * @return void
      */
