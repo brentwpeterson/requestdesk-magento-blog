@@ -168,11 +168,12 @@ class BlogSearch
         );
 
         $prefix = $this->config->getUrlPrefix();
+        $suffix = $this->config->getUrlSuffix();
 
         return array_map(
             fn (array $row): array => [
                 'title' => (string) $row['title'],
-                'url' => PostUrl::fromKey((int) $row['post_id'], $row['url_key'], $this->urlBuilder, $prefix),
+                'url' => PostUrl::fromKey((int) $row['post_id'], $row['url_key'], $this->urlBuilder, $prefix, $suffix),
             ],
             $rows
         );
@@ -197,11 +198,12 @@ class BlogSearch
             ->limit($limit);
 
         $prefix = $this->config->getUrlPrefix();
+        $suffix = $this->config->getUrlSuffix();
 
         return array_map(
             fn (array $row): array => [
                 'title' => (string) $row['name'],
-                'url' => ArchiveUrl::resolve($archiveType, (int) $row['id'], $row['url_key'], $this->urlBuilder, $prefix),
+                'url' => ArchiveUrl::resolve($archiveType, (int) $row['id'], $row['url_key'], $this->urlBuilder, $prefix, $suffix),
             ],
             $this->resource->getConnection()->fetchAll($select)
         );

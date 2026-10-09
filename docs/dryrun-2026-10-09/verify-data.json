@@ -1,0 +1,117 @@
+{
+ "checks": [
+  [
+   "post count: RD equals published Amasty",
+   true,
+   "amasty published=218 rd=218"
+  ],
+  [
+   "url_key set identical",
+   true,
+   "missing in RD=[] extra in RD=[]"
+  ],
+  [
+   "every post keeps its title",
+   true,
+   "0 differ, first: []"
+  ],
+  [
+   "every post keeps its publish_date",
+   true,
+   "0 differ, first: []"
+  ],
+  [
+   "every post keeps its body",
+   true,
+   "0 differ, first: []"
+  ],
+  [
+   "every post keeps its meta_title",
+   true,
+   "0 differ, first: []"
+  ],
+  [
+   "every post keeps its meta_description",
+   true,
+   "0 differ, first: []"
+  ],
+  [
+   "every post keeps its author",
+   true,
+   "0 differ, first: []"
+  ],
+  [
+   "every post keeps its tags",
+   true,
+   "0 differ, first: []"
+  ],
+  [
+   "every post keeps its categories",
+   true,
+   "0 differ, first: []"
+  ],
+  [
+   "every post keeps its image",
+   true,
+   "0 differ, first: []"
+  ],
+  [
+   "every post keeps its status",
+   true,
+   "0 differ, first: []"
+  ],
+  [
+   "no amasty/blog path left in RD posts",
+   true,
+   "0 posts still point at amasty/blog"
+  ],
+  [
+   "every featured image file exists on disk",
+   true,
+   "0 missing, first: []"
+  ]
+ ],
+ "differences": {
+  "title": [],
+  "publish_date": [],
+  "body": [],
+  "meta_title": [],
+  "meta_description": [],
+  "author": [],
+  "tags": [],
+  "categories": [],
+  "image": [],
+  "status": []
+ },
+ "warnings": [
+  [
+   "post has no body in Amasty (empty on both sides, check the live page)",
+   2,
+   [
+    "commerce-co-opfull-articleempowering-our-magento-open-source-community-call-for-social-media-volunteers",
+    "commerce-co-opfull-articlemeet-the-newest-magento-association-board-member-sonja-franz"
+   ]
+  ],
+  [
+   "meta_title was empty in Amasty, RD fills the post title",
+   14,
+   [
+    "building-a-custom-product-builder-for-a-smarter-ux",
+    "charting-the-future-of-magento-a-powerful-conversation-with-mathias-schreiber--magento-association",
+    "episode-10-arron-moss",
+    "episode-11-fridberg-and-gioffre",
+    "episode-3-from-magentos-early-days-to-agentic-commerce-a-deep-dive-with-brent-peterson"
+   ]
+  ],
+  [
+   "tag name changed case (RD reuses an existing tag with different case)",
+   4,
+   [
+    "a-practical-breakdown-of-magento-open-source-total-cost-of-ownership",
+    "edit-your-member-profile-yourself-logo-link-country--more",
+    "optimizing-magento-for-seasonal-traffic-spikes-lessons-from-a-real-magento-client",
+    "recognizing-meaningful-contributions-across-the-magento-community---the-ambassador-program"
+   ]
+  ]
+ ]
+}

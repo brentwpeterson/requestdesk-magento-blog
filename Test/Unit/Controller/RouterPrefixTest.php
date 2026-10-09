@@ -13,6 +13,8 @@ use Magento\Framework\App\Action\Forward;
 use Magento\Framework\App\ActionFactory;
 use Magento\Framework\App\Request\Http;
 use Magento\Framework\App\ResourceConnection;
+use Magento\Framework\App\ResponseInterface;
+use Magento\Framework\UrlInterface;
 use Magento\Framework\DB\Adapter\AdapterInterface;
 use Magento\Framework\DB\Select;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -63,7 +65,13 @@ class RouterPrefixTest extends TestCase
         $actionFactory = $this->createMock(ActionFactory::class);
         $actionFactory->method('create')->willReturn($this->createMock(Forward::class));
 
-        $this->router = new Router($actionFactory, $resource, $this->config);
+        $this->router = new Router(
+            $actionFactory,
+            $resource,
+            $this->config,
+            $this->createMock(ResponseInterface::class),
+            $this->createMock(UrlInterface::class)
+        );
     }
 
     private function blog(bool $enabled, string $prefix): void

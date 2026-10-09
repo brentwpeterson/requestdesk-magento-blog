@@ -17,11 +17,12 @@ use RequestDesk\Blog\Model\StorefrontGate;
  */
 class StorefrontGateTest extends TestCase
 {
-    private function gate(bool $enabled, string $prefix): StorefrontGate
+    private function gate(bool $enabled, string $prefix, string $suffix = ''): StorefrontGate
     {
         $config = $this->createMock(Config::class);
         $config->method('isBlogEnabled')->willReturn($enabled);
         $config->method('getUrlPrefix')->willReturn($prefix);
+        $config->method('getUrlSuffix')->willReturn($suffix);
 
         return new StorefrontGate($config);
     }
@@ -57,6 +58,22 @@ class StorefrontGateTest extends TestCase
     {
         $this->assertTrue($this->gate(true, 'news')->allows($this->request('/news')));
         $this->assertTrue($this->gate(true, 'news')->allows($this->request('/news/category/view/id/77/')));
+    }
+
+    /**
+     * The index of a store with a URL suffix is /news.html. Its first path
+     * segment is "news.html", which the gate used to refuse with a 404.
+     */
+    public function testTheSuffixedIndexIsAllowed(): void
+    {
+        $this->assertTrue($this->gate(true, 'news', '.html')->allows($this->request('/news.html')));
+        $this->assertTrue($this->gate(true, 'news', '.html')->allows($this->request('/news/some-post.html')));
+    }
+
+    public function testTheSuffixDoesNotOpenTheOldBlogAddresses(): void
+    {
+        $this->assertFalse($this->gate(true, 'news', '.html')->allows($this->request('/blog.html')));
+        $this->assertFalse($this->gate(true, 'news', '.html')->allows($this->request('/newsroom.html')));
     }
 
     /**

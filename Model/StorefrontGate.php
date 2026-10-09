@@ -65,7 +65,15 @@ class StorefrontGate
             return true;
         }
 
-        return self::firstSegment($request) === $prefix;
+        // The index of a store with a URL suffix is /news.html, whose first
+        // segment is "news.html", not "news".
+        $segment = self::firstSegment($request);
+        $suffix = $this->config->getUrlSuffix();
+        if ($suffix !== '' && str_ends_with($segment, $suffix)) {
+            $segment = substr($segment, 0, -strlen($suffix));
+        }
+
+        return $segment === $prefix;
     }
 
     /**

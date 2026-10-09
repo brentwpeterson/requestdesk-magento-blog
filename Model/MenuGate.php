@@ -107,7 +107,7 @@ class MenuGate
     private function blogPath($store = null): string
     {
         return $this->normalizePath(
-            BlogUrl::resolve($this->config->getUrlPrefix($store), '', [], $this->urlBuilder)
+            BlogUrl::resolve($this->config->getUrlPrefix($store), '', [], $this->urlBuilder, $this->config->getUrlSuffix($store))
         );
     }
 

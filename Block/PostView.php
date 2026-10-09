@@ -247,7 +247,7 @@ class PostView extends Template
 
         return [
             'title' => (string) $post->getTitle(),
-            'url' => PostUrl::resolve($post, $this->_urlBuilder, $this->config->getUrlPrefix()),
+            'url' => PostUrl::resolve($post, $this->_urlBuilder, $this->config->getUrlPrefix(), $this->config->getUrlSuffix()),
         ];
     }
 
@@ -258,6 +258,6 @@ class PostView extends Template
      */
     public function getBackUrl(): string
     {
-        return BlogUrl::resolve($this->config->getUrlPrefix(), '', [], $this->_urlBuilder);
+        return BlogUrl::resolve($this->config->getUrlPrefix(), '', [], $this->_urlBuilder, $this->config->getUrlSuffix());
     }
 }

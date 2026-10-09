@@ -65,7 +65,8 @@ class TagResolver
                     (int) $row['tag_id'],
                     $row['url_key'] ?? null,
                     $this->urlBuilder,
-                    $this->config->getUrlPrefix()
+                    $this->config->getUrlPrefix(),
+                    $this->config->getUrlSuffix()
                 ),
             ];
         }
@@ -108,7 +109,8 @@ class TagResolver
                 (int) $row['tag_id'],
                 $row['url_key'] ?? null,
                 $this->urlBuilder,
-                $this->config->getUrlPrefix()
+                $this->config->getUrlPrefix(),
+                $this->config->getUrlSuffix()
             ),
         ];
     }
@@ -173,9 +175,12 @@ class TagResolver
      * Used by the importer so incoming tag names become real tag entities.
      *
      * @param string $name
+     * @param string|null $urlKey Optional key to keep, only used when creating. A migration
+     *        passes the key the old blog already published, so the tag's page keeps its
+     *        address; without one the key is made from the name
      * @return int
      */
-    public function getOrCreateByName(string $name): int
+    public function getOrCreateByName(string $name, ?string $urlKey = null): int
     {
         $name = trim($name);
         if ($name === '') {
@@ -195,7 +200,8 @@ class TagResolver
             return $existing;
         }
 
-        $urlKey = $this->uniqueUrlKey($this->slugify($name));
+        $preferred = trim((string) $urlKey);
+        $urlKey = $this->uniqueUrlKey($preferred !== '' ? $preferred : $this->slugify($name));
         $connection->insert($table, ['name' => $name, 'url_key' => $urlKey]);
         return (int) $connection->lastInsertId();
     }

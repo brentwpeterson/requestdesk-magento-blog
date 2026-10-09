@@ -87,12 +87,15 @@ class BlogItemProvider implements ItemProviderInterface
         // The store's own prefix: the sitemap lists the addresses the storefront
         // serves, and on a store that moved the blog to /news, /blog 404s.
         $prefix = $this->config->getUrlPrefix($storeId);
+        // The store's URL suffix (.html on a store migrated from Amasty) goes on the
+        // index and on every pretty address, so the sitemap lists the canonical form.
+        $suffix = $this->config->getUrlSuffix($storeId);
 
-        $items = [$this->item($prefix, max(array_column($posts, 'updated_at')), $storeId)];
+        $items = [$this->item($prefix . $suffix, max(array_column($posts, 'updated_at')), $storeId)];
 
         foreach ($posts as $post) {
             $urlKey = trim((string) $post['url_key']);
-            $url = $urlKey !== '' ? $prefix . '/' . $urlKey : $prefix . '/post/view/id/' . (int) $post['post_id'];
+            $url = $urlKey !== '' ? $prefix . '/' . $urlKey . $suffix : $prefix . '/post/view/id/' . (int) $post['post_id'];
             $items[] = $this->item($url, $post['updated_at'], $storeId);
         }
 
@@ -101,7 +104,7 @@ class BlogItemProvider implements ItemProviderInterface
             'tag' => $this->fetchTagArchives($storeId),
             'author' => $this->fetchAuthorArchives($storeId),
         ] as $type => $archives) {
-            foreach ($this->archiveUrls($prefix, $type, $archives) as $url => $updatedAt) {
+            foreach ($this->archiveUrls($prefix, $type, $archives, $suffix) as $url => $updatedAt) {
                 $items[] = $this->item($url, $updatedAt, $storeId);
             }
         }
@@ -226,9 +229,10 @@ class BlogItemProvider implements ItemProviderInterface
      * @param string $prefix
      * @param string $type
      * @param array $rows array<int, array{id:string, url_key:?string, updated_at:string}>
+     * @param string $suffix the store's URL suffix, added to pretty addresses only
      * @return array<string, string> url => updated_at
      */
-    private function archiveUrls(string $prefix, string $type, array $rows): array
+    private function archiveUrls(string $prefix, string $type, array $rows, string $suffix = ''): array
     {
         $urls = [];
         $claimedKeys = [];
@@ -238,7 +242,7 @@ class BlogItemProvider implements ItemProviderInterface
 
             if ($urlKey !== '' && !isset($claimedKeys[$urlKey])) {
                 $claimedKeys[$urlKey] = true;
-                $url = $prefix . '/' . $type . '/' . $urlKey;
+                $url = $prefix . '/' . $type . '/' . $urlKey . $suffix;
             } else {
                 $url = $prefix . '/' . $type . '/view/id/' . (int) $row['id'];
             }

@@ -18,6 +18,7 @@ use Psr\Log\LoggerInterface;
 use RequestDesk\Blog\Api\Data\PostInterface;
 use RequestDesk\Blog\Api\FaqSchemaBuilderInterface;
 use RequestDesk\Blog\Api\QaLinkResolverInterface;
+use RequestDesk\Blog\Block\BlogUrl;
 use RequestDesk\Blog\Block\ImageUrl;
 use RequestDesk\Blog\Block\PostUrl;
 use RequestDesk\Blog\Model\AuthorResolver;
@@ -67,16 +68,14 @@ class BlogSchema implements ArgumentInterface
     public function getJsonLd(PostInterface $post): string
     {
         try {
-            $nodes = [$this->buildBlogPostingNode($post)];
+            $nodes = [$this->buildBlogPostingNode($post), $this->buildBreadcrumbNode($post)];
 
             $faqNode = $this->buildFaqNode($post);
             if ($faqNode !== null) {
                 $nodes[] = $faqNode;
             }
 
-            $payload = count($nodes) === 1
-                ? $nodes[0]
-                : ['@context' => 'https://schema.org', '@graph' => $nodes];
+            $payload = ['@context' => 'https://schema.org', '@graph' => $nodes];
 
             return $this->json->serialize($payload);
         } catch (\Throwable $e) {
@@ -110,7 +109,7 @@ class BlogSchema implements ArgumentInterface
      */
     private function buildBlogPostingNode(PostInterface $post): array
     {
-        $url = PostUrl::resolve($post, $this->urlBuilder, $this->config->getUrlPrefix());
+        $url = PostUrl::resolve($post, $this->urlBuilder, $this->config->getUrlPrefix(), $this->config->getUrlSuffix());
 
         $node = [
             '@context' => 'https://schema.org',
@@ -171,6 +170,46 @@ class BlogSchema implements ArgumentInterface
         }
 
         return $node;
+    }
+
+    /**
+     * Breadcrumb trail for the post: store home, the blog index, the post.
+     *
+     * Search engines show this trail under the result. The page markup carries
+     * no visible breadcrumb of its own, so this is the only place it exists.
+     *
+     * @param PostInterface $post
+     * @return array
+     */
+    private function buildBreadcrumbNode(PostInterface $post): array
+    {
+        $postUrl = PostUrl::resolve($post, $this->urlBuilder, $this->config->getUrlPrefix(), $this->config->getUrlSuffix());
+        $indexUrl = BlogUrl::resolve(
+            $this->config->getUrlPrefix(),
+            '',
+            [],
+            $this->urlBuilder,
+            $this->config->getUrlSuffix()
+        );
+        $homeUrl = $this->urlBuilder->getBaseUrl();
+
+        $trail = [
+            ['name' => (string) __('Home'), 'url' => $homeUrl],
+            ['name' => (string) __('Blog'), 'url' => $indexUrl],
+            ['name' => (string) $post->getTitle(), 'url' => $postUrl],
+        ];
+
+        $items = [];
+        foreach ($trail as $index => $crumb) {
+            $items[] = [
+                '@type' => 'ListItem',
+                'position' => $index + 1,
+                'name' => $crumb['name'],
+                'item' => $crumb['url'],
+            ];
+        }
+
+        return ['@type' => 'BreadcrumbList', 'itemListElement' => $items];
     }
 
     /**

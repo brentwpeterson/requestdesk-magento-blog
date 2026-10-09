@@ -357,7 +357,7 @@ class PostList extends Template
 
         $query += $this->getPagerQuery();
 
-        return BlogUrl::resolve($this->config->getUrlPrefix(), $this->getPagerPath(), $query, $this->_urlBuilder);
+        return BlogUrl::resolve($this->config->getUrlPrefix(), $this->getPagerPath(), $query, $this->_urlBuilder, $this->config->getUrlSuffix());
     }
 
     /**
@@ -392,7 +392,7 @@ class PostList extends Template
      */
     public function getPostUrl(PostInterface $post): string
     {
-        return PostUrl::resolve($post, $this->_urlBuilder, $this->config->getUrlPrefix());
+        return PostUrl::resolve($post, $this->_urlBuilder, $this->config->getUrlPrefix(), $this->config->getUrlSuffix());
     }
 
     /**

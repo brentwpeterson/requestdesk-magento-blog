@@ -58,7 +58,8 @@ class View implements HttpGetActionInterface
         }
 
         $page = $this->pageFactory->create();
-        $page->getConfig()->getTitle()->set($tag['name']);
+        // "Posts tagged 'Name'", the wording Amasty Blog used.
+        $page->getConfig()->getTitle()->set((string) __("Posts tagged '%1'", $tag['name']));
         return $page;
     }
 }

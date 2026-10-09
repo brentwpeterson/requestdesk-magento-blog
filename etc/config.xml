@@ -28,6 +28,7 @@
             </api>
             <seo>
                 <url_prefix>blog</url_prefix>
+                <url_suffix></url_suffix>
             </seo>
         </requestdesk_blog>
         <sitemap>

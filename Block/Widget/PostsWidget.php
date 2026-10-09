@@ -167,7 +167,7 @@ class PostsWidget extends Template implements BlockInterface
      */
     public function getPostUrl(PostInterface $post): string
     {
-        return PostUrl::resolve($post, $this->_urlBuilder, $this->config->getUrlPrefix());
+        return PostUrl::resolve($post, $this->_urlBuilder, $this->config->getUrlPrefix(), $this->config->getUrlSuffix());
     }
 
     /**

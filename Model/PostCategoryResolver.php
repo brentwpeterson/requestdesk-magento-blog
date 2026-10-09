@@ -242,7 +242,8 @@ class PostCategoryResolver
                 $categoryId,
                 (string) $row['url_key'],
                 $this->urlBuilder,
-                $this->config->getUrlPrefix()
+                $this->config->getUrlPrefix(),
+                $this->config->getUrlSuffix()
             ),
         ];
     }

@@ -24,7 +24,7 @@ $author = $block->getAuthor();
                      style="width:72px;height:72px;border-radius:50%;object-fit:cover;" />
             <?php endif; ?>
             <div>
-                <h1 class="page-title" style="margin:0;"><?= $escaper->escapeHtml($author['name']) ?></h1>
+                <h1 class="page-title" style="margin:0;"><?= $escaper->escapeHtml(__('Articles by %1', $author['name'])) ?></h1>
                 <?php if ($author['link'] !== ''): ?>
                     <a href="<?= $escaper->escapeUrl($author['link']) ?>" rel="nofollow"><?= $escaper->escapeHtml($author['link']) ?></a>
                 <?php endif; ?>

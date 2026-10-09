@@ -23,6 +23,7 @@ class Config
     public const XML_PATH_ENABLE_PAGINATION = 'requestdesk_blog/general/enable_pagination';
     public const XML_PATH_ENABLED = 'requestdesk_blog/general/enabled';
     public const XML_PATH_URL_PREFIX = 'requestdesk_blog/seo/url_prefix';
+    public const XML_PATH_URL_SUFFIX = 'requestdesk_blog/seo/url_suffix';
     public const XML_PATH_INCLUDE_IN_MENU = 'requestdesk_blog/general/include_in_menu';
     public const XML_PATH_PREVIOUS_NEXT = 'requestdesk_blog/general/previous_next_navigation';
     public const XML_PATH_SEARCH_MIN_CHARACTERS = 'requestdesk_blog/search/min_characters';
@@ -41,6 +42,11 @@ class Config
      * Controller\Router, which reads the first segment of the path.
      */
     public const URL_PREFIX_PATTERN = '/^[a-z0-9][a-z0-9_-]*$/';
+
+    /**
+     * A usable URL suffix: a dot and a short run of letters or digits, such as .html.
+     */
+    public const URL_SUFFIX_PATTERN = '/^\.[a-z0-9]{1,10}$/';
 
     /**
      * Mirrors etc/config.xml, so a blank value still paginates instead of
@@ -251,6 +257,49 @@ class Config
         }
 
         return $prefix;
+    }
+
+    /**
+     * The ending every blog address carries, such as ".html". Empty means none.
+     *
+     * Stores migrating from a blog that already ended its addresses in a suffix
+     * (Amasty Blog Pro defaults to .html) set the same suffix here, so every
+     * address search engines have indexed keeps answering. With a suffix set,
+     * the router redirects the extensionless form to the suffixed one with a
+     * 301, and the canonical tag, the sitemap and every link use the suffixed
+     * form. A value that is not a dot plus letters or digits is logged and
+     * ignored, because a suffix with a slash or space in it cannot be routed.
+     *
+     * @param int|string|null $store
+     * @return string
+     */
+    public function getUrlSuffix($store = null): string
+    {
+        $configured = trim((string) $this->scopeConfig->getValue(
+            self::XML_PATH_URL_SUFFIX,
+            ScopeInterface::SCOPE_STORE,
+            $store
+        ));
+        if ($configured === '') {
+            return '';
+        }
+
+        $suffix = strtolower($configured);
+        if ($suffix[0] !== '.') {
+            $suffix = '.' . $suffix;
+        }
+
+        if (!preg_match(self::URL_SUFFIX_PATTERN, $suffix)) {
+            $this->logger->error(sprintf(
+                'RequestDesk Blog: %s is "%s", which is not a dot followed by letters or digits. '
+                . 'Blog addresses carry no suffix until it is corrected.',
+                self::XML_PATH_URL_SUFFIX,
+                $configured
+            ));
+            return '';
+        }
+
+        return $suffix;
     }
 
     /**

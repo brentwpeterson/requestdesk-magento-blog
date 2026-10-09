@@ -21,6 +21,9 @@
             <block class="RequestDesk\Blog\Block\Head\OpenGraph"
                    name="requestdesk.blog.opengraph"
                    template="RequestDesk_Blog::head/opengraph.phtml"/>
+            <block class="RequestDesk\Blog\Block\Head\Canonical"
+                   name="requestdesk.blog.canonical"
+                   template="RequestDesk_Blog::head/canonical.phtml"/>
         </referenceContainer>
         <referenceContainer name="content">
             <block class="RequestDesk\Blog\Block\PostView"

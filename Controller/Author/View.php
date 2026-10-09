@@ -58,7 +58,18 @@ class View implements HttpGetActionInterface
         }
 
         $page = $this->pageFactory->create();
-        $page->getConfig()->getTitle()->set($author['name']);
+        $pageConfig = $page->getConfig();
+        // "Articles by Name", not the bare name: the title says what the page is,
+        // and it is the wording Amasty Blog used, so a migrated store keeps it.
+        $pageConfig->getTitle()->set((string) __('Articles by %1', $author['name']));
+
+        // The bio is the best summary the page has. Without it search engines
+        // write their own from whatever is first on the page.
+        $summary = trim((string) preg_replace('/\s+/', ' ', strip_tags((string) ($author['bio'] ?? ''))));
+        if ($summary !== '') {
+            $pageConfig->setDescription(mb_substr($summary, 0, 300));
+        }
+
         return $page;
     }
 }

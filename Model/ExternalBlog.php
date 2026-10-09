@@ -119,7 +119,7 @@ class ExternalBlog implements ExternalBlogInterface
             'last_sync' => $post->getRequestdeskLastSync(),
             'created_at' => $post->getCreatedAt(),
             'updated_at' => $post->getUpdatedAt(),
-            'url' => PostUrl::resolve($post, $this->urlBuilder, $this->config->getUrlPrefix())
+            'url' => PostUrl::resolve($post, $this->urlBuilder, $this->config->getUrlPrefix(), $this->config->getUrlSuffix())
         ];
     }
 
