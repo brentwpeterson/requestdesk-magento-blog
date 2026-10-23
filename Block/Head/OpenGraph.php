@@ -16,6 +16,8 @@ use Magento\Store\Model\StoreManagerInterface;
 use RequestDesk\Blog\Api\Data\PostInterface;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
 use RequestDesk\Blog\Block\ImageUrl;
+use RequestDesk\Blog\Block\PostUrl;
+use RequestDesk\Blog\Model\Config;
 
 /**
  * Emits Open Graph meta tags (property=) for the current post in the head.
@@ -33,12 +35,14 @@ class OpenGraph extends Template
      * @param Context $context
      * @param PostRepositoryInterface $postRepository
      * @param StoreManagerInterface $storeManager
+     * @param Config $config
      * @param array $data
      */
     public function __construct(
         Context $context,
         private readonly PostRepositoryInterface $postRepository,
         private readonly StoreManagerInterface $storeManager,
+        private readonly Config $config,
         array $data = []
     ) {
         parent::__construct($context, $data);
@@ -57,7 +61,7 @@ class OpenGraph extends Template
             if ($id > 0) {
                 try {
                     $post = $this->postRepository->getById($id);
-                    if ((int) $post->getStatus() === PostInterface::STATUS_PUBLISHED) {
+                    if (in_array((int) $post->getStatus(), PostInterface::STATUSES_OPEN_BY_URL, true)) {
                         $this->post = $post;
                     }
                 } catch (\Throwable $e) {
@@ -99,5 +103,16 @@ class OpenGraph extends Template
     {
         $post = $this->getPost();
         return $post ? ImageUrl::resolve($post->getFeaturedImage(), $this->storeManager) : '';
+    }
+
+    /**
+     * The post's own address, matching its canonical link.
+     *
+     * @return string
+     */
+    public function getOgUrl(): string
+    {
+        $post = $this->getPost();
+        return $post ? PostUrl::resolve($post, $this->_urlBuilder, $this->config->getUrlPrefix(), $this->config->getUrlSuffix()) : '';
     }
 }

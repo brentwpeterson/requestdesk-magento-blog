@@ -51,7 +51,7 @@ $faqPairs = ($schema && $post) ? $schema->getFaqPairs($post) : [];
 
         <?php if ($img !== ''): ?>
             <img src="<?= $escaper->escapeUrl($img) ?>"
-                 alt="<?= $escaper->escapeHtmlAttr($post->getTitle()) ?>"
+                 alt="<?= $escaper->escapeHtmlAttr($post->getFeaturedImageAlt() ?: $post->getTitle()) ?>"
                  style="width:100%;height:auto;border-radius:6px;margin-bottom:24px;" />
         <?php endif; ?>
 

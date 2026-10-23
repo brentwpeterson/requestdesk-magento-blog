@@ -26,6 +26,8 @@ interface PostInterface
     public const META_TITLE = 'meta_title';
     public const META_DESCRIPTION = 'meta_description';
     public const FEATURED_IMAGE = 'featured_image';
+    public const FEATURED_IMAGE_ALT = 'featured_image_alt';
+    public const META_ROBOTS = 'meta_robots';
     public const STATUS = 'status';
     public const COMMENTS_ENABLED = 'comments_enabled';
     public const AUTHOR = 'author';
@@ -37,8 +39,20 @@ interface PostInterface
     public const CREATED_AT = 'created_at';
     public const UPDATED_AT = 'updated_at';
 
+    /** Not shown anywhere, and the post URL 404s. Labelled "Disabled". */
     public const STATUS_DRAFT = 0;
+    /** Listed everywhere and reachable by URL. */
     public const STATUS_PUBLISHED = 1;
+    /** Reachable by URL only: kept out of listings, search, widgets and the sitemap. */
+    public const STATUS_HIDDEN = 2;
+    /** Like Disabled until created_at passes, then the cron publishes it. */
+    public const STATUS_SCHEDULED = 3;
+
+    /**
+     * Statuses whose post page opens. Every listing filters on
+     * STATUS_PUBLISHED alone, so Hidden stays out of them without changes there.
+     */
+    public const STATUSES_OPEN_BY_URL = [self::STATUS_PUBLISHED, self::STATUS_HIDDEN];
 
     public const SYNC_STATUS_PENDING = 'pending';
     public const SYNC_STATUS_SYNCED = 'synced';
@@ -182,6 +196,36 @@ interface PostInterface
      * @return $this
      */
     public function setFeaturedImage(?string $featuredImage): self;
+
+    /**
+     * Get featured image alt text; empty means "use the title"
+     *
+     * @return string|null
+     */
+    public function getFeaturedImageAlt(): ?string;
+
+    /**
+     * Set featured image alt text
+     *
+     * @param string|null $featuredImageAlt
+     * @return $this
+     */
+    public function setFeaturedImageAlt(?string $featuredImageAlt): self;
+
+    /**
+     * Get meta robots, e.g. "noindex, nofollow"; empty means the store default
+     *
+     * @return string|null
+     */
+    public function getMetaRobots(): ?string;
+
+    /**
+     * Set meta robots
+     *
+     * @param string|null $metaRobots
+     * @return $this
+     */
+    public function setMetaRobots(?string $metaRobots): self;
 
     /**
      * Get status

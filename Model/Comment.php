@@ -10,13 +10,14 @@ declare(strict_types=1);
 
 namespace RequestDesk\Blog\Model;
 
+use Magento\Framework\DataObject\IdentityInterface;
 use Magento\Framework\Model\AbstractModel;
 use RequestDesk\Blog\Model\ResourceModel\Comment as CommentResource;
 
 /**
  * A blog comment.
  */
-class Comment extends AbstractModel
+class Comment extends AbstractModel implements IdentityInterface
 {
     public const STATUS_PENDING = 'pending';
     public const STATUS_APPROVED = 'approved';
@@ -78,5 +79,15 @@ class Comment extends AbstractModel
     public function getStatus(): string
     {
         return (string) $this->getData('status');
+    }
+
+    /**
+     * Cache tag for full page cache invalidation, see BlogCache.
+     *
+     * @return string[]
+     */
+    public function getIdentities(): array
+    {
+        return [BlogCache::TAG];
     }
 }

@@ -18,6 +18,7 @@ use PHPUnit\Framework\TestCase;
 use RequestDesk\Blog\Controller\Author\View as AuthorView;
 use RequestDesk\Blog\Controller\Tag\View as TagView;
 use RequestDesk\Blog\Model\AuthorResolver;
+use RequestDesk\Blog\Model\ListingPageRange;
 use RequestDesk\Blog\Model\StorefrontGate;
 use RequestDesk\Blog\Model\TagResolver;
 
@@ -62,12 +63,20 @@ class ArchiveTitleTest extends TestCase
         $this->forwardFactory = $this->createMock(ForwardFactory::class);
     }
 
+    private function pageRange(): ListingPageRange
+    {
+        $range = $this->createMock(ListingPageRange::class);
+        $range->method('isOutOfRange')->willReturn(false);
+
+        return $range;
+    }
+
     private function authorView(?array $author): AuthorView
     {
         $resolver = $this->createMock(AuthorResolver::class);
         $resolver->method('getAuthor')->willReturn($author);
 
-        return new AuthorView($this->pageFactory, $this->forwardFactory, $this->request, $this->gate, $resolver);
+        return new AuthorView($this->pageFactory, $this->forwardFactory, $this->request, $this->gate, $resolver, $this->pageRange());
     }
 
     public function testTheAuthorTitleSaysArticlesBy(): void
@@ -96,6 +105,6 @@ class ArchiveTitleTest extends TestCase
         $resolver->method('getTag')->willReturn(['name' => 'Magento']);
         $this->title->expects($this->once())->method('set')->with("Posts tagged 'Magento'");
 
-        (new TagView($this->pageFactory, $this->forwardFactory, $this->request, $this->gate, $resolver))->execute();
+        (new TagView($this->pageFactory, $this->forwardFactory, $this->request, $this->gate, $resolver, $this->pageRange()))->execute();
     }
 }

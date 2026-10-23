@@ -16,5 +16,12 @@
              method="execute">
             <schedule>0 * * * *</schedule>
         </job>
+
+        <!-- Make Scheduled posts live once their Published Date passes -->
+        <job name="requestdesk_blog_publish_scheduled"
+             instance="RequestDesk\Blog\Cron\PublishScheduledPosts"
+             method="execute">
+            <schedule>* * * * *</schedule>
+        </job>
     </group>
 </config>

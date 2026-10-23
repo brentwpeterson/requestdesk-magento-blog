@@ -16,6 +16,7 @@ declare(strict_types=1);
 
 namespace RequestDesk\Blog\Model;
 
+use Magento\Framework\DataObject\IdentityInterface;
 use Magento\Framework\Model\AbstractModel;
 use RequestDesk\Blog\Model\ResourceModel\Author as AuthorResource;
 
@@ -23,7 +24,7 @@ use RequestDesk\Blog\Model\ResourceModel\Author as AuthorResource;
  * A blog author. Independent of Magento admin accounts — admin_user_id is an
  * optional link, not an identity.
  */
-class Author extends AbstractModel
+class Author extends AbstractModel implements IdentityInterface
 {
     /**
      * @inheritdoc
@@ -31,5 +32,15 @@ class Author extends AbstractModel
     protected function _construct(): void
     {
         $this->_init(AuthorResource::class);
+    }
+
+    /**
+     * Cache tag for full page cache invalidation, see BlogCache.
+     *
+     * @return string[]
+     */
+    public function getIdentities(): array
+    {
+        return [BlogCache::TAG];
     }
 }

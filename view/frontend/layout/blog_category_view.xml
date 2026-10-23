@@ -12,11 +12,6 @@
       xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
     <update handle="requestdesk_blog_sidebar"/>
     <body>
-        <referenceContainer name="head.additional">
-            <block class="RequestDesk\Blog\Block\Head\Canonical"
-                   name="requestdesk.blog.canonical"
-                   template="RequestDesk_Blog::head/canonical.phtml"/>
-        </referenceContainer>
         <!-- The list template renders its own h1 (the category name); drop the
              theme's page-title block so the title does not appear twice. -->
         <referenceContainer name="page.main.title" remove="true"/>

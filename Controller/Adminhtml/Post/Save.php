@@ -18,12 +18,15 @@ namespace RequestDesk\Blog\Controller\Adminhtml\Post;
 
 use Magento\Backend\App\Action;
 use Magento\Backend\App\Action\Context;
+use Magento\Catalog\Model\ImageUploader;
 use Magento\Framework\App\ResourceConnection;
+use RequestDesk\Blog\Api\Data\PostInterface;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
 use RequestDesk\Blog\Api\QaLinkResolverInterface;
 use RequestDesk\Blog\Model\PostCategoryResolver;
 use RequestDesk\Blog\Model\PostFactory;
 use RequestDesk\Blog\Model\TagResolver;
+use RequestDesk\Blog\Model\UploaderImagePath;
 use Magento\Framework\Exception\LocalizedException;
 use Psr\Log\LoggerInterface;
 
@@ -53,6 +56,8 @@ class Save extends Action
      * @param QaLinkResolverInterface $qaLinkResolver
      * @param LoggerInterface $logger
      * @param ResourceConnection $resource
+     * @param ImageUploader $imageUploader
+     * @param UploaderImagePath $uploaderImagePath
      */
     public function __construct(
         Context $context,
@@ -62,7 +67,9 @@ class Save extends Action
         private readonly TagResolver $tagResolver,
         private readonly QaLinkResolverInterface $qaLinkResolver,
         private readonly LoggerInterface $logger,
-        private readonly ResourceConnection $resource
+        private readonly ResourceConnection $resource,
+        private readonly ImageUploader $imageUploader,
+        private readonly UploaderImagePath $uploaderImagePath
     ) {
         parent::__construct($context);
         $this->postRepository = $postRepository;
@@ -99,8 +106,13 @@ class Save extends Action
             $shortDescription = trim((string) ($data['short_description'] ?? ''));
             $post->setShortDescription($shortDescription !== '' ? $shortDescription : null);
             $post->setUrlKey($this->resolveUrlKey($data, $postId));
+            $post->setFeaturedImage($this->resolveFeaturedImage($data, (string)$post->getFeaturedImage()));
+            $imageAlt = trim((string)($data['featured_image_alt'] ?? ''));
+            $post->setFeaturedImageAlt($imageAlt !== '' ? $imageAlt : null);
             $post->setMetaTitle($data['meta_title'] ?? '');
             $post->setMetaDescription($data['meta_description'] ?? '');
+            $metaRobots = trim((string) ($data['meta_robots'] ?? ''));
+            $post->setMetaRobots($metaRobots !== '' ? $metaRobots : null);
             // The byline is now the author_id select. "author" is the legacy
             // free-text column, no longer on the form — only write it when it was
             // actually posted, or every save would erase the imported name that
@@ -109,7 +121,7 @@ class Save extends Action
                 $post->setAuthor((string)$data['author']);
             }
             $post->setAuthorId(!empty($data['author_id']) ? (int)$data['author_id'] : null);
-            $post->setIsActive(isset($data['is_active']) ? (int)$data['is_active'] : 0);
+            $this->applyPublishStatus($post, $data);
             $post->setCommentsEnabled(isset($data['comments_enabled']) ? (bool)$data['comments_enabled'] : false);
 
             $this->postRepository->save($post);
@@ -142,6 +154,131 @@ class Save extends Action
         }
 
         return $resultRedirect->setPath('*/*/edit', ['post_id' => $postId]);
+    }
+
+    /**
+     * Set status and published date (created_at) from the Publish Status fields.
+     *
+     * Scheduled needs a date; one already past publishes the post now, since the
+     * cron would only do the same a minute later. A Published post dated in the
+     * future is brought back to now, as Amasty does, so the blog never shows a
+     * date that has not happened. An empty date means now for a new post and
+     * "unchanged" for an existing one.
+     *
+     * @param PostInterface $post
+     * @param array $data
+     * @return void
+     * @throws LocalizedException
+     */
+    private function applyPublishStatus(PostInterface $post, array $data): void
+    {
+        $status = (int)($data['status'] ?? PostInterface::STATUS_PUBLISHED);
+        $allowed = [
+            PostInterface::STATUS_DRAFT,
+            PostInterface::STATUS_PUBLISHED,
+            PostInterface::STATUS_HIDDEN,
+            PostInterface::STATUS_SCHEDULED,
+        ];
+        if (!in_array($status, $allowed, true)) {
+            throw new LocalizedException(__('Please choose a valid status.'));
+        }
+
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+        $date = $this->parsePublishedAt((string)($data['published_at'] ?? ''));
+
+        if ($status === PostInterface::STATUS_SCHEDULED) {
+            if ($date === null) {
+                throw new LocalizedException(__('Please set a Published Date for a scheduled post.'));
+            }
+            if ($date <= $now) {
+                $status = PostInterface::STATUS_PUBLISHED;
+                $this->messageManager->addNoticeMessage(
+                    __('The scheduled date has already passed, so the post was published now.')
+                );
+            }
+        } elseif ($status === PostInterface::STATUS_PUBLISHED && $date !== null && $date > $now) {
+            $date = $now;
+        }
+
+        if ($date === null && !$post->getId()) {
+            $date = $now;
+        }
+
+        $post->setStatus($status);
+        if ($date !== null) {
+            $post->setCreatedAt($date->format('Y-m-d H:i:s'));
+        }
+    }
+
+    /**
+     * The posted Published Date as a UTC time, or null when empty or unreadable.
+     *
+     * The date field with showsTime posts UTC already (an ISO string), having
+     * converted from the store time zone in the browser.
+     *
+     * @param string $value
+     * @return \DateTimeImmutable|null
+     */
+    private function parsePublishedAt(string $value): ?\DateTimeImmutable
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return null;
+        }
+        try {
+            return (new \DateTimeImmutable($value, new \DateTimeZone('UTC')))
+                ->setTimezone(new \DateTimeZone('UTC'));
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Resolve the featured image path to store.
+     *
+     * The image uploader posts a list of files, and posts nothing at all once the
+     * image is removed. A new upload carries tmp_name and gets moved into place.
+     * Anything else is either the image the form opened with or a "Select from
+     * Gallery" pick, which UploaderImagePath tells apart by url; the stored path
+     * of a kept image (blog/uploads/... for migrated posts) is left as it is.
+     *
+     * The move is isolated like the author avatar's: a failed image must not cost
+     * the editor the rest of the post.
+     *
+     * @param array $data
+     * @param string $current Path already stored on the post, if any
+     * @return string|null
+     */
+    private function resolveFeaturedImage(array $data, string $current): ?string
+    {
+        $image = $data['featured_image'] ?? null;
+
+        if (is_string($image)) {
+            return trim($image) !== '' ? trim($image) : null;
+        }
+
+        $file = is_array($image) ? reset($image) : null;
+        if (!is_array($file) || empty($file['name'])) {
+            return null;
+        }
+
+        if (empty($file['tmp_name'])) {
+            $path = $this->uploaderImagePath->resolve($file, $current);
+            return $path !== '' ? $path : null;
+        }
+
+        try {
+            return $this->imageUploader->moveFileFromTmp((string)$file['name'], true);
+        } catch (\Throwable $e) {
+            $this->logger->error(
+                'RequestDesk Blog: featured image move failed; saving the post without the new image',
+                ['exception' => $e, 'image' => $file['name']]
+            );
+            $this->messageManager->addWarningMessage(
+                __('The post was saved, but the featured image could not be uploaded.')
+            );
+            return $current !== '' ? $current : null;
+        }
     }
 
     /**

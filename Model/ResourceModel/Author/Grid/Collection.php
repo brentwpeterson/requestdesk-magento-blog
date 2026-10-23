@@ -62,6 +62,8 @@ class Collection extends SearchResult implements SearchResultInterface
                 'admin_name' => new \Zend_Db_Expr("TRIM(CONCAT(COALESCE(au.firstname,''),' ',COALESCE(au.lastname,'')))"),
             ]
         );
+        // admin_user has an email column too; the grid filters on the author's.
+        $this->addFilterToMap('email', 'main_table.email');
         return $this;
     }
 }

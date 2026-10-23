@@ -38,7 +38,7 @@ $title = $block->getListingTitle();
                     <?php if ($img !== ''): ?>
                         <a href="<?= $escaper->escapeUrl($url) ?>">
                             <img src="<?= $escaper->escapeUrl($img) ?>"
-                                 alt="<?= $escaper->escapeHtmlAttr($post->getTitle()) ?>"
+                                 alt="<?= $escaper->escapeHtmlAttr($post->getFeaturedImageAlt() ?: $post->getTitle()) ?>"
                                  style="width:100%;height:170px;object-fit:cover;display:block;" />
                         </a>
                     <?php endif; ?>
@@ -51,12 +51,10 @@ $title = $block->getListingTitle();
                         $postDate = $block->getPostDate($post);
                         $categories = $block->getPostCategories($post);
                         ?>
-                        <!--
-                            getPostDate() rather than the raw column: getCreatedAt()
-                            returns a SQL datetime, so printing it put
-                            "2026-09-09 18:59:18" on every card instead of a date in
-                            the store's locale.
-                        -->
+                        <?php /* getPostDate() rather than the raw column: getCreatedAt()
+                                 returns a SQL datetime, so printing it put
+                                 "2026-09-09 18:59:18" on every card instead of a date in
+                                 the store's locale. */ ?>
                         <p style="color:#777;font-size:13px;margin:0 0 8px;">
                             <?php if ($authorName !== ''): ?>
                                 <?= $escaper->escapeHtml($authorName) ?>
@@ -76,13 +74,11 @@ $title = $block->getListingTitle();
                                 ?><?= $i > 0 ? ', ' : '' ?><a href="<?= $escaper->escapeUrl($category['url']) ?>" style="color:#1979c3;"><?= $escaper->escapeHtml($category['name']) ?></a><?php endforeach; ?>
                             </p>
                         <?php endif; ?>
-                        <!--
-                            Short Description when written, excerpt of the content
-                            otherwise. Clamped to 4 lines to match the Hyva card.
-                            Written inline because this template carries no
-                            stylesheet of its own, and Luma has no line-clamp
-                            utility to borrow the way Tailwind does.
-                        -->
+                        <?php /* Short Description when written, excerpt of the content
+                                 otherwise. Clamped to 4 lines to match the Hyva card.
+                                 Written inline because this template carries no
+                                 stylesheet of its own, and Luma has no line-clamp
+                                 utility to borrow the way Tailwind does. */ ?>
                         <div style="margin:0;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;">
                             <?= /* @noEscape */ $block->getCardSummaryHtml($post, 220) ?>
                         </div>
@@ -92,9 +88,8 @@ $title = $block->getListingTitle();
         </ul>
     <?php endif; ?>
 
-    <?php /* Pagination lives outside the empty check: a past-the-end ?p= still has a
-             real total count, so the visitor needs a way back to page 1 even though
-             this page's own item list is empty. */ ?>
+    <?php /* A past-the-end ?p= never gets here: the controller 404s it first
+             (Model\ListingPageRange), so the pager only draws on a real page. */ ?>
     <?php if ($block->hasPagination()): ?>
         <?php
         $currentPage = $block->getCurrentPage();
@@ -104,11 +99,9 @@ $title = $block->getListingTitle();
         $windowStart = max(1, $currentPage - 2);
         $windowEnd = min($lastPage, $currentPage + 2);
         ?>
-        <!--
-            Luma's own pager classes (pages / pages-items / pages-item-*), so
-            this picks up the theme's existing styling instead of shipping a
-            second look for the same control.
-        -->
+        <?php /* Luma's own pager classes (pages / pages-items / pages-item-*), so
+                 this picks up the theme's existing styling instead of shipping a
+                 second look for the same control. */ ?>
         <div class="pages">
             <strong class="label pages-label" id="rd-blog-paging-label">
                 <?= $escaper->escapeHtml(__('Page')) ?>

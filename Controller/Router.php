@@ -380,8 +380,12 @@ class Router implements RouterInterface
     }
 
     /**
-     * Look up an active post by its url_key.
+     * Look up a post by its url_key, whatever its status.
      *
+     * Status is the controller's call, not the router's: Hidden must open, and a
+     * Disabled or Scheduled post must 404 here rather than fall through to
+     * another router - with Amasty_Blog still enabled, its router used to serve
+     * its own copy of the post at the same URL.
      * @param string $urlKey
      * @return int 0 when there is no such post
      */
@@ -395,7 +399,6 @@ class Router implements RouterInterface
                 $connection->select()
                     ->from($table, ['post_id'])
                     ->where('url_key = ?', $urlKey)
-                    ->where('status = ?', 1)
                     ->limit(1)
             );
         } catch (\Throwable $e) {

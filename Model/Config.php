@@ -24,6 +24,9 @@ class Config
     public const XML_PATH_ENABLED = 'requestdesk_blog/general/enabled';
     public const XML_PATH_URL_PREFIX = 'requestdesk_blog/seo/url_prefix';
     public const XML_PATH_URL_SUFFIX = 'requestdesk_blog/seo/url_suffix';
+    public const XML_PATH_BLOG_TITLE = 'requestdesk_blog/general/blog_title';
+    public const XML_PATH_META_TITLE = 'requestdesk_blog/seo/meta_title';
+    public const XML_PATH_META_DESCRIPTION = 'requestdesk_blog/seo/meta_description';
     public const XML_PATH_INCLUDE_IN_MENU = 'requestdesk_blog/general/include_in_menu';
     public const XML_PATH_PREVIOUS_NEXT = 'requestdesk_blog/general/previous_next_navigation';
     public const XML_PATH_SEARCH_MIN_CHARACTERS = 'requestdesk_blog/search/min_characters';
@@ -89,6 +92,53 @@ class Config
         );
 
         return $configured > 0 ? $configured : self::DEFAULT_POSTS_PER_PAGE;
+    }
+
+    /**
+     * Heading of the blog index ("Blog Title"), "Blog" when empty.
+     *
+     * @param int|string|null $store
+     * @return string
+     */
+    public function getBlogTitle($store = null): string
+    {
+        $title = trim((string) $this->scopeConfig->getValue(
+            self::XML_PATH_BLOG_TITLE,
+            ScopeInterface::SCOPE_STORE,
+            $store
+        ));
+
+        return $title !== '' ? $title : (string) __('Blog');
+    }
+
+    /**
+     * The blog index's meta title (SEO Settings > Default Meta Title); empty for none.
+     *
+     * @param int|string|null $store
+     * @return string
+     */
+    public function getIndexMetaTitle($store = null): string
+    {
+        return trim((string) $this->scopeConfig->getValue(
+            self::XML_PATH_META_TITLE,
+            ScopeInterface::SCOPE_STORE,
+            $store
+        ));
+    }
+
+    /**
+     * The blog index's meta description (SEO Settings > Default Meta Description); empty for none.
+     *
+     * @param int|string|null $store
+     * @return string
+     */
+    public function getIndexMetaDescription($store = null): string
+    {
+        return trim((string) $this->scopeConfig->getValue(
+            self::XML_PATH_META_DESCRIPTION,
+            ScopeInterface::SCOPE_STORE,
+            $store
+        ));
     }
 
     /**

@@ -16,6 +16,8 @@ use Magento\Framework\Controller\Result\Forward;
 use Magento\Framework\Controller\Result\ForwardFactory;
 use Magento\Framework\View\Result\Page;
 use Magento\Framework\View\Result\PageFactory;
+use RequestDesk\Blog\Block\SearchView;
+use RequestDesk\Blog\Model\ListingPageRange;
 use RequestDesk\Blog\Model\StorefrontGate;
 
 /**
@@ -31,12 +33,14 @@ class Index implements HttpGetActionInterface
      * @param ForwardFactory $forwardFactory
      * @param RequestInterface $request
      * @param StorefrontGate $storefrontGate
+     * @param ListingPageRange $listingPageRange
      */
     public function __construct(
         private readonly PageFactory $pageFactory,
         private readonly ForwardFactory $forwardFactory,
         private readonly RequestInterface $request,
-        private readonly StorefrontGate $storefrontGate
+        private readonly StorefrontGate $storefrontGate,
+        private readonly ListingPageRange $listingPageRange
     ) {
     }
 
@@ -49,6 +53,10 @@ class Index implements HttpGetActionInterface
     {
         if (!$this->storefrontGate->allows($this->request)) {
             return $this->forwardFactory->create()->forward('noroute');
+        }
+
+        if ($this->listingPageRange->isOutOfRange(SearchView::class)) {
+            return $this->listingPageRange->notFound();
         }
 
         $page = $this->pageFactory->create();

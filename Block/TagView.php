@@ -122,12 +122,14 @@ class TagView extends PostList
     }
 
     /**
-     * The pager stays on the tag page, not the blog index.
+     * The tag's own address, /blog/tag/<url-key>.
      *
      * @return string
      */
-    protected function getPagerPath(): string
+    protected function getListingUrl(): string
     {
-        return 'tag/view/id/' . (int) $this->getRequest()->getParam('id');
+        $tag = $this->getTag();
+
+        return $tag !== null ? $tag['url'] : parent::getListingUrl();
     }
 }

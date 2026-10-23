@@ -17,7 +17,13 @@ declare(strict_types=1);
 namespace RequestDesk\Blog\Model\Post\Source;
 
 use Magento\Framework\Data\OptionSourceInterface;
+use RequestDesk\Blog\Api\Data\PostInterface;
 
+/**
+ * Post status options for the form, the grid column and its filter.
+ *
+ * The class name predates Hidden and Scheduled; kept so existing references hold.
+ */
 class IsActive implements OptionSourceInterface
 {
     /**
@@ -33,10 +39,11 @@ class IsActive implements OptionSourceInterface
      */
     public function toOptionArray(): array
     {
-        return [
-            ['value' => self::STATUS_ENABLED, 'label' => __('Published')],
-            ['value' => self::STATUS_DISABLED, 'label' => __('Draft')]
-        ];
+        $options = [];
+        foreach ($this->toArray() as $value => $label) {
+            $options[] = ['value' => $value, 'label' => $label];
+        }
+        return $options;
     }
 
     /**
@@ -47,8 +54,10 @@ class IsActive implements OptionSourceInterface
     public function toArray(): array
     {
         return [
-            self::STATUS_DISABLED => __('Draft'),
-            self::STATUS_ENABLED => __('Published')
+            PostInterface::STATUS_PUBLISHED => __('Published'),
+            PostInterface::STATUS_HIDDEN => __('Hidden'),
+            PostInterface::STATUS_SCHEDULED => __('Scheduled'),
+            PostInterface::STATUS_DRAFT => __('Disabled'),
         ];
     }
 }

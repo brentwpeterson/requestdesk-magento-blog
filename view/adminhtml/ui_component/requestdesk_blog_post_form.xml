@@ -105,29 +105,6 @@
             </formElements>
         </field>
 
-        <field name="is_active" sortOrder="40" formElement="checkbox">
-            <argument name="data" xsi:type="array">
-                <item name="config" xsi:type="array">
-                    <item name="default" xsi:type="number">1</item>
-                </item>
-            </argument>
-            <settings>
-                <dataType>boolean</dataType>
-                <label translate="true">Active</label>
-            </settings>
-            <formElements>
-                <checkbox>
-                    <settings>
-                        <valueMap>
-                            <map name="false" xsi:type="number">0</map>
-                            <map name="true" xsi:type="number">1</map>
-                        </valueMap>
-                        <prefer>toggle</prefer>
-                    </settings>
-                </checkbox>
-            </formElements>
-        </field>
-
         <!-- Defaults to 0 to match the column default. None of the stores running
              the module take comments, so a new post starts with them off. -->
         <field name="comments_enabled" sortOrder="50" formElement="checkbox">
@@ -151,6 +128,54 @@
                     </settings>
                 </checkbox>
             </formElements>
+        </field>
+    </fieldset>
+
+    <!-- Replaces the old Active toggle. Values: see PostInterface::STATUS_*.
+         Published Date is created_at, the date the storefront shows; for a
+         Scheduled post it is when Cron\PublishScheduledPosts makes it live. -->
+    <fieldset name="publish_status">
+        <settings>
+            <label translate="true">Publish Status</label>
+            <collapsible>false</collapsible>
+        </settings>
+
+        <field name="status" sortOrder="10" formElement="select">
+            <argument name="data" xsi:type="array">
+                <item name="config" xsi:type="array">
+                    <item name="default" xsi:type="string">1</item>
+                </item>
+            </argument>
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">Status</label>
+                <notice translate="true">Published: listed on the blog. Hidden: opens only by its URL. Scheduled: goes live at the Published Date. Disabled: not shown anywhere.</notice>
+                <validation>
+                    <rule name="required-entry" xsi:type="boolean">true</rule>
+                </validation>
+            </settings>
+            <formElements>
+                <select>
+                    <settings>
+                        <options class="RequestDesk\Blog\Model\Post\Source\IsActive"/>
+                    </settings>
+                </select>
+            </formElements>
+        </field>
+
+        <field name="published_at" sortOrder="20" formElement="date">
+            <argument name="data" xsi:type="array">
+                <item name="config" xsi:type="array">
+                    <item name="options" xsi:type="array">
+                        <item name="showsTime" xsi:type="boolean">true</item>
+                    </item>
+                </item>
+            </argument>
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">Published Date</label>
+                <notice translate="true">In the store time zone. Leave empty for now. Required for Scheduled.</notice>
+            </settings>
         </field>
     </fieldset>
 
@@ -227,6 +252,36 @@
         <!-- Same wysiwyg rules as the Content field below: no <wysiwyg> element and
              no explicit class, or the form stops validating. Kept shorter and with
              images off, because this one feeds a listing card rather than a page. -->
+        <!-- Same config shape as the author avatar uploader, which is known good. -->
+        <field name="featured_image" sortOrder="1">
+            <argument name="data" xsi:type="array">
+                <item name="config" xsi:type="array">
+                    <item name="label" xsi:type="string" translate="true">Featured Image</item>
+                    <item name="formElement" xsi:type="string">imageUploader</item>
+                    <item name="componentType" xsi:type="string">imageUploader</item>
+                    <item name="dataScope" xsi:type="string">featured_image</item>
+                    <item name="uploaderConfig" xsi:type="array">
+                        <item name="url" xsi:type="url" path="requestdesk_blog/post/upload"/>
+                    </item>
+                    <item name="previewTmpl" xsi:type="string">Magento_Catalog/image-preview</item>
+                    <item name="allowedExtensions" xsi:type="string">jpg jpeg png gif webp</item>
+                    <item name="maxFileSize" xsi:type="number">4194304</item>
+                    <item name="notice" xsi:type="string" translate="true">Shown on the blog listing card and at the top of the post. JPG, PNG, GIF or WebP, up to 4 MB.</item>
+                </item>
+            </argument>
+        </field>
+
+        <field name="featured_image_alt" sortOrder="2" formElement="input">
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">Image Alt</label>
+                <notice translate="true">Describes the image for screen readers and search engines. Leave empty to use the post title.</notice>
+                <validation>
+                    <rule name="max_text_length" xsi:type="number">255</rule>
+                </validation>
+            </settings>
+        </field>
+
         <field name="short_description" sortOrder="5" formElement="wysiwyg">
             <argument name="data" xsi:type="array">
                 <item name="config" xsi:type="array">
@@ -285,6 +340,22 @@
                 <dataType>text</dataType>
                 <label translate="true">Meta Description</label>
             </settings>
+        </field>
+
+        <!-- Same options as the category form. A Hidden post is always
+             NOINDEX, FOLLOW whatever this says (Controller\Post\View). -->
+        <field name="meta_robots" sortOrder="30" formElement="select">
+            <settings>
+                <dataType>text</dataType>
+                <label translate="true">Meta Robots</label>
+            </settings>
+            <formElements>
+                <select>
+                    <settings>
+                        <options class="RequestDesk\Blog\Model\Category\Source\MetaRobots"/>
+                    </settings>
+                </select>
+            </formElements>
         </field>
     </fieldset>
 

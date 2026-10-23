@@ -16,7 +16,9 @@ use Magento\Framework\Controller\Result\Forward;
 use Magento\Framework\Controller\Result\ForwardFactory;
 use Magento\Framework\View\Result\Page;
 use Magento\Framework\View\Result\PageFactory;
+use RequestDesk\Blog\Block\AuthorView;
 use RequestDesk\Blog\Model\AuthorResolver;
+use RequestDesk\Blog\Model\ListingPageRange;
 use RequestDesk\Blog\Model\StorefrontGate;
 
 /**
@@ -30,13 +32,15 @@ class View implements HttpGetActionInterface
      * @param RequestInterface $request
      * @param StorefrontGate $storefrontGate
      * @param AuthorResolver $authorResolver
+     * @param ListingPageRange $listingPageRange
      */
     public function __construct(
         private readonly PageFactory $pageFactory,
         private readonly ForwardFactory $forwardFactory,
         private readonly RequestInterface $request,
         private readonly StorefrontGate $storefrontGate,
-        private readonly AuthorResolver $authorResolver
+        private readonly AuthorResolver $authorResolver,
+        private readonly ListingPageRange $listingPageRange
     ) {
     }
 
@@ -55,6 +59,10 @@ class View implements HttpGetActionInterface
         $author = $id > 0 ? $this->authorResolver->getAuthor($id) : null;
         if ($author === null) {
             return $this->forwardFactory->create()->forward('noroute');
+        }
+
+        if ($this->listingPageRange->isOutOfRange(AuthorView::class)) {
+            return $this->listingPageRange->notFound();
         }
 
         $page = $this->pageFactory->create();

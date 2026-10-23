@@ -15,6 +15,7 @@ use Magento\Store\Model\StoreManagerInterface;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use RequestDesk\Blog\Model\AuthorResolver;
+use RequestDesk\Blog\Model\BlogCache;
 use RequestDesk\Blog\Model\Config;
 use RequestDesk\Blog\Model\TagResolver;
 
@@ -71,7 +72,12 @@ class MigratedUrlKeyTest extends TestCase
 
     private function tags(): TagResolver
     {
-        return new TagResolver($this->resource, $this->createMock(UrlInterface::class), $this->createMock(Config::class));
+        return new TagResolver(
+            $this->resource,
+            $this->createMock(UrlInterface::class),
+            $this->createMock(Config::class),
+            $this->createMock(BlogCache::class)
+        );
     }
 
     public function testAnAuthorKeepsTheKeyTheOldBlogPublished(): void

@@ -18,6 +18,7 @@ use Magento\Framework\View\Result\Page;
 use Magento\Framework\View\Result\PageFactory;
 use RequestDesk\Blog\Api\Data\PostInterface;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
+use RequestDesk\Blog\Model\ListingPageRange;
 use RequestDesk\Blog\Model\StorefrontGate;
 
 /**
@@ -32,13 +33,15 @@ class View implements HttpGetActionInterface
      * @param RequestInterface $request
      * @param StorefrontGate $storefrontGate
      * @param PostRepositoryInterface $postRepository
+     * @param ListingPageRange $listingPageRange
      */
     public function __construct(
         private readonly PageFactory $pageFactory,
         private readonly ForwardFactory $forwardFactory,
         private readonly RequestInterface $request,
         private readonly StorefrontGate $storefrontGate,
-        private readonly PostRepositoryInterface $postRepository
+        private readonly PostRepositoryInterface $postRepository,
+        private readonly ListingPageRange $listingPageRange
     ) {
     }
 
@@ -64,11 +67,19 @@ class View implements HttpGetActionInterface
             return $this->notFound();
         }
 
-        if ((int) $post->getStatus() !== PostInterface::STATUS_PUBLISHED) {
+        // Hidden opens by URL too; Disabled and not-yet-due Scheduled posts 404.
+        if (!in_array((int) $post->getStatus(), PostInterface::STATUSES_OPEN_BY_URL, true)) {
             return $this->notFound();
         }
 
         $page = $this->pageFactory->create();
+        // A Hidden post is shared by link only, so keep it out of search engines too.
+        // Otherwise the post's own Meta Robots, if it has one.
+        if ((int) $post->getStatus() === PostInterface::STATUS_HIDDEN) {
+            $page->getConfig()->setRobots('NOINDEX,FOLLOW');
+        } elseif (trim((string) $post->getMetaRobots()) !== '') {
+            $page->getConfig()->setRobots(strtoupper((string) $post->getMetaRobots()));
+        }
         $page->getConfig()->getTitle()->set($post->getMetaTitle() ?: $post->getTitle());
         if ($post->getMetaDescription()) {
             $page->getConfig()->setDescription((string) $post->getMetaDescription());
@@ -83,6 +94,8 @@ class View implements HttpGetActionInterface
      */
     private function notFound(): Forward
     {
-        return $this->forwardFactory->create()->forward('noroute');
+        // Straight to the store's 404 page. forward('noroute') re-runs the
+        // routers, and this URL matches ours (and Amasty's) again.
+        return $this->listingPageRange->notFound();
     }
 }
