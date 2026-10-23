@@ -10,13 +10,14 @@ declare(strict_types=1);
 
 namespace RequestDesk\Blog\Model;
 
+use Magento\Framework\DataObject\IdentityInterface;
 use Magento\Framework\Model\AbstractModel;
 use RequestDesk\Blog\Model\ResourceModel\Tag as TagResource;
 
 /**
  * A blog tag.
  */
-class Tag extends AbstractModel
+class Tag extends AbstractModel implements IdentityInterface
 {
     /**
      * @inheritdoc
@@ -44,5 +45,15 @@ class Tag extends AbstractModel
     public function getUrlKey(): string
     {
         return (string) $this->getData('url_key');
+    }
+
+    /**
+     * Cache tag for full page cache invalidation, see BlogCache.
+     *
+     * @return string[]
+     */
+    public function getIdentities(): array
+    {
+        return [BlogCache::TAG];
     }
 }

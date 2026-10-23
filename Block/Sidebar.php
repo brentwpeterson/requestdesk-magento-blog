@@ -10,8 +10,10 @@ declare(strict_types=1);
 
 namespace RequestDesk\Blog\Block;
 
+use Magento\Framework\DataObject\IdentityInterface;
 use Magento\Framework\View\Element\Template;
 use Magento\Framework\View\Element\Template\Context;
+use RequestDesk\Blog\Model\BlogCache;
 use RequestDesk\Blog\Model\Config;
 use RequestDesk\Blog\Model\PostCategoryResolver;
 use RequestDesk\Blog\Model\PostSearch;
@@ -22,7 +24,7 @@ use RequestDesk\Blog\Model\PostSearch;
  *
  * Added to every blog page through the requestdesk_blog_sidebar layout handle.
  */
-class Sidebar extends Template
+class Sidebar extends Template implements IdentityInterface
 {
     /**
      * @var array<int, array{id:int, name:string, url:string, count:int}>|null
@@ -130,5 +132,15 @@ class Sidebar extends Template
 
         return $request->getControllerName() === 'category'
             && (int) $request->getParam('id') === $categoryId;
+    }
+
+    /**
+     * Cache tag for full page cache invalidation, see BlogCache.
+     *
+     * @return string[]
+     */
+    public function getIdentities(): array
+    {
+        return [BlogCache::TAG];
     }
 }

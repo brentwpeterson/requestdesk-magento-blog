@@ -32,4 +32,9 @@
     <type name="RequestDesk\Blog\Model\AuthorImageUploader">
         <plugin name="save_category_image" disabled="true"/>
     </type>
+
+    <!-- Same for post featured images, so a gallery-sync failure cannot cost a post save. -->
+    <type name="RequestDesk\Blog\Model\PostImageUploader">
+        <plugin name="save_category_image" disabled="true"/>
+    </type>
 </config>

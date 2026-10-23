@@ -12,6 +12,7 @@ namespace RequestDesk\Blog\Block\Widget;
 
 use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Framework\Api\SortOrderBuilder;
+use Magento\Framework\DataObject\IdentityInterface;
 use Magento\Framework\View\Element\Template;
 use Magento\Framework\View\Element\Template\Context;
 use Magento\Store\Model\StoreManagerInterface;
@@ -20,8 +21,9 @@ use RequestDesk\Blog\Api\Data\PostInterface;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
 use RequestDesk\Blog\Block\ImageUrl;
 use RequestDesk\Blog\Block\PostUrl;
-use RequestDesk\Blog\Model\PostCategoryResolver;
+use RequestDesk\Blog\Model\BlogCache;
 use RequestDesk\Blog\Model\Config;
+use RequestDesk\Blog\Model\PostCategoryResolver;
 
 /**
  * A native Magento widget that surfaces blog posts anywhere widgets are allowed
@@ -34,7 +36,7 @@ use RequestDesk\Blog\Model\Config;
  * longer anything tying a post to a product's categories. A widget instance
  * still saved with mode=related renders nothing rather than unrelated posts.
  */
-class PostsWidget extends Template implements BlockInterface
+class PostsWidget extends Template implements BlockInterface, IdentityInterface
 {
     /**
      * @var string
@@ -191,5 +193,15 @@ class PostsWidget extends Template implements BlockInterface
     public function getExcerpt(PostInterface $post, int $length = 120): string
     {
         return $this->postContent->excerpt($post->getContent(), $length);
+    }
+
+    /**
+     * Cache tag for full page cache invalidation, see BlogCache.
+     *
+     * @return string[]
+     */
+    public function getIdentities(): array
+    {
+        return [BlogCache::TAG];
     }
 }

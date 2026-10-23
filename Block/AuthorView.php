@@ -71,12 +71,14 @@ class AuthorView extends PostList
     }
 
     /**
-     * The pager stays on the author page, not the blog index.
+     * The author's own address, /blog/author/<url-key>.
      *
      * @return string
      */
-    protected function getPagerPath(): string
+    protected function getListingUrl(): string
     {
-        return 'author/view/id/' . (int) $this->getRequest()->getParam('id');
+        $author = $this->getAuthor();
+
+        return $author !== null ? $author['page_url'] : parent::getListingUrl();
     }
 }

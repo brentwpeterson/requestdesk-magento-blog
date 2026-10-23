@@ -16,8 +16,10 @@ use Magento\Framework\Controller\Result\Forward;
 use Magento\Framework\Controller\Result\ForwardFactory;
 use Magento\Framework\View\Result\Page;
 use Magento\Framework\View\Result\PageFactory;
-use RequestDesk\Blog\Model\TagResolver;
+use RequestDesk\Blog\Block\TagView;
+use RequestDesk\Blog\Model\ListingPageRange;
 use RequestDesk\Blog\Model\StorefrontGate;
+use RequestDesk\Blog\Model\TagResolver;
 
 /**
  * Renders a tag archive at /blog/tag/view/id/{tag_id}.
@@ -30,13 +32,15 @@ class View implements HttpGetActionInterface
      * @param RequestInterface $request
      * @param StorefrontGate $storefrontGate
      * @param TagResolver $tagResolver
+     * @param ListingPageRange $listingPageRange
      */
     public function __construct(
         private readonly PageFactory $pageFactory,
         private readonly ForwardFactory $forwardFactory,
         private readonly RequestInterface $request,
         private readonly StorefrontGate $storefrontGate,
-        private readonly TagResolver $tagResolver
+        private readonly TagResolver $tagResolver,
+        private readonly ListingPageRange $listingPageRange
     ) {
     }
 
@@ -55,6 +59,10 @@ class View implements HttpGetActionInterface
         $tag = $id > 0 ? $this->tagResolver->getTag($id) : null;
         if ($tag === null) {
             return $this->forwardFactory->create()->forward('noroute');
+        }
+
+        if ($this->listingPageRange->isOutOfRange(TagView::class)) {
+            return $this->listingPageRange->notFound();
         }
 
         $page = $this->pageFactory->create();

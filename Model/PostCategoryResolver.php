@@ -33,11 +33,13 @@ class PostCategoryResolver
      * @param ResourceConnection $resource
      * @param UrlInterface $urlBuilder
      * @param Config $config
+     * @param BlogCache $blogCache
      */
     public function __construct(
         private readonly ResourceConnection $resource,
         private readonly UrlInterface $urlBuilder,
-        private readonly Config $config
+        private readonly Config $config,
+        private readonly BlogCache $blogCache
     ) {
     }
 
@@ -159,6 +161,7 @@ class PostCategoryResolver
             ['post_id' => $postId, 'category_id' => $categoryId],
             ['post_id']
         );
+        $this->blogCache->clean();
     }
 
     /**
@@ -200,6 +203,7 @@ class PostCategoryResolver
         if ($rows !== []) {
             $connection->insertMultiple($table, $rows);
         }
+        $this->blogCache->clean();
     }
 
     /**

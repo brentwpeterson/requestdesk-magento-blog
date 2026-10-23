@@ -140,9 +140,19 @@ class SearchView extends PostList
      *
      * @return string
      */
-    protected function getPagerPath(): string
+    protected function getListingUrl(): string
     {
-        return 'search';
+        return $this->_urlBuilder->getUrl('', ['_direct' => $this->getUrlPrefix() . '/search']);
+    }
+
+    /**
+     * No canonical: results pages are NOINDEX (Controller\Search\Index).
+     *
+     * @return string
+     */
+    public function getCanonicalUrl(): string
+    {
+        return '';
     }
 
     /**

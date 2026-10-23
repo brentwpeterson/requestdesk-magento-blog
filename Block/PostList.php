@@ -12,6 +12,7 @@ namespace RequestDesk\Blog\Block;
 
 use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Framework\Api\SortOrderBuilder;
+use Magento\Framework\DataObject\IdentityInterface;
 use Magento\Framework\View\Element\Template;
 use Magento\Framework\View\Element\Template\Context;
 use Magento\Store\Model\StoreManagerInterface;
@@ -19,6 +20,7 @@ use RequestDesk\Blog\Api\Data\PostInterface;
 use RequestDesk\Blog\Api\Data\PostSearchResultsInterface;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
 use RequestDesk\Blog\Model\AuthorResolver;
+use RequestDesk\Blog\Model\BlogCache;
 use RequestDesk\Blog\Model\Config;
 use RequestDesk\Blog\Model\PostCategoryResolver;
 use RequestDesk\Blog\Model\PostContent;
@@ -26,12 +28,12 @@ use RequestDesk\Blog\Model\PostContent;
 /**
  * Supplies published posts to the list templates (Luma and Hyva both use this).
  */
-class PostList extends Template
+class PostList extends Template implements IdentityInterface
 {
     /**
      * Query string parameters, same convention as catalog listings.
      */
-    private const PAGE_VAR_NAME = 'p';
+    public const PAGE_VAR_NAME = 'p';
     private const LIMIT_VAR_NAME = 'limit';
 
     /**
@@ -53,6 +55,13 @@ class PostList extends Template
      * @var array<int, array<int, array{id:int, name:string, url:string}>>|null
      */
     private ?array $postCategories = null;
+
+    /**
+     * Card authors keyed by author id and byline, see getCardAuthor().
+     *
+     * @var array<string, array|null>
+     */
+    private array $cardAuthors = [];
 
     /**
      * @param Context $context
@@ -89,8 +98,36 @@ class PostList extends Template
      */
     public function getAuthorName(PostInterface $post): string
     {
-        $author = $this->authorResolver->getAuthorForPost($post);
+        $author = $this->getCardAuthor($post);
         return $author !== null ? $author['name'] : (string) $post->getAuthor();
+    }
+
+    /**
+     * Author page URL for a card's byline; empty when the author has none.
+     *
+     * @param PostInterface $post
+     * @return string
+     */
+    public function getAuthorUrl(PostInterface $post): string
+    {
+        $author = $this->getCardAuthor($post);
+        return $author !== null ? $author['page_url'] : '';
+    }
+
+    /**
+     * The resolved author, looked up once per author id rather than per card.
+     *
+     * @param PostInterface $post
+     * @return array{id:?int, name:string, bio:string, avatar:string, page_url:string, link:string}|null
+     */
+    private function getCardAuthor(PostInterface $post): ?array
+    {
+        $key = (string) $post->getAuthorId() . '|' . $post->getAuthor();
+        if (!array_key_exists($key, $this->cardAuthors)) {
+            $this->cardAuthors[$key] = $this->authorResolver->getAuthorForPost($post);
+        }
+
+        return $this->cardAuthors[$key];
     }
 
     /**
@@ -286,6 +323,22 @@ class PostList extends Template
     }
 
     /**
+     * Whether ?p= asks for a page this listing does not have.
+     *
+     * The repository answers a past-the-end page with page 1's posts, so
+     * without this check one list would live under endless ?p= URLs. With the
+     * pager off, everything sits on page 1 and any higher number is past it.
+     *
+     * @return bool
+     */
+    public function isPageOutOfRange(): bool
+    {
+        $lastPage = $this->isPaginationEnabled() ? $this->getLastPageNumber() : 1;
+
+        return $this->getCurrentPage() > $lastPage;
+    }
+
+    /**
      * Heading for the shared listing template; empty means "Blog".
      *
      * Blocks that reuse the list template with a filtered collection
@@ -295,7 +348,7 @@ class PostList extends Template
      */
     public function getListingTitle(): string
     {
-        return '';
+        return $this->config->getBlogTitle();
     }
 
     /**
@@ -338,10 +391,9 @@ class PostList extends Template
      * An active ?limit= has to be carried over explicitly or page 2 would
      * revert to the configured size.
      *
-     * The path comes from getPagerPath() so filtered listings (category, author,
-     * tag) keep the pager on their own URL and carry their identifying id
-     * instead of jumping back to the blog index. Both sit under the store's
-     * configured prefix.
+     * Built on getListingUrl(), so a category, author or tag pages under its
+     * own address (/blog/category/general?p=2), the one the Amasty blog used,
+     * not under the internal id route.
      *
      * @param int $page
      * @return string
@@ -355,21 +407,79 @@ class PostList extends Template
             $query[self::LIMIT_VAR_NAME] = $limit;
         }
 
-        $query += $this->getPagerQuery();
-
-        return BlogUrl::resolve($this->config->getUrlPrefix(), $this->getPagerPath(), $query, $this->_urlBuilder);
+        return $this->withQuery($this->getListingUrl(), $query + $this->getPagerQuery());
     }
 
     /**
-     * Path under the blog prefix the pager links to.
+     * Canonical URL of the page being shown; empty for none.
      *
-     * The plain list answers on the prefix itself.
+     * The listing's own address plus ?p= past page 1, without ?limit=, as the
+     * Amasty blog wrote it. One address per page of results, however it was
+     * reached (/blog/, /blog/category/view/id/1, ?limit=...).
      *
      * @return string
      */
-    protected function getPagerPath(): string
+    public function getCanonicalUrl(): string
     {
-        return '';
+        $page = $this->getCurrentPage();
+
+        return $this->withQuery($this->getListingUrl(), [self::PAGE_VAR_NAME => $page > 1 ? $page : null]);
+    }
+
+    /**
+     * The listing's own address, without a trailing slash or query.
+     *
+     * The plain list answers on the prefix itself; archives override this.
+     *
+     * @return string
+     */
+    protected function getListingUrl(): string
+    {
+        return $this->_urlBuilder->getUrl('', ['_direct' => $this->config->getUrlPrefix()]);
+    }
+
+    /**
+     * The store's blog URL prefix, for the archive blocks' getListingUrl().
+     *
+     * @return string
+     */
+    protected function getUrlPrefix(): string
+    {
+        return $this->config->getUrlPrefix();
+    }
+
+    /**
+     * Append query parameters; null values are dropped.
+     *
+     * @param string $url
+     * @param array $query array<string, mixed>
+     * @return string
+     */
+    private function withQuery(string $url, array $query): string
+    {
+        $query = array_filter($query, static fn ($value) => $value !== null);
+
+        return $query === [] ? $url : $url . (str_contains($url, '?') ? '&' : '?') . http_build_query($query);
+    }
+
+    /**
+     * Add the canonical link to the page head.
+     *
+     * The author page nests one AuthorView in another; both add the same URL
+     * and the page config keeps it once.
+     *
+     * @return $this
+     */
+    protected function _prepareLayout()
+    {
+        parent::_prepareLayout();
+
+        $canonical = $this->getCanonicalUrl();
+        if ($canonical !== '') {
+            $this->pageConfig->addRemotePageAsset($canonical, 'canonical', ['attributes' => ['rel' => 'canonical']]);
+        }
+
+        return $this;
     }
 
     /**
@@ -451,5 +561,15 @@ class PostList extends Template
         }
 
         return $this->_escaper->escapeHtml($this->postContent->excerpt($post->getContent(), $length));
+    }
+
+    /**
+     * Cache tag for full page cache invalidation, see BlogCache.
+     *
+     * @return string[]
+     */
+    public function getIdentities(): array
+    {
+        return [BlogCache::TAG];
     }
 }

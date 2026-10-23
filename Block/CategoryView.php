@@ -162,12 +162,20 @@ class CategoryView extends PostList
     }
 
     /**
-     * The pager stays on the category page, not the blog index.
+     * The category's own address, /blog/category/<url-key>.
      *
      * @return string
      */
-    protected function getPagerPath(): string
+    protected function getListingUrl(): string
     {
-        return 'category/view/id/' . (int) $this->getCategoryId();
+        $category = $this->getCategory();
+
+        return ArchiveUrl::resolve(
+            ArchiveUrl::TYPE_CATEGORY,
+            $this->getCategoryId(),
+            $category !== null ? $category->getUrlKey() : null,
+            $this->_urlBuilder,
+            $this->getUrlPrefix()
+        );
     }
 }
