@@ -22,6 +22,7 @@ use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use RequestDesk\Blog\Controller\Router;
 use RequestDesk\Blog\Model\Config;
+use RequestDesk\Blog\Model\StoreScope;
 
 /**
  * Blog URL Suffix at the router.
@@ -77,7 +78,14 @@ class RouterSuffixTest extends TestCase
             static fn (string $route, array $params): string => 'https://example.test/' . $params['_direct']
         );
 
-        $this->router = new Router($actionFactory, $resource, $this->config, $this->response, $url);
+        $this->router = new Router(
+            $actionFactory,
+            $resource,
+            $this->config,
+            $this->response,
+            $url,
+            $this->createMock(StoreScope::class)
+        );
     }
 
     private function blog(string $prefix, string $suffix): void

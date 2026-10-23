@@ -21,6 +21,7 @@ use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use RequestDesk\Blog\Controller\Router;
 use RequestDesk\Blog\Model\Config;
+use RequestDesk\Blog\Model\StoreScope;
 
 /**
  * Blog URL Prefix and Enable Blog at the router.
@@ -70,7 +71,8 @@ class RouterPrefixTest extends TestCase
             $resource,
             $this->config,
             $this->createMock(ResponseInterface::class),
-            $this->createMock(UrlInterface::class)
+            $this->createMock(UrlInterface::class),
+            $this->createMock(StoreScope::class)
         );
     }
 

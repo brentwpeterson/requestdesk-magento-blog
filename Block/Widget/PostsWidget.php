@@ -108,6 +108,7 @@ class PostsWidget extends Template implements BlockInterface, IdentityInterface
             ->setField(PostInterface::CREATED_AT)->setDirection('DESC')->create();
         $criteria = $this->searchCriteriaBuilder
             ->addFilter(PostInterface::STATUS, PostInterface::STATUS_PUBLISHED)
+            ->addFilter(PostInterface::STORE_ID, [0, (int) $this->storeManager->getStore()->getId()], 'in')
             ->addSortOrder($sort)
             ->setPageSize($count)
             ->create();
@@ -137,6 +138,7 @@ class PostsWidget extends Template implements BlockInterface, IdentityInterface
             ->setField(PostInterface::CREATED_AT)->setDirection('DESC')->create();
         $criteria = $this->searchCriteriaBuilder
             ->addFilter(PostInterface::STATUS, PostInterface::STATUS_PUBLISHED)
+            ->addFilter(PostInterface::STORE_ID, [0, (int) $this->storeManager->getStore()->getId()], 'in')
             ->addFilter(PostInterface::POST_ID, array_values($postIds), 'in')
             ->addSortOrder($sort)
             ->setPageSize($count)

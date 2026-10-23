@@ -34,12 +34,14 @@ class PostCategoryResolver
      * @param UrlInterface $urlBuilder
      * @param Config $config
      * @param BlogCache $blogCache
+     * @param StoreScope $storeScope
      */
     public function __construct(
         private readonly ResourceConnection $resource,
         private readonly UrlInterface $urlBuilder,
         private readonly Config $config,
-        private readonly BlogCache $blogCache
+        private readonly BlogCache $blogCache,
+        private readonly StoreScope $storeScope
     ) {
     }
 
@@ -109,6 +111,7 @@ class PostCategoryResolver
                 ['count' => new \Zend_Db_Expr('COUNT(DISTINCT l.post_id)')]
             )
             ->where('post.status = ?', 1)
+            ->where('post.store_id IN (?)', $this->storeScope->getVisibleStoreIds())
             ->where('c.status = ?', Category::STATUS_ENABLED)
             ->group('c.category_id');
 

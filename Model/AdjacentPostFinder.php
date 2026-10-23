@@ -33,9 +33,11 @@ class AdjacentPostFinder
 
     /**
      * @param ResourceConnection $resource
+     * @param StoreScope $storeScope
      */
     public function __construct(
-        private readonly ResourceConnection $resource
+        private readonly ResourceConnection $resource,
+        private readonly StoreScope $storeScope
     ) {
     }
 
@@ -81,6 +83,7 @@ class AdjacentPostFinder
         $select = $connection->select()
             ->from($this->resource->getTableName(self::TABLE), ['post_id'])
             ->where('status = ?', PostInterface::STATUS_PUBLISHED)
+            ->where('store_id IN (?)', $this->storeScope->getVisibleStoreIds())
             ->where(
                 $connection->quoteInto('created_at ' . $operator . ' ?', $createdAt)
                 . ' OR ('

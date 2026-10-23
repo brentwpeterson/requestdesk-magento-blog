@@ -20,6 +20,7 @@ use RequestDesk\Blog\Api\Data\PostInterface;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
 use RequestDesk\Blog\Model\ListingPageRange;
 use RequestDesk\Blog\Model\StorefrontGate;
+use RequestDesk\Blog\Model\StoreScope;
 
 /**
  * Renders a single published post at /blog/post/view/id/{id}.
@@ -34,6 +35,7 @@ class View implements HttpGetActionInterface
      * @param StorefrontGate $storefrontGate
      * @param PostRepositoryInterface $postRepository
      * @param ListingPageRange $listingPageRange
+     * @param StoreScope $storeScope
      */
     public function __construct(
         private readonly PageFactory $pageFactory,
@@ -41,7 +43,8 @@ class View implements HttpGetActionInterface
         private readonly RequestInterface $request,
         private readonly StorefrontGate $storefrontGate,
         private readonly PostRepositoryInterface $postRepository,
-        private readonly ListingPageRange $listingPageRange
+        private readonly ListingPageRange $listingPageRange,
+        private readonly StoreScope $storeScope
     ) {
     }
 
@@ -64,6 +67,11 @@ class View implements HttpGetActionInterface
         try {
             $post = $this->postRepository->getById($id);
         } catch (\Throwable $e) {
+            return $this->notFound();
+        }
+
+        // A post on another store view is not this store's post, by id or by key.
+        if (!$this->storeScope->isVisible((int) $post->getStoreId())) {
             return $this->notFound();
         }
 

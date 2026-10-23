@@ -32,9 +32,11 @@ class PostSearch
 
     /**
      * @param ResourceConnection $resource
+     * @param StoreScope $storeScope
      */
     public function __construct(
-        private readonly ResourceConnection $resource
+        private readonly ResourceConnection $resource,
+        private readonly StoreScope $storeScope
     ) {
     }
 
@@ -99,7 +101,8 @@ class PostSearch
         $connection = $this->resource->getConnection();
         $select = $connection->select()
             ->from($this->resource->getTableName('requestdesk_blog_post'), ['post_id'])
-            ->where('status = ?', PostInterface::STATUS_PUBLISHED);
+            ->where('status = ?', PostInterface::STATUS_PUBLISHED)
+            ->where('store_id IN (?)', $this->storeScope->getVisibleStoreIds());
 
         foreach ($words as $word) {
             $like = '%' . addcslashes($word, '%_\\') . '%'; // phpcs:ignore Magento2.Functions.DiscouragedFunction

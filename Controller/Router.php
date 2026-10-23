@@ -25,6 +25,7 @@ use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\App\RouterInterface;
 use Magento\Framework\UrlInterface;
 use RequestDesk\Blog\Model\Config;
+use RequestDesk\Blog\Model\StoreScope;
 
 /**
  * Resolves /blog/<url-key> to a post.
@@ -117,13 +118,15 @@ class Router implements RouterInterface
      * @param ActionFactory $actionFactory
      * @param ResourceConnection $resource
      * @param Config $config
+     * @param StoreScope $storeScope
      */
     public function __construct(
         private readonly ActionFactory $actionFactory,
         private readonly ResourceConnection $resource,
         private readonly Config $config,
         private readonly ResponseInterface $response,
-        private readonly UrlInterface $url
+        private readonly UrlInterface $url,
+        private readonly StoreScope $storeScope
     ) {
     }
 
@@ -380,7 +383,9 @@ class Router implements RouterInterface
     }
 
     /**
-     * Look up a post by its url_key, whatever its status.
+     * Look up a post by its url_key, whatever its status, among the posts this
+     * store view can show. A url_key is unique per store view, so the English and
+     * Spanish store views can each have a post at /blog/same-key.
      *
      * Status is the controller's call, not the router's: Hidden must open, and a
      * Disabled or Scheduled post must 404 here rather than fall through to
@@ -399,6 +404,10 @@ class Router implements RouterInterface
                 $connection->select()
                     ->from($table, ['post_id'])
                     ->where('url_key = ?', $urlKey)
+                    ->where('store_id IN (?)', $this->storeScope->getVisibleStoreIds())
+                    // The same url_key may sit on store 0 and on this store view;
+                    // the store view's own post wins.
+                    ->order('store_id DESC')
                     ->limit(1)
             );
         } catch (\Throwable $e) {

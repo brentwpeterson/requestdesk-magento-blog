@@ -23,6 +23,7 @@ use RequestDesk\Blog\Model\AuthorResolver;
 use RequestDesk\Blog\Model\BlogCache;
 use RequestDesk\Blog\Model\Config;
 use RequestDesk\Blog\Model\PostCategoryResolver;
+use RequestDesk\Blog\Model\StoreScope;
 use RequestDesk\Blog\Model\PostContent;
 
 /**
@@ -234,6 +235,7 @@ class PostList extends Template implements IdentityInterface
 
         $criteria = $this->searchCriteriaBuilder
             ->addFilter(PostInterface::STATUS, PostInterface::STATUS_PUBLISHED)
+            ->addFilter(PostInterface::STORE_ID, $this->visibleStoreIds(), 'in')
             ->addSortOrder($sort);
         if ($postIds !== null) {
             $criteria->addFilter(PostInterface::POST_ID, $postIds ?: [self::NO_MATCH_POST_ID], 'in');
@@ -243,6 +245,18 @@ class PostList extends Template implements IdentityInterface
         }
 
         return $criteria->create();
+    }
+
+    /**
+     * Store ids a post may carry to show here: this store view's, and 0 for all.
+     *
+     * @return int[]
+     */
+    private function visibleStoreIds(): array
+    {
+        $storeId = (int) $this->storeManager->getStore()->getId();
+
+        return array_values(array_unique([StoreScope::ALL_STORES, $storeId]));
     }
 
     /**

@@ -64,12 +64,14 @@ class BlogSearch
      * @param PostSearch $postSearch
      * @param UrlInterface $urlBuilder
      * @param Config $config
+     * @param StoreScope $storeScope
      */
     public function __construct(
         private readonly ResourceConnection $resource,
         private readonly PostSearch $postSearch,
         private readonly UrlInterface $urlBuilder,
-        private readonly Config $config
+        private readonly Config $config,
+        private readonly StoreScope $storeScope
     ) {
     }
 
@@ -225,7 +227,8 @@ class BlogSearch
 
         $select = $connection->select()
             ->from(['p' => $this->resource->getTableName(self::POST_TABLE)], [])
-            ->where('p.status = ?', PostInterface::STATUS_PUBLISHED);
+            ->where('p.status = ?', PostInterface::STATUS_PUBLISHED)
+            ->where('p.store_id IN (?)', $this->storeScope->getVisibleStoreIds());
 
         if ($linkTable === null) {
             $select->join(['e' => $this->resource->getTableName($table)], 'e.' . $idColumn . ' = p.author_id', []);
