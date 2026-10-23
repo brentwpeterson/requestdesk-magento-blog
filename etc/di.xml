@@ -117,6 +117,62 @@
         </arguments>
     </type>
 
+    <!-- Post featured images. Files land in media/blog/post, beside the
+         blog/uploads tree that migrated Amasty images already use. -->
+    <type name="RequestDesk\Blog\Model\PostImageUploader">
+        <arguments>
+            <argument name="baseTmpPath" xsi:type="string">blog/post/tmp</argument>
+            <argument name="basePath" xsi:type="string">blog/post</argument>
+            <argument name="allowedExtensions" xsi:type="array">
+                <item name="jpg" xsi:type="string">jpg</item>
+                <item name="jpeg" xsi:type="string">jpeg</item>
+                <item name="png" xsi:type="string">png</item>
+                <item name="gif" xsi:type="string">gif</item>
+                <item name="webp" xsi:type="string">webp</item>
+            </argument>
+            <argument name="allowedMimeTypes" xsi:type="array">
+                <item name="jpg" xsi:type="string">image/jpg</item>
+                <item name="jpeg" xsi:type="string">image/jpeg</item>
+                <item name="png" xsi:type="string">image/png</item>
+                <item name="gif" xsi:type="string">image/gif</item>
+                <item name="webp" xsi:type="string">image/webp</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <type name="RequestDesk\Blog\Controller\Adminhtml\Post\Upload">
+        <arguments>
+            <argument name="imageUploader" xsi:type="object">RequestDesk\Blog\Model\PostImageUploader</argument>
+        </arguments>
+    </type>
+
+    <type name="RequestDesk\Blog\Controller\Adminhtml\Post\Save">
+        <arguments>
+            <argument name="imageUploader" xsi:type="object">RequestDesk\Blog\Model\PostImageUploader</argument>
+        </arguments>
+    </type>
+
+    <!-- Purge the blog page cache after CLI commands that write blog data
+         directly. See Plugin/CleanBlogCacheAfterCommand. -->
+    <type name="RequestDesk\Blog\Console\Command\DisableCommentsCommand">
+        <plugin name="requestdesk_blog_clean_cache" type="RequestDesk\Blog\Plugin\CleanBlogCacheAfterCommand"/>
+    </type>
+    <type name="RequestDesk\Blog\Console\Command\MigrateAmastyCommand">
+        <plugin name="requestdesk_blog_clean_cache" type="RequestDesk\Blog\Plugin\CleanBlogCacheAfterCommand"/>
+    </type>
+    <type name="RequestDesk\Blog\Console\Command\MigrateAmastyCategoriesCommand">
+        <plugin name="requestdesk_blog_clean_cache" type="RequestDesk\Blog\Plugin\CleanBlogCacheAfterCommand"/>
+    </type>
+    <type name="RequestDesk\Blog\Console\Command\MigrateMediaCommand">
+        <plugin name="requestdesk_blog_clean_cache" type="RequestDesk\Blog\Plugin\CleanBlogCacheAfterCommand"/>
+    </type>
+    <type name="RequestDesk\Blog\Console\Command\RepairAuthorsCommand">
+        <plugin name="requestdesk_blog_clean_cache" type="RequestDesk\Blog\Plugin\CleanBlogCacheAfterCommand"/>
+    </type>
+    <type name="RequestDesk\Blog\Console\Command\RepairContentCommand">
+        <plugin name="requestdesk_blog_clean_cache" type="RequestDesk\Blog\Plugin\CleanBlogCacheAfterCommand"/>
+    </type>
+
     <!-- Product Export Service -->
     <type name="RequestDesk\Blog\Service\ProductExportService">
         <arguments>

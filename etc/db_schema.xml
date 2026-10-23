@@ -30,7 +30,11 @@
         <column xsi:type="varchar" name="url_key" nullable="false" length="255" comment="URL Key"/>
         <column xsi:type="varchar" name="meta_title" nullable="true" length="255" comment="Meta Title"/>
         <column xsi:type="text" name="meta_description" nullable="true" comment="Meta Description"/>
+        <!-- Empty means the store's default robots. Only a non-default value is
+             stored, so a staging store's NOINDEX default still covers every post. -->
+        <column xsi:type="varchar" name="meta_robots" nullable="true" length="50" comment="Meta Robots (empty = store default)"/>
         <column xsi:type="varchar" name="featured_image" nullable="true" length="255" comment="Featured Image Path"/>
+        <column xsi:type="varchar" name="featured_image_alt" nullable="true" length="255" comment="Featured Image Alt Text"/>
         <column xsi:type="smallint" name="status" unsigned="true" nullable="false" default="0" comment="Status (0=Draft, 1=Published)"/>
         <!-- Defaults to 0: none of the stores running the module take comments, so
              every new post had to be switched off by hand (Evrig, 2026-09-24).
@@ -92,6 +96,7 @@
         <column xsi:type="int" name="author_id" unsigned="true" nullable="false" identity="true" comment="Author ID"/>
         <column xsi:type="int" name="admin_user_id" unsigned="true" nullable="true" comment="Optional native admin_user.user_id"/>
         <column xsi:type="varchar" name="name" nullable="false" length="255" comment="Public display name"/>
+        <column xsi:type="varchar" name="email" nullable="true" length="255" comment="Author email, admin only"/>
         <column xsi:type="varchar" name="url_key" nullable="false" length="255" comment="URL Key"/>
         <column xsi:type="text" name="bio" nullable="true" comment="Author Bio"/>
         <column xsi:type="varchar" name="avatar" nullable="true" length="255" comment="Avatar image path"/>

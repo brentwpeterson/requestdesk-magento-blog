@@ -28,6 +28,7 @@ namespace RequestDesk\Blog\Console\Command;
 use Magento\Framework\App\Area;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\App\State;
+use RequestDesk\Blog\Api\Data\PostInterface;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
 use RequestDesk\Blog\Model\AmastyCategoryImporter;
 use RequestDesk\Blog\Model\AmastyMediaPath;
@@ -45,8 +46,27 @@ class MigrateAmastyCommand extends Command
     private const OPT_LIMIT = 'limit';
     private const OPT_DRY_RUN = 'dry-run';
 
-    /** Amasty status: 2 = published/enabled. */
-    private const AMASTY_STATUS_PUBLISHED = 2;
+    /**
+     * Amasty status => ours. Amasty: 0 disabled, 1 hidden, 2 published, 3 scheduled.
+     * Disabled posts are drafts and stay behind, as before Hidden and Scheduled
+     * existed here; the other three keep their meaning. A Scheduled post keeps
+     * its future published_at as created_at, so our cron publishes it on time.
+     */
+    private const AMASTY_STATUS_MAP = [
+        1 => PostInterface::STATUS_HIDDEN,
+        2 => PostInterface::STATUS_PUBLISHED,
+        3 => PostInterface::STATUS_SCHEDULED,
+    ];
+
+    /** Amasty per-post Meta Robots copied over; its default "index, follow" is not. */
+    private const AMASTY_ROBOTS_KEPT = ['noindex, follow', 'index, nofollow', 'noindex, nofollow'];
+
+    /** Amasty blog-index settings and where ours live. */
+    private const AMASTY_SEO_SETTINGS = [
+        'amblog/search_engine/title' => 'requestdesk_blog/general/blog_title',
+        'amblog/search_engine/meta_title' => 'requestdesk_blog/seo/meta_title',
+        'amblog/search_engine/meta_description' => 'requestdesk_blog/seo/meta_description',
+    ];
 
     /** Amasty stores localized text under store_id 0 for the default scope. */
     private const DEFAULT_STORE = 0;
@@ -136,7 +156,7 @@ class MigrateAmastyCommand extends Command
 
         $select = $connection->select()
             ->from($this->resource->getTableName('amasty_blog_posts'))
-            ->where('status = ?', self::AMASTY_STATUS_PUBLISHED)
+            ->where('status IN (?)', array_keys(self::AMASTY_STATUS_MAP))
             ->order('post_id ASC');
         if ($limit > 0) {
             $select->limit($limit);
@@ -148,6 +168,8 @@ class MigrateAmastyCommand extends Command
         $backfilled = 0;
         $datesFixed = 0;
         $mediaFixed = 0;
+        $altsFilled = 0;
+        $robotsFilled = 0;
         $failed = 0;
         $tagLinks = 0;
         $categoryLinks = 0;
@@ -213,6 +235,34 @@ class MigrateAmastyCommand extends Command
                             : "  moved image paths to blog/: {$urlKey}"
                     );
                     $mediaFixed++;
+                    $touched = true;
+                }
+
+                // Posts migrated before 1.13.1 lost Amasty's hand-written image
+                // alt text, the column did not exist. Filled only where ours is
+                // still empty, so an alt edited in the admin since is kept.
+                $sourceAlt = $this->imageAltFrom($row);
+                if ($sourceAlt !== null && $this->backfillImageAlt($existingId, $sourceAlt, $dryRun)) {
+                    $output->writeln(
+                        $dryRun
+                            ? "  would fill image alt: {$urlKey}"
+                            : "  filled image alt: {$urlKey}"
+                    );
+                    $altsFilled++;
+                    $touched = true;
+                }
+
+                // Same for Amasty's per-post Meta Robots, which had no column
+                // before 1.13.1: a post set to noindex on the old blog would
+                // otherwise turn indexable on the switch.
+                $sourceRobots = $this->metaRobotsFrom($row);
+                if ($sourceRobots !== null && $this->backfillMetaRobots($existingId, $sourceRobots, $dryRun)) {
+                    $output->writeln(
+                        $dryRun
+                            ? "  would set meta robots {$sourceRobots}: {$urlKey}"
+                            : "  set meta robots {$sourceRobots}: {$urlKey}"
+                    );
+                    $robotsFilled++;
                     $touched = true;
                 }
 
@@ -293,6 +343,8 @@ class MigrateAmastyCommand extends Command
                 $post->setMetaTitle((string) ($row['meta_title'] ?: $title));
                 $post->setMetaDescription((string) ($row['meta_description'] ?? ''));
                 $post->setFeaturedImage(AmastyMediaPath::featuredImage($row['post_thumbnail'] ?? null));
+                $post->setFeaturedImageAlt($this->imageAltFrom($row));
+                $post->setMetaRobots($this->metaRobotsFrom($row));
 
                 $amastyAuthor = $this->authorDetails((int) ($row['author_id'] ?? 0));
                 $post->setAuthor($amastyAuthor['name']);
@@ -306,7 +358,7 @@ class MigrateAmastyCommand extends Command
                 }
                 $post->setAuthorId($blogAuthorId ?: null);
 
-                $post->setStatus(1); // published
+                $post->setStatus(self::AMASTY_STATUS_MAP[(int) $row['status']] ?? PostInterface::STATUS_DRAFT);
                 $post->setStoreId(0);
 
                 // Without this the row takes created_at's CURRENT_TIMESTAMP
@@ -346,13 +398,18 @@ class MigrateAmastyCommand extends Command
             }
         }
 
+        $settingsCopied = $this->copyIndexSeoSettings($dryRun, $output);
+
         $output->writeln('');
         $output->writeln($dryRun ? '<info>DRY RUN — nothing written.</info>' : '<info>Migration complete.</info>');
+        $output->writeln("  blog settings:   {$settingsCopied}  (Amasty blog title / meta title / meta description)");
         $output->writeln("  posts migrated:  {$migrated}");
         $output->writeln("  posts skipped:   {$skipped}  (already present)");
         $output->writeln("  short descs:     {$backfilled}  (filled in on posts already present)");
         $output->writeln("  publish dates:   {$datesFixed}  (corrected on posts already present)");
         $output->writeln("  image paths:     {$mediaFixed}  (moved to blog/ on posts already present)");
+        $output->writeln("  image alts:      {$altsFilled}  (filled in on posts already present)");
+        $output->writeln("  meta robots:     {$robotsFilled}  (set on posts already present)");
         $output->writeln("  posts failed:    {$failed}  (rolled back, safe to re-run)");
         $output->writeln("  tag links:       {$tagLinks}");
         $output->writeln('  authors linked:  ' . count($authorsSeen));
@@ -614,6 +671,168 @@ class MigrateAmastyCommand extends Command
         }
 
         $connection->update($table, ['created_at' => $publishedAt], ['post_id = ?' => $postId]);
+
+        return true;
+    }
+
+    /**
+     * The image alt text to carry over from an Amasty post, or null for none.
+     *
+     * Amasty keeps two: one for the post page image and one for the list image.
+     * We have a single image, so the post alt wins and the list alt is the
+     * fallback. Amasty's own fallback, the title, is not copied: an empty alt
+     * already falls back to the title on our side, and copying it would freeze
+     * a title that is later edited.
+     *
+     * @param array $row amasty_blog_posts row
+     * @return string|null
+     */
+    private function imageAltFrom(array $row): ?string
+    {
+        foreach (['post_thumbnail_alt', 'list_thumbnail_alt'] as $column) {
+            $alt = trim((string) ($row[$column] ?? ''));
+            if ($alt !== '') {
+                return mb_substr($alt, 0, 255);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Amasty's Meta Robots for a post, or null for "use the store default".
+     *
+     * "index, follow" is Amasty's default and is not copied: stored on our side
+     * it would override the store's robots, so a staging store set to NOINDEX
+     * would publish every post as indexable. Only the exceptions carry over.
+     *
+     * @param array $row amasty_blog_posts row
+     * @return string|null
+     */
+    private function metaRobotsFrom(array $row): ?string
+    {
+        $robots = strtolower(preg_replace('/\s*,\s*/', ', ', trim((string) ($row['meta_robots'] ?? ''))));
+
+        return in_array($robots, self::AMASTY_ROBOTS_KEPT, true) ? $robots : null;
+    }
+
+    /**
+     * Set meta_robots on an existing post, but only if it is still empty.
+     *
+     * @param int $postId
+     * @param string $robots
+     * @param bool $dryRun
+     * @return bool true when the value was set, or would have been
+     */
+    private function backfillMetaRobots(int $postId, string $robots, bool $dryRun): bool
+    {
+        $connection = $this->resource->getConnection();
+        $table = $this->resource->getTableName('requestdesk_blog_post');
+
+        $current = $connection->fetchOne(
+            $connection->select()
+                ->from($table, ['meta_robots'])
+                ->where('post_id = ?', $postId)
+                ->limit(1)
+        );
+        if (trim((string) $current) !== '') {
+            return false;
+        }
+
+        if (!$dryRun) {
+            $connection->update($table, ['meta_robots' => $robots], ['post_id = ?' => $postId]);
+        }
+
+        return true;
+    }
+
+    /**
+     * Copy Amasty's blog-index title, meta title and meta description to ours.
+     *
+     * Copied per scope, and only where we have no value at that scope yet, so a
+     * re-run never overwrites what was set in our admin since. Written straight
+     * to core_config_data: the config cache has to be cleaned afterwards.
+     *
+     * @param bool $dryRun
+     * @param OutputInterface $output
+     * @return int settings copied, or that would be
+     */
+    private function copyIndexSeoSettings(bool $dryRun, OutputInterface $output): int
+    {
+        $connection = $this->resource->getConnection();
+        $table = $this->resource->getTableName('core_config_data');
+
+        $rows = $connection->fetchAll(
+            $connection->select()
+                ->from($table, ['scope', 'scope_id', 'path', 'value'])
+                ->where('path IN (?)', array_keys(self::AMASTY_SEO_SETTINGS))
+        );
+
+        $copied = 0;
+        foreach ($rows as $row) {
+            $value = trim((string) $row['value']);
+            if ($value === '') {
+                continue;
+            }
+            $target = self::AMASTY_SEO_SETTINGS[$row['path']];
+            $exists = $connection->fetchOne(
+                $connection->select()
+                    ->from($table, ['config_id'])
+                    ->where('path = ?', $target)
+                    ->where('scope = ?', $row['scope'])
+                    ->where('scope_id = ?', (int) $row['scope_id'])
+                    ->limit(1)
+            );
+            if ($exists) {
+                continue;
+            }
+            if (!$dryRun) {
+                $connection->insert($table, [
+                    'scope' => $row['scope'],
+                    'scope_id' => (int) $row['scope_id'],
+                    'path' => $target,
+                    'value' => $value,
+                ]);
+            }
+            $output->writeln(($dryRun ? '  would copy setting ' : '  copied setting ') . "{$row['path']} -> {$target}");
+            $copied++;
+        }
+
+        if ($copied > 0 && !$dryRun) {
+            $output->writeln('<comment>Settings were written: run bin/magento cache:clean config</comment>');
+        }
+
+        return $copied;
+    }
+
+    /**
+     * Fill featured_image_alt on an existing post, but only if it is still empty.
+     *
+     * A direct UPDATE for the same reason as the other backfills: a repository
+     * save would rewrite every column and reset the RequestDesk sync fields.
+     *
+     * @param int $postId
+     * @param string $alt
+     * @param bool $dryRun
+     * @return bool true when the alt was filled, or would have been
+     */
+    private function backfillImageAlt(int $postId, string $alt, bool $dryRun): bool
+    {
+        $connection = $this->resource->getConnection();
+        $table = $this->resource->getTableName('requestdesk_blog_post');
+
+        $current = $connection->fetchOne(
+            $connection->select()
+                ->from($table, ['featured_image_alt'])
+                ->where('post_id = ?', $postId)
+                ->limit(1)
+        );
+        if (trim((string) $current) !== '') {
+            return false;
+        }
+
+        if (!$dryRun) {
+            $connection->update($table, ['featured_image_alt' => $alt], ['post_id = ?' => $postId]);
+        }
 
         return true;
     }

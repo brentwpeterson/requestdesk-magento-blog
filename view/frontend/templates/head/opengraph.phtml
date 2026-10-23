@@ -9,10 +9,14 @@
 $title = $block->getOgTitle();
 $description = $block->getOgDescription();
 $image = $block->getOgImageUrl();
+$url = $block->getOgUrl();
 ?>
 <?php if ($title !== ''): ?>
 <meta property="og:type" content="article" />
 <meta property="og:title" content="<?= $escaper->escapeHtmlAttr($title) ?>" />
+    <?php if ($url !== ''): ?>
+<meta property="og:url" content="<?= $escaper->escapeUrl($url) ?>" />
+<?php endif; ?>
     <?php if ($description !== ''): ?>
 <meta property="og:description" content="<?= $escaper->escapeHtmlAttr($description) ?>" />
 <?php endif; ?>

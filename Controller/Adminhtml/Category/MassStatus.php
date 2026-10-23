@@ -16,6 +16,7 @@ use Magento\Framework\App\Action\HttpPostActionInterface;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\Controller\Result\Redirect;
 use Magento\Ui\Component\MassAction\Filter;
+use RequestDesk\Blog\Model\BlogCache;
 use RequestDesk\Blog\Model\Category;
 use RequestDesk\Blog\Model\ResourceModel\Category\CollectionFactory;
 
@@ -34,12 +35,14 @@ class MassStatus extends Action implements HttpPostActionInterface
      * @param Filter $filter
      * @param CollectionFactory $collectionFactory
      * @param ResourceConnection $resource
+     * @param BlogCache $blogCache
      */
     public function __construct(
         Context $context,
         private readonly Filter $filter,
         private readonly CollectionFactory $collectionFactory,
-        private readonly ResourceConnection $resource
+        private readonly ResourceConnection $resource,
+        private readonly BlogCache $blogCache
     ) {
         parent::__construct($context);
     }
@@ -67,6 +70,7 @@ class MassStatus extends Action implements HttpPostActionInterface
                     ['status' => $status],
                     ['category_id IN (?)' => $ids]
                 );
+                $this->blogCache->clean();
             }
             $this->messageManager->addSuccessMessage(
                 $status === Category::STATUS_ENABLED

@@ -922,6 +922,98 @@ Answer Engine Optimization (AEO) is the practice of structuring content so AI sy
 
 ## Changelog
 
+### 1.13.1 (2026-10-23)
+
+Review fixes on 1.13.0.
+
+- **SEO parity with the Amasty blog on evrig.com** (live vs local comparison):
+  - Category, author and tag pagination now links to the archive's own URL
+    (`/blog/category/general?p=2`), not the internal id route
+    (`/blog/category/view/id/1/?p=2`); the index pager drops the trailing slash
+    (`/blog?p=2`). `PostList::getListingUrl()` replaces `getPagerPath()`.
+  - Canonical link on the index, category, author, tag and post pages (none on
+    search, which is NOINDEX), with `?p=` past page 1 and never `?limit=`.
+  - The index uses SEO Settings > Default Meta Title / Meta Description, which
+    were in the admin but never read, and the h1 uses General > Blog Title.
+  - Per-post Meta Robots: column `meta_robots` (empty = store default), a field
+    under Search Engine Optimization, applied on the post page. A Hidden post
+    stays NOINDEX, FOLLOW.
+  - `og:url` on the post page; X, Facebook and LinkedIn share links and a
+    "Category:" label on the Hyva post page; listing cards link the author.
+  - `requestdesk:blog:migrate-amasty` copies Amasty's non-default per-post
+    Meta Robots (fills ours only while empty) and its blog title, meta title and
+    meta description settings (only where ours are unset; clean the config
+    cache after). Run `setup:upgrade` for the new column.
+  - Not here: `BreadcrumbList` JSON-LD and Open Graph on listing pages, which
+    live gets from `Evrig_SchemaJson` / `Evrig_OpenGraph`. Both key on Amasty's
+    `amblog_*` actions and need extending to `blog_*`.
+- **Fix: saved categories, tags and Q&A not selected on post edit.** The form
+  renders option values as strings ("11") and the multiselect matches strictly,
+  while `Post\DataProvider` sent int ids, so a post opened with nothing selected
+  and a re-save wiped its links. The ids are now sent as strings.
+- **Fix: past-the-end pages 404.** `?p=` beyond the last page used to return
+  page 1's posts with a 200, so one list lived under endless URLs. The blog,
+  category, tag, author and search listings now 404 it (`Model\ListingPageRange`,
+  `PostList::isPageOutOfRange()`). With pagination off, any `?p=` above 1 404s
+- **New: author email.** Column `requestdesk_blog_author.email` (nullable),
+  an Email field on the author form (validated) and an Email column in the
+  author grid. Admin only: the storefront never reads it. Run
+  `bin/magento setup:upgrade` to add the column
+- **New: featured image upload on the post form.** `featured_image` existed
+  but only imports could set it, so a post written in the admin had no card
+  image. New uploads go to `media/blog/post`; images already on a post (such
+  as migrated `blog/uploads/...` paths) are kept as they are until replaced
+  or removed. "Select from Gallery" picks work too, for both the featured
+  image and the author avatar: they post only a url, never an upload, and
+  used to be mistaken for "unchanged" (`Model\UploaderImagePath`)
+- **New: featured image alt text.** Column `featured_image_alt` (nullable),
+  an Image Alt field under Featured Image on the post form, and
+  `get/setFeaturedImageAlt()` on `PostInterface`. Listing cards and the post
+  page use it, falling back to the title when empty. `migrate-amasty` copies
+  Amasty's post image alt (list image alt as fallback) on new posts and fills
+  it on existing ones where ours is still empty, so a re-run never overwrites
+  an alt edited in the admin. Run `setup:upgrade`, then
+  `bin/magento requestdesk:blog:migrate-amasty` to backfill
+- **Fix: uploaded author avatars were broken on the storefront.** Since 1.4.0
+  the author form stored just the file name, so the avatar URL pointed at the
+  media root instead of `media/requestdesk/blog/author`. New uploads store the
+  full path, and data patch `FixAuthorAvatarPaths` repairs existing rows
+  (`setup:upgrade`)
+- **Fix: blog edits now reach full-page-cached pages.** Nothing told the page
+  cache about blog content, so with it on a saved post, image, category,
+  tag, comment or author stayed stale until a manual flush. Every storefront
+  blog block (listings, post page, sidebar, posts widget) and every blog model
+  now carries the `rd_blog` tag (`Model\BlogCache`): model saves and deletes
+  purge it, and so do the direct-SQL writes (category/tag/product links,
+  comment moderation, category mass status) and the migrate/repair CLI
+  commands (`Plugin\CleanBlogCacheAfterCommand`). Works with the built-in
+  cache and Varnish
+- **Fix: post grid Select menu.** The grid's row-click "view" action was
+  inherited by the actions and checkbox columns, so opening Select (or ticking
+  a box) also navigated to the View page and the menu did not open. Those two
+  columns now set `disableAction`; clicking a data cell still opens View
+- **New: post statuses and scheduling.** The Active toggle is replaced by a
+  Publish Status section with Status and Published Date (`created_at`, shown
+  in the store time zone):
+  - Published (1): listed everywhere
+  - Hidden (2, new): opens by its URL only, with `NOINDEX`; kept out of
+    listings, search, sidebar, widgets, the sitemap and prev/next links
+  - Scheduled (3, new): 404 until its date, then `Cron\PublishScheduledPosts`
+    (every minute) publishes it and purges the page cache. A date already
+    past publishes on save
+  - Disabled (0, formerly "Draft"): not shown anywhere, URL 404s
+
+  Existing values 0 and 1 are unchanged, so no data migration is needed. The
+  router now resolves a post URL whatever its status and lets the controller
+  decide, so with Amasty_Blog still enabled its router can no longer serve its
+  own copy of a disabled post. `migrate-amasty` now also brings over Amasty
+  Hidden and Scheduled posts with their status. The post grid gains an
+  Actions mass menu (Activate, Inactivate, Delete) and "Created" is relabelled
+  "Published At"
+- **Fix: template comments no longer reach the page source.** The HTML comments
+  in `list.phtml` and `hyva/list.phtml` are PHP comments now
+- **Fix: `composer.json` version** matches the release
+
 ### 1.13.0 (2026-10-01)
 
 The category grid from the 2026-09-24 call, Amasty-style live search, and a

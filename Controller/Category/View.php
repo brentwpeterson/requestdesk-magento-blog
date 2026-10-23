@@ -18,7 +18,9 @@ use Magento\Framework\Controller\Result\Forward;
 use Magento\Framework\Controller\Result\ForwardFactory;
 use Magento\Framework\View\Result\Page;
 use Magento\Framework\View\Result\PageFactory;
+use RequestDesk\Blog\Block\CategoryView;
 use RequestDesk\Blog\Model\CategoryFactory;
+use RequestDesk\Blog\Model\ListingPageRange;
 use RequestDesk\Blog\Model\ResourceModel\Category as CategoryResource;
 use RequestDesk\Blog\Model\StorefrontGate;
 
@@ -36,6 +38,7 @@ class View implements HttpGetActionInterface
      * @param StorefrontGate $storefrontGate
      * @param CategoryFactory $categoryFactory
      * @param CategoryResource $categoryResource
+     * @param ListingPageRange $listingPageRange
      */
     public function __construct(
         private readonly PageFactory $pageFactory,
@@ -43,7 +46,8 @@ class View implements HttpGetActionInterface
         private readonly RequestInterface $request,
         private readonly StorefrontGate $storefrontGate,
         private readonly CategoryFactory $categoryFactory,
-        private readonly CategoryResource $categoryResource
+        private readonly CategoryResource $categoryResource,
+        private readonly ListingPageRange $listingPageRange
     ) {
     }
 
@@ -65,6 +69,10 @@ class View implements HttpGetActionInterface
         }
         if (!$category->getId() || !$category->isEnabled()) {
             return $this->forwardFactory->create()->forward('noroute');
+        }
+
+        if ($this->listingPageRange->isOutOfRange(CategoryView::class)) {
+            return $this->listingPageRange->notFound();
         }
 
         $page = $this->pageFactory->create();

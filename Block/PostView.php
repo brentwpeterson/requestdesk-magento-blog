@@ -10,24 +10,26 @@ declare(strict_types=1);
 
 namespace RequestDesk\Blog\Block;
 
+use Magento\Framework\Data\Form\FormKey;
+use Magento\Framework\DataObject\IdentityInterface;
 use Magento\Framework\View\Element\Template;
 use Magento\Framework\View\Element\Template\Context;
 use Magento\Store\Model\StoreManagerInterface;
 use RequestDesk\Blog\Api\Data\PostInterface;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
-use Magento\Framework\Data\Form\FormKey;
 use RequestDesk\Blog\Model\AdjacentPostFinder;
 use RequestDesk\Blog\Model\AuthorResolver;
+use RequestDesk\Blog\Model\BlogCache;
 use RequestDesk\Blog\Model\Comment;
 use RequestDesk\Blog\Model\CommentManager;
+use RequestDesk\Blog\Model\Config;
 use RequestDesk\Blog\Model\PostCategoryResolver;
 use RequestDesk\Blog\Model\TagResolver;
-use RequestDesk\Blog\Model\Config;
 
 /**
  * Supplies the single published post to the detail templates (both themes).
  */
-class PostView extends Template
+class PostView extends Template implements IdentityInterface
 {
     /**
      * @var PostInterface|null|false false = looked up and not found
@@ -173,7 +175,7 @@ class PostView extends Template
             if ($id > 0) {
                 try {
                     $post = $this->postRepository->getById($id);
-                    if ((int) $post->getStatus() === PostInterface::STATUS_PUBLISHED) {
+                    if (in_array((int) $post->getStatus(), PostInterface::STATUSES_OPEN_BY_URL, true)) {
                         $this->post = $post;
                     }
                 } catch (\Throwable $e) {
@@ -252,12 +254,84 @@ class PostView extends Template
     }
 
     /**
-     * URL back to the blog index.
+     * URL back to the blog index: /blog, the listing's canonical address.
      *
      * @return string
      */
     public function getBackUrl(): string
     {
-        return BlogUrl::resolve($this->config->getUrlPrefix(), '', [], $this->_urlBuilder);
+        return $this->_urlBuilder->getUrl('', ['_direct' => $this->config->getUrlPrefix()]);
+    }
+
+    /**
+     * The post's own address, /blog/<url-key>; empty without a post.
+     *
+     * @return string
+     */
+    public function getPostUrl(): string
+    {
+        $post = $this->getPost();
+
+        return $post ? PostUrl::resolve($post, $this->_urlBuilder, $this->config->getUrlPrefix()) : '';
+    }
+
+    /**
+     * Share links for the post, as Amasty's blog offered them on evrig.com.
+     *
+     * @return array<int, array{network:string, label:string, url:string}>
+     */
+    public function getShareLinks(): array
+    {
+        $post = $this->getPost();
+        $url = $this->getPostUrl();
+        if ($post === null || $url === '') {
+            return [];
+        }
+        $title = (string) $post->getTitle();
+
+        return [
+            [
+                'network' => 'x',
+                'label' => (string) __('X (ex. Twitter)'),
+                'url' => 'https://twitter.com/intent/tweet?' . http_build_query(['text' => $title, 'url' => $url]),
+            ],
+            [
+                'network' => 'facebook',
+                'label' => (string) __('Facebook'),
+                'url' => 'https://www.facebook.com/sharer/sharer.php?' . http_build_query(['u' => $url]),
+            ],
+            [
+                'network' => 'linkedin',
+                'label' => (string) __('LinkedIn'),
+                'url' => 'https://www.linkedin.com/sharing/share-offsite/?' . http_build_query(['url' => $url]),
+            ],
+        ];
+    }
+
+    /**
+     * Add the post's canonical link to the page head.
+     *
+     * @return $this
+     */
+    protected function _prepareLayout()
+    {
+        parent::_prepareLayout();
+
+        $canonical = $this->getPostUrl();
+        if ($canonical !== '') {
+            $this->pageConfig->addRemotePageAsset($canonical, 'canonical', ['attributes' => ['rel' => 'canonical']]);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Cache tag for full page cache invalidation, see BlogCache.
+     *
+     * @return string[]
+     */
+    public function getIdentities(): array
+    {
+        return [BlogCache::TAG];
     }
 }

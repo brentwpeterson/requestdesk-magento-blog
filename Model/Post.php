@@ -16,11 +16,12 @@ declare(strict_types=1);
 
 namespace RequestDesk\Blog\Model;
 
+use Magento\Framework\DataObject\IdentityInterface;
 use Magento\Framework\Model\AbstractModel;
 use RequestDesk\Blog\Api\Data\PostInterface;
 use RequestDesk\Blog\Model\ResourceModel\Post as PostResource;
 
-class Post extends AbstractModel implements PostInterface
+class Post extends AbstractModel implements PostInterface, IdentityInterface
 {
     /**
      * @var string
@@ -212,6 +213,38 @@ class Post extends AbstractModel implements PostInterface
     /**
      * @inheritdoc
      */
+    public function getFeaturedImageAlt(): ?string
+    {
+        return $this->getData(self::FEATURED_IMAGE_ALT);
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function setFeaturedImageAlt(?string $featuredImageAlt): PostInterface
+    {
+        return $this->setData(self::FEATURED_IMAGE_ALT, $featuredImageAlt);
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function getMetaRobots(): ?string
+    {
+        return $this->getData(self::META_ROBOTS);
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function setMetaRobots(?string $metaRobots): PostInterface
+    {
+        return $this->setData(self::META_ROBOTS, $metaRobots);
+    }
+
+    /**
+     * @inheritdoc
+     */
     public function getStatus(): int
     {
         return (int) $this->getData(self::STATUS);
@@ -347,5 +380,15 @@ class Post extends AbstractModel implements PostInterface
     public function getUpdatedAt(): ?string
     {
         return $this->getData(self::UPDATED_AT);
+    }
+
+    /**
+     * Cache tag for full page cache invalidation, see BlogCache.
+     *
+     * @return string[]
+     */
+    public function getIdentities(): array
+    {
+        return [BlogCache::TAG];
     }
 }

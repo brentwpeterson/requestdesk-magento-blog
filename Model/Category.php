@@ -10,13 +10,14 @@ declare(strict_types=1);
 
 namespace RequestDesk\Blog\Model;
 
+use Magento\Framework\DataObject\IdentityInterface;
 use Magento\Framework\Model\AbstractModel;
 use RequestDesk\Blog\Model\ResourceModel\Category as CategoryResource;
 
 /**
  * A blog category (requestdesk_blog_category).
  */
-class Category extends AbstractModel
+class Category extends AbstractModel implements IdentityInterface
 {
     public const STATUS_DISABLED = 0;
     public const STATUS_ENABLED = 1;
@@ -117,5 +118,15 @@ class Category extends AbstractModel
     public function getMetaRobots(): string
     {
         return (string) $this->getData('meta_robots');
+    }
+
+    /**
+     * Cache tag for full page cache invalidation, see BlogCache.
+     *
+     * @return string[]
+     */
+    public function getIdentities(): array
+    {
+        return [BlogCache::TAG];
     }
 }

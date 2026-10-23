@@ -20,6 +20,7 @@ use Magento\Framework\Filesystem;
 use Psr\Log\LoggerInterface;
 use RequestDesk\Blog\Model\AuthorFactory;
 use RequestDesk\Blog\Model\ResourceModel\Author as AuthorResource;
+use RequestDesk\Blog\Model\UploaderImagePath;
 
 class Save extends Action
 {
@@ -36,6 +37,7 @@ class Save extends Action
      * @param ImageUploader $imageUploader
      * @param LoggerInterface $logger
      * @param Filesystem $filesystem
+     * @param UploaderImagePath $uploaderImagePath
      */
     public function __construct(
         Context $context,
@@ -44,7 +46,8 @@ class Save extends Action
         private readonly ResourceConnection $resource,
         private readonly ImageUploader $imageUploader,
         private readonly LoggerInterface $logger,
-        private readonly Filesystem $filesystem
+        private readonly Filesystem $filesystem,
+        private readonly UploaderImagePath $uploaderImagePath
     ) {
         parent::__construct($context);
     }
@@ -71,6 +74,11 @@ class Save extends Action
                 throw new LocalizedException(__('Please enter a name for this author.'));
             }
 
+            $email = trim((string)($data['email'] ?? ''));
+            if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                throw new LocalizedException(__('Please enter a valid email address.'));
+            }
+
             // Optional link to a Magento account — an author does not need one.
             $adminUserId = !empty($data['admin_user_id']) ? (int)$data['admin_user_id'] : null;
             if ($adminUserId !== null) {
@@ -93,6 +101,7 @@ class Save extends Action
             }
 
             $author->setData('name', $name);
+            $author->setData('email', $email !== '' ? $email : null);
             $author->setData('admin_user_id', $adminUserId);
             $author->setData('bio', (string)($data['bio'] ?? ''));
             $author->setData('avatar', $this->resolveAvatar($data, (string)$author->getData('avatar')));
@@ -129,9 +138,15 @@ class Save extends Action
      * Resolve the avatar path to store.
      *
      * The image uploader posts a list of files. A newly uploaded one still sits
-     * in the tmp folder and carries tmp_name, so it gets moved into place; a
-     * retained one only echoes its stored name back. A bare string is a legacy
-     * path typed into the old text field, which stays valid.
+     * in the tmp folder and carries tmp_name, so it gets moved into place and
+     * stored by its media-relative path. Anything else is either the avatar the
+     * form opened with or a "Select from Gallery" pick, which UploaderImagePath
+     * tells apart by url. A bare string is a legacy path typed into the old text
+     * field, which stays valid.
+     *
+     * Storing the bare file name, as this did up to 1.13.0, broke the storefront
+     * avatar: ImageUrl resolves against the media root, not the uploader's
+     * folder. Setup\Patch\Data\FixAuthorAvatarPaths repairs those rows.
      *
      * The move is ISOLATED on purpose. moveFileFromTmp() also drives Magento's
      * media gallery synchronisation, which throws for reasons that have nothing
@@ -160,11 +175,11 @@ class Save extends Action
         $name = (string)$file['name'];
 
         if (empty($file['tmp_name'])) {
-            return $name;
+            return $this->uploaderImagePath->resolve($file, $current);
         }
 
         try {
-            return $this->imageUploader->moveFileFromTmp($name);
+            return $this->imageUploader->moveFileFromTmp($name, true);
         } catch (\Throwable $e) {
             $this->logger->error(
                 'RequestDesk Blog: avatar move failed; saving the author without it',
@@ -178,7 +193,7 @@ class Save extends Action
                 $this->messageManager->addWarningMessage(
                     __('The avatar was uploaded but could not be added to the media gallery.')
                 );
-                return $name;
+                return $this->imageUploader->getBasePath() . '/' . ltrim($name, '/');
             }
 
             $this->messageManager->addWarningMessage(

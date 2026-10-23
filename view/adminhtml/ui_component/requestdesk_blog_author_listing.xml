@@ -85,6 +85,13 @@
             </settings>
         </column>
 
+        <column name="email" sortOrder="35">
+            <settings>
+                <filter>text</filter>
+                <label translate="true">Email</label>
+            </settings>
+        </column>
+
         <column name="url_key" sortOrder="40">
             <settings>
                 <filter>text</filter>

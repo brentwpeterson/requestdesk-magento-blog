@@ -25,12 +25,14 @@ class CommentManager
      * @param CommentResource $commentResource
      * @param CollectionFactory $collectionFactory
      * @param ResourceConnection $resource
+     * @param BlogCache $blogCache
      */
     public function __construct(
         private readonly CommentFactory $commentFactory,
         private readonly CommentResource $commentResource,
         private readonly CollectionFactory $collectionFactory,
-        private readonly ResourceConnection $resource
+        private readonly ResourceConnection $resource,
+        private readonly BlogCache $blogCache
     ) {
     }
 
@@ -100,11 +102,13 @@ class CommentManager
             return 0;
         }
         $connection = $this->resource->getConnection();
-        return $connection->update(
+        $updated = $connection->update(
             $this->resource->getTableName('requestdesk_blog_comment'),
             ['status' => $status],
             ['comment_id IN (?)' => $commentIds]
         );
+        $this->blogCache->clean();
+        return $updated;
     }
 
     /**
@@ -119,9 +123,11 @@ class CommentManager
             return 0;
         }
         $connection = $this->resource->getConnection();
-        return $connection->delete(
+        $deleted = $connection->delete(
             $this->resource->getTableName('requestdesk_blog_comment'),
             ['comment_id IN (?)' => $commentIds]
         );
+        $this->blogCache->clean();
+        return $deleted;
     }
 }

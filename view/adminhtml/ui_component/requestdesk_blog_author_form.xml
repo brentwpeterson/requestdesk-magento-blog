@@ -72,6 +72,18 @@
             </settings>
         </field>
 
+        <!-- Admin only: AuthorResolver never selects it, so it stays off the storefront. -->
+        <field name="email" sortOrder="15" formElement="input">
+            <settings>
+                <validation>
+                    <rule name="validate-email" xsi:type="boolean">true</rule>
+                </validation>
+                <dataType>text</dataType>
+                <label translate="true">Email</label>
+                <notice translate="true">Not shown on the storefront.</notice>
+            </settings>
+        </field>
+
         <field name="url_key" sortOrder="20" formElement="input">
             <settings>
                 <dataType>text</dataType>

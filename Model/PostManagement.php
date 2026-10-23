@@ -34,13 +34,15 @@ class PostManagement implements PostManagementInterface
      * @param ResourceConnection $resourceConnection
      * @param LoggerInterface $logger
      * @param PostCategoryResolver $postCategoryResolver
+     * @param BlogCache $blogCache
      */
     public function __construct(
         private readonly PostRepositoryInterface $postRepository,
         private readonly PostFactory $postFactory,
         private readonly ResourceConnection $resourceConnection,
         private readonly LoggerInterface $logger,
-        private readonly PostCategoryResolver $postCategoryResolver
+        private readonly PostCategoryResolver $postCategoryResolver,
+        private readonly BlogCache $blogCache
     ) {
     }
 
@@ -132,6 +134,7 @@ class PostManagement implements PostManagementInterface
         $connection->delete($tableName, ['post_id = ?' => $postId]);
 
         if (empty($productIds)) {
+            $this->blogCache->clean();
             return true;
         }
 
@@ -147,6 +150,7 @@ class PostManagement implements PostManagementInterface
         }
 
         $connection->insertMultiple($tableName, $data);
+        $this->blogCache->clean();
 
         $this->logger->info('RequestDesk Blog: Linked products to post', [
             'post_id' => $postId,
