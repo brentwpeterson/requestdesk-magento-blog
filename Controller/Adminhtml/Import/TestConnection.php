@@ -74,7 +74,10 @@ class TestConnection extends Action
         try {
             $this->logger->info('RequestDesk: Posts API connection test initiated');
 
-            $result = $this->postImportService->testConnection();
+            $websiteId = $this->getRequest()->getParam('website');
+            $result = $this->postImportService->testConnection(
+                $websiteId !== null && $websiteId !== '' ? (int) $websiteId : null
+            );
 
             if ($result['success']) {
                 $message = __('Posts API connection successful!');

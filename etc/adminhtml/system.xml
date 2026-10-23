@@ -81,30 +81,36 @@
                 </field>
             </group>
 
-            <group id="api" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="0" showInStore="0">
+            <group id="api" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="0">
                 <label>RequestDesk API Configuration</label>
 
-                <field id="api_key" translate="label comment" type="obscure" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
+                <field id="api_key" translate="label comment" type="obscure" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>API Key</label>
                     <backend_model>Magento\Config\Model\Config\Backend\Encrypted</backend_model>
-                    <comment>API key for authenticating with RequestDesk. Get this from your RequestDesk account.</comment>
+                    <comment>API key for authenticating with RequestDesk. Get this from your RequestDesk account. Each website is its own RequestDesk agent: when one install runs several websites, set a separate key on each website.</comment>
                 </field>
 
-                <field id="endpoint_url" translate="label comment" type="text" sortOrder="20" showInDefault="1" showInWebsite="0" showInStore="0">
+                <field id="endpoint_url" translate="label comment" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>RequestDesk API Endpoint</label>
                     <comment>Base URL for RequestDesk API (e.g., https://api.requestdesk.ai)</comment>
                 </field>
 
-                <field id="test_connection" translate="label" type="button" sortOrder="30" showInDefault="1" showInWebsite="0" showInStore="0">
+                <field id="import_store_id" translate="label comment" type="select" sortOrder="25" showInDefault="0" showInWebsite="1" showInStore="0">
+                    <label>Import Into Store View</label>
+                    <source_model>RequestDesk\Blog\Model\Config\Source\ImportStore</source_model>
+                    <comment>New posts from this website's RequestDesk agent land on this store view. Leave empty for the website's default store view. A post moved to another store view by hand stays there on later imports.</comment>
+                </field>
+
+                <field id="test_connection" translate="label" type="button" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Test Connection</label>
                     <frontend_model>RequestDesk\Blog\Block\Adminhtml\System\Config\TestConnection</frontend_model>
                 </field>
             </group>
 
-            <group id="cron" translate="label" type="text" sortOrder="25" showInDefault="1" showInWebsite="0" showInStore="0">
+            <group id="cron" translate="label" type="text" sortOrder="25" showInDefault="1" showInWebsite="1" showInStore="0">
                 <label>Automated Import</label>
 
-                <field id="enabled" translate="label comment" type="select" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
+                <field id="enabled" translate="label comment" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="0">
                     <label>Enable Automatic Import</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>Automatically import published posts from RequestDesk every hour.</comment>

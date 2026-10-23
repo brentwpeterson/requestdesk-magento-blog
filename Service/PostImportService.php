@@ -21,7 +21,9 @@ namespace RequestDesk\Blog\Service;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\Encryption\EncryptorInterface;
+use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\HTTP\Client\Curl;
+use Magento\Store\Model\ScopeInterface;
 use Magento\Store\Model\StoreManagerInterface;
 use Psr\Log\LoggerInterface;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
@@ -33,6 +35,8 @@ class PostImportService
 {
     private const XML_PATH_API_KEY = 'requestdesk_blog/api/api_key';
     private const XML_PATH_ENDPOINT_URL = 'requestdesk_blog/api/endpoint_url';
+    private const XML_PATH_IMPORT_STORE = 'requestdesk_blog/api/import_store_id';
+    private const XML_PATH_CRON_ENABLED = 'requestdesk_blog/cron/enabled';
 
     /**
      * RequestDesk moved this API. The posts router is mounted at /api/public-posts
@@ -117,26 +121,149 @@ class PostImportService
     }
 
     /**
-     * Import posts from RequestDesk
+     * Import posts for every website that has a RequestDesk API key.
+     *
+     * One install can run several websites (Evrig and CommerceKing share one), and
+     * each website is its own RequestDesk agent with its own key. A website with no
+     * key of its own inherits the default key, so two websites can end up reading
+     * the same agent. The second one is skipped and named in the errors, because
+     * importing one agent's posts into two websites is never what anyone meant.
+     *
+     * @param string|null $status
+     * @param string|null $syncStatus
+     * @param int $page
+     * @param int $perPage
+     * @param bool $cronOnly Only websites with Automated Import enabled
+     * @return array Totals plus a 'websites' entry per website code
+     */
+    public function importForAllWebsites(
+        ?string $status = 'publish',
+        ?string $syncStatus = null,
+        int $page = 1,
+        int $perPage = 20,
+        bool $cronOnly = false
+    ): array {
+        $totals = ['imported' => 0, 'updated' => 0, 'failed' => 0];
+        $errors = [];
+        $websites = [];
+        $sources = [];
+        $success = true;
+        $hasMore = false;
+        $cronEnabledAnywhere = false;
+
+        foreach ($this->storeManager->getWebsites() as $website) {
+            $websiteId = (int) $website->getId();
+            $code = (string) $website->getCode();
+
+            if ($cronOnly && !$this->scopeConfig->isSetFlag(
+                self::XML_PATH_CRON_ENABLED,
+                ScopeInterface::SCOPE_WEBSITES,
+                $websiteId
+            )) {
+                continue;
+            }
+            $cronEnabledAnywhere = true;
+
+            $apiKey = $this->getApiKey($websiteId);
+            if (empty($apiKey)) {
+                continue;
+            }
+
+            $source = $apiKey . '|' . rtrim((string) $this->getEndpointUrl($websiteId), '/');
+            if (isset($sources[$source])) {
+                $message = sprintf(
+                    'Website %s skipped: it uses the same RequestDesk API key as website %s. Set a separate key for it at website scope.',
+                    $code,
+                    $sources[$source]
+                );
+                $this->logger->warning('RequestDesk: ' . $message);
+                $errors[] = $message;
+                continue;
+            }
+            $sources[$source] = $code;
+
+            $result = $this->importPosts($status, $syncStatus, $page, $perPage, $websiteId);
+            $websites[$code] = $result;
+
+            if (empty($result['success'])) {
+                $success = false;
+                $errors[] = sprintf('Website %s: %s', $code, $result['error'] ?? 'Unknown error');
+                continue;
+            }
+            foreach ($totals as $field => $count) {
+                $totals[$field] = $count + (int) ($result[$field] ?? 0);
+            }
+            foreach ($result['errors'] ?? [] as $error) {
+                $errors[] = sprintf('Website %s: %s', $code, $error);
+            }
+            $hasMore = $hasMore || !empty($result['has_more']);
+        }
+
+        if ($cronOnly && !$cronEnabledAnywhere) {
+            return [
+                'success' => true,
+                'disabled' => true,
+                'message' => 'Automated Import is disabled on every website',
+                'imported' => 0,
+                'updated' => 0,
+                'failed' => 0,
+                'errors' => [],
+                'websites' => [],
+            ];
+        }
+
+        if (!$websites) {
+            return [
+                'success' => false,
+                'error' => $errors
+                    ? implode(' ', $errors)
+                    : 'RequestDesk API not configured. Please set API Key and Endpoint URL in Store > Configuration > RequestDesk > Blog.',
+                'websites' => [],
+            ];
+        }
+
+        return [
+            'success' => $success,
+            'message' => sprintf(
+                'Import complete: %d created, %d updated, %d failed',
+                $totals['imported'],
+                $totals['updated'],
+                $totals['failed']
+            ),
+            'imported' => $totals['imported'],
+            'updated' => $totals['updated'],
+            'failed' => $totals['failed'],
+            'has_more' => $hasMore,
+            'errors' => $errors,
+            'error' => $success ? null : implode(' ', $errors),
+            'websites' => $websites,
+        ];
+    }
+
+    /**
+     * Import posts from RequestDesk into one website
      *
      * @param string|null $status Filter by status (draft, publish, pending)
      * @param string|null $syncStatus Filter by sync status (not_synced, synced, pending, failed)
      * @param int $page Page number
      * @param int $perPage Items per page
+     * @param int|null $websiteId Website whose key is used; null means the default store view's website
      * @return array Result with success status and details
      */
     public function importPosts(
         ?string $status = 'publish',
         ?string $syncStatus = null,
         int $page = 1,
-        int $perPage = 20
+        int $perPage = 20,
+        ?int $websiteId = null
     ): array {
         try {
-            $this->logger->info('RequestDesk: Starting post import');
+            $websiteId ??= (int) $this->storeManager->getDefaultStoreView()->getWebsiteId();
+            $this->logger->info("RequestDesk: Starting post import for website {$websiteId}");
 
             // Validate API configuration
-            $apiKey = $this->getApiKey();
-            $endpointUrl = $this->getEndpointUrl();
+            $apiKey = $this->getApiKey($websiteId);
+            $endpointUrl = $this->getEndpointUrl($websiteId);
 
             if (empty($apiKey) || empty($endpointUrl)) {
                 return [
@@ -145,8 +272,12 @@ class PostImportService
                 ];
             }
 
+            // Resolve the target store view before fetching, so a bad setting
+            // fails before anything is written.
+            $storeId = $this->resolveImportStoreId($websiteId);
+
             // Fetch posts from RequestDesk
-            $postsData = $this->fetchPostsFromRequestDesk($status, $syncStatus, $page, $perPage);
+            $postsData = $this->fetchPostsFromRequestDesk($status, $syncStatus, $page, $perPage, $websiteId);
 
             if (!$postsData['success']) {
                 return $postsData;
@@ -160,7 +291,7 @@ class PostImportService
 
             foreach ($posts as $postData) {
                 try {
-                    $result = $this->importSinglePost($postData);
+                    $result = $this->importSinglePost($postData, $storeId);
                     if ($result['created']) {
                         $imported++;
                     } else {
@@ -218,16 +349,18 @@ class PostImportService
      * @param string|null $syncStatus
      * @param int $page
      * @param int $perPage
+     * @param int $websiteId
      * @return array
      */
     private function fetchPostsFromRequestDesk(
         ?string $status,
         ?string $syncStatus,
         int $page,
-        int $perPage
+        int $perPage,
+        int $websiteId
     ): array {
-        $apiKey = $this->getApiKey();
-        $endpointUrl = rtrim($this->getEndpointUrl(), '/');
+        $apiKey = $this->getApiKey($websiteId);
+        $endpointUrl = rtrim($this->getEndpointUrl($websiteId), '/');
 
         // Build query parameters
         $queryParams = [
@@ -288,12 +421,62 @@ class PostImportService
     }
 
     /**
+     * Store view an import writes new posts into.
+     *
+     * The Import Into Store View setting when it names a store view of this
+     * website, otherwise the website's default store view. Never 0: store 0 means
+     * "all store views", and on an install with two websites that puts one
+     * website's posts on the other's blog.
+     *
+     * @param int $websiteId
+     * @return int
+     * @throws LocalizedException
+     */
+    public function resolveImportStoreId(int $websiteId): int
+    {
+        $website = $this->storeManager->getWebsite($websiteId);
+        $configured = (int) $this->scopeConfig->getValue(
+            self::XML_PATH_IMPORT_STORE,
+            ScopeInterface::SCOPE_WEBSITES,
+            $websiteId
+        );
+
+        if ($configured > 0) {
+            $store = $this->storeManager->getStore($configured);
+            if ((int) $store->getWebsiteId() !== $websiteId) {
+                throw new LocalizedException(__(
+                    'Import Into Store View for website %1 names store view %2, which belongs to another website.',
+                    $website->getCode(),
+                    $store->getCode()
+                ));
+            }
+            return $configured;
+        }
+
+        $defaultStore = $website->getDefaultStore();
+        $storeId = $defaultStore ? (int) $defaultStore->getId() : 0;
+        if ($storeId <= 0) {
+            throw new LocalizedException(__(
+                'Website %1 has no default store view to import posts into.',
+                $website->getCode()
+            ));
+        }
+        return $storeId;
+    }
+
+    /**
      * Import a single post into Magento
      *
+     * A new post goes to $storeId. An existing post keeps the store view it is
+     * on, so a post moved by hand (a Spanish post moved to the Spanish store
+     * view) stays there on the next import. The one exception is store 0: an
+     * import never leaves a post on all store views.
+     *
      * @param array $postData Post data from RequestDesk API
+     * @param int $storeId Target store view for new posts
      * @return array Result with created flag and magento_post_id
      */
-    private function importSinglePost(array $postData): array
+    private function importSinglePost(array $postData, int $storeId): array
     {
         $requestdeskPostId = $postData['id'];
         $created = false;
@@ -324,7 +507,9 @@ class PostImportService
         $post->setAuthor($authorName);
         $post->setAuthorId($this->resolveAuthorId($authorName));
 
-        $post->setStoreId((int) $this->storeManager->getStore()->getId());
+        if ($created || (int) $post->getStoreId() === 0) {
+            $post->setStoreId($storeId);
+        }
 
         // Set status based on RequestDesk status
         $status = $postData['status'] === 'publish'
@@ -463,8 +648,9 @@ class PostImportService
         try {
             $this->logger->info("RequestDesk: Getting related posts for '{$productQuery}'");
 
-            $apiKey = $this->getApiKey();
-            $endpointUrl = rtrim($this->getEndpointUrl(), '/');
+            $websiteId = (int) $this->storeManager->getStore()->getWebsiteId();
+            $apiKey = $this->getApiKey($websiteId);
+            $endpointUrl = rtrim($this->getEndpointUrl($websiteId), '/');
 
             if (empty($apiKey) || empty($endpointUrl)) {
                 return [
@@ -528,13 +714,15 @@ class PostImportService
     /**
      * Test posts API connection
      *
+     * @param int|null $websiteId Website whose key is tested; null means the default store view's website
      * @return array
      */
-    public function testConnection(): array
+    public function testConnection(?int $websiteId = null): array
     {
         try {
-            $apiKey = $this->getApiKey();
-            $endpointUrl = rtrim($this->getEndpointUrl(), '/');
+            $websiteId ??= (int) $this->storeManager->getDefaultStoreView()->getWebsiteId();
+            $apiKey = $this->getApiKey($websiteId);
+            $endpointUrl = rtrim($this->getEndpointUrl($websiteId), '/');
 
             if (empty($apiKey)) {
                 return [
@@ -582,15 +770,17 @@ class PostImportService
     }
 
     /**
-     * Get API key from config (decrypted)
+     * Get API key from config (decrypted), at website scope
      *
+     * @param int $websiteId
      * @return string|null
      */
-    private function getApiKey(): ?string
+    private function getApiKey(int $websiteId): ?string
     {
         $encryptedKey = $this->scopeConfig->getValue(
             self::XML_PATH_API_KEY,
-            \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+            ScopeInterface::SCOPE_WEBSITES,
+            $websiteId
         );
 
         if (empty($encryptedKey)) {
@@ -601,15 +791,17 @@ class PostImportService
     }
 
     /**
-     * Get endpoint URL from config
+     * Get endpoint URL from config, at website scope
      *
+     * @param int $websiteId
      * @return string|null
      */
-    private function getEndpointUrl(): ?string
+    private function getEndpointUrl(int $websiteId): ?string
     {
         $url = $this->scopeConfig->getValue(
             self::XML_PATH_ENDPOINT_URL,
-            \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+            ScopeInterface::SCOPE_WEBSITES,
+            $websiteId
         );
 
         // Default to production URL if not set

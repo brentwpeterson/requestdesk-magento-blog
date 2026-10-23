@@ -18,12 +18,9 @@ namespace RequestDesk\Blog\Cron;
 
 use Psr\Log\LoggerInterface;
 use RequestDesk\Blog\Service\PostImportService;
-use Magento\Framework\App\Config\ScopeConfigInterface;
 
 class ImportPosts
 {
-    private const XML_PATH_CRON_ENABLED = 'requestdesk_blog/cron/enabled';
-
     /**
      * @var PostImportService
      */
@@ -35,23 +32,15 @@ class ImportPosts
     private LoggerInterface $logger;
 
     /**
-     * @var ScopeConfigInterface
-     */
-    private ScopeConfigInterface $scopeConfig;
-
-    /**
      * @param PostImportService $postImportService
      * @param LoggerInterface $logger
-     * @param ScopeConfigInterface $scopeConfig
      */
     public function __construct(
         PostImportService $postImportService,
-        LoggerInterface $logger,
-        ScopeConfigInterface $scopeConfig
+        LoggerInterface $logger
     ) {
         $this->postImportService = $postImportService;
         $this->logger = $logger;
-        $this->scopeConfig = $scopeConfig;
     }
 
     /**
@@ -61,27 +50,23 @@ class ImportPosts
      */
     public function execute(): void
     {
-        // Check if cron is enabled
-        $cronEnabled = $this->scopeConfig->getValue(
-            self::XML_PATH_CRON_ENABLED,
-            \Magento\Store\Model\ScopeInterface::SCOPE_STORE
-        );
-
-        if (!$cronEnabled) {
-            $this->logger->debug('RequestDesk: Post import cron is disabled');
-            return;
-        }
-
-        $this->logger->info('RequestDesk: Starting scheduled post import');
+        $this->logger->debug('RequestDesk: Starting scheduled post import');
 
         try {
-            // Import published posts that haven't been synced yet
-            $result = $this->postImportService->importPosts(
+            // Import published posts that haven't been synced yet, for each
+            // website that has Automated Import enabled and its own API key
+            $result = $this->postImportService->importForAllWebsites(
                 'publish',      // Only published posts
                 'not_synced',   // Only posts not yet synced to Magento
                 1,              // Page 1
-                50              // Up to 50 posts per run
+                50,             // Up to 50 posts per website per run
+                true            // Only websites with Automated Import enabled
             );
+
+            if (!empty($result['disabled'])) {
+                $this->logger->debug('RequestDesk: Post import cron is disabled');
+                return;
+            }
 
             if ($result['success']) {
                 $this->logger->info(sprintf(
@@ -97,6 +82,10 @@ class ImportPosts
                 }
             } else {
                 $this->logger->error('RequestDesk: Scheduled import failed - ' . ($result['error'] ?? 'Unknown error'));
+            }
+
+            foreach ($result['errors'] ?? [] as $error) {
+                $this->logger->warning('RequestDesk: ' . $error);
             }
 
         } catch (\Exception $e) {

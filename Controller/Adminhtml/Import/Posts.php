@@ -80,8 +80,8 @@ class Posts extends Action
             $page = (int)$this->getRequest()->getParam('page', 1);
             $perPage = (int)$this->getRequest()->getParam('per_page', 20);
 
-            // Execute post import
-            $result = $this->postImportService->importPosts(
+            // Execute post import for each website with its own API key
+            $result = $this->postImportService->importForAllWebsites(
                 $status,
                 $syncStatus,
                 $page,
@@ -96,6 +96,9 @@ class Posts extends Action
                     $result['failed'] ?? 0
                 );
                 $this->messageManager->addSuccessMessage($message);
+                foreach ($result['errors'] ?? [] as $error) {
+                    $this->messageManager->addWarningMessage($error);
+                }
             } else {
                 $this->messageManager->addErrorMessage(
                     __('Import failed: %1', $result['error'] ?? 'Unknown error')
