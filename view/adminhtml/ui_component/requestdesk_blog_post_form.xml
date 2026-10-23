@@ -85,6 +85,28 @@
             </settings>
         </field>
 
+        <!-- Which store view shows the post. 0 is All Store Views. On an install
+             with two websites, a post on All Store Views shows on both blogs. -->
+        <field name="store_id" sortOrder="25" formElement="select">
+            <argument name="data" xsi:type="array">
+                <item name="config" xsi:type="array">
+                    <item name="default" xsi:type="number">0</item>
+                </item>
+            </argument>
+            <settings>
+                <dataType>int</dataType>
+                <label translate="true">Store View</label>
+                <notice translate="true">Imported posts keep the store view set here on later imports.</notice>
+            </settings>
+            <formElements>
+                <select>
+                    <settings>
+                        <options class="Magento\Cms\Ui\Component\Listing\Column\Cms\Options"/>
+                    </settings>
+                </select>
+            </formElements>
+        </field>
+
         <!-- Single source of truth for the byline. The old free-text "author"
              column is still read as a fallback for posts imported before authors
              became records, but it is no longer editable here: having both a

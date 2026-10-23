@@ -91,6 +91,7 @@ class DataProvider extends AbstractDataProvider
             // Without the cast a saved 0 fails the toggle's `value === map` check
             // (0 !== "0") and renders as Allow Comment = on.
             $this->loadedData[$postId]['comments_enabled'] = (string) (int) $post->getData('comments_enabled');
+            $this->loadedData[$postId]['store_id'] = (string) (int) $post->getData('store_id');
             // NULL (store default) as '', the value of the select's "Use store default".
             $this->loadedData[$postId]['meta_robots'] = (string) $post->getData('meta_robots');
             // Ids as STRINGS: the form renders every option value as a string

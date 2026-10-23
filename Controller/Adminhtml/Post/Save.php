@@ -121,6 +121,9 @@ class Save extends Action
                 $post->setAuthor((string)$data['author']);
             }
             $post->setAuthorId(!empty($data['author_id']) ? (int)$data['author_id'] : null);
+            if (array_key_exists('store_id', $data)) {
+                $post->setStoreId((int)$data['store_id']);
+            }
             $this->applyPublishStatus($post, $data);
             $post->setCommentsEnabled(isset($data['comments_enabled']) ? (bool)$data['comments_enabled'] : false);
 
