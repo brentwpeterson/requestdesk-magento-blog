@@ -372,6 +372,34 @@ children are no longer used and can be deleted from Catalog > Categories.
 On a Hyva theme, rebuild the theme CSS so the new search box and tabs are
 styled: `npm run build` in `web/tailwind`.
 
+### Several websites on one install (1.15.0)
+
+Two Magento websites can now run separate blogs from separate RequestDesk
+accounts. Before 1.15.0 the API key was set once for the whole install and the
+hourly import wrote posts to "All Store Views", so every website showed every
+post.
+
+- The API key, the endpoint and **Enable Automatic Import** can be set per
+  website (switch the scope to a website in Stores > Configuration).
+- **Import Into Store View**, a website-only setting, picks the store view new
+  posts land on. Left empty, posts go to the website's default store view.
+  An import never writes a post to "All Store Views".
+- The import and the cron run once per website. A website that inherits the
+  same key and endpoint as another website is skipped and named in the import
+  errors, so one RequestDesk account is never imported twice.
+- A post moved to another store view (the new **Store View** field on the post
+  form) stays there on later imports.
+- The storefront shows a store view its own posts plus posts set to "All Store
+  Views": listings, archives, search, the posts widget, the sidebar counts,
+  previous/next links and the post page. A post on another store view returns
+  404. Two store views can each have a post on the same URL key.
+- Categories and tags have no store field. A category or tag appears on a store
+  view through the posts that store view can see, so a category shared by two
+  websites shares its name, description and SEO fields.
+
+Posts imported before 1.15.0 keep store 0 and stay visible on every store view.
+Move them with the Store View field, or leave them shared. No schema change.
+
 ## Configuration
 
 Navigate to **Stores > Configuration > RequestDesk > Blog**
@@ -392,12 +420,15 @@ Navigate to **Stores > Configuration > RequestDesk > Blog**
 | API Key | Your RequestDesk API key (encrypted in database) |
 | RequestDesk API Endpoint | API URL (default: `https://app.requestdesk.ai`) |
 | Test Connection | Button to verify API connectivity |
+| Import Into Store View | Website scope only. Store view that imported posts land on; empty means the website's default store view (1.15.0) |
+
+API Key and Endpoint can be set per website (1.15.0).
 
 ### Automated Import
 
 | Setting | Description |
 |---------|-------------|
-| Enable Automatic Import | Import published posts from RequestDesk every hour |
+| Enable Automatic Import | Import published posts from RequestDesk every hour. Per website from 1.15.0 |
 
 ### Blog URL Prefix
 
