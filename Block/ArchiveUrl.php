@@ -51,7 +51,8 @@ class ArchiveUrl
         int $id,
         ?string $urlKey,
         UrlInterface $urlBuilder,
-        string $prefix
+        string $prefix,
+        string $suffix = ''
     ): string {
         $urlKey = trim((string) $urlKey);
 
@@ -62,6 +63,6 @@ class ArchiveUrl
         // _direct emits the path verbatim under the store base URL. Passing
         // "<prefix>/category/<key>" as a route path instead would have the URL
         // builder read the segments as controller and action names.
-        return $urlBuilder->getUrl('', ['_direct' => $prefix . '/' . $type . '/' . $urlKey]);
+        return $urlBuilder->getUrl('', ['_direct' => $prefix . '/' . $type . '/' . $urlKey . $suffix]);
     }
 }

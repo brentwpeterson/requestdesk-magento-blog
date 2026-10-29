@@ -132,7 +132,7 @@ class Save implements HttpPostActionInterface
     {
         try {
             return $redirect->setUrl(
-                PostUrl::resolve($this->postRepository->getById($postId), $this->urlBuilder, $this->config->getUrlPrefix())
+                PostUrl::resolve($this->postRepository->getById($postId), $this->urlBuilder, $this->config->getUrlPrefix(), $this->config->getUrlSuffix())
             );
         } catch (\Throwable $e) {
             // No such post, or it could not be loaded. The id form still routes,

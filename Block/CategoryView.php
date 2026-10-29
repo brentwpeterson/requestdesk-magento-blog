@@ -175,7 +175,8 @@ class CategoryView extends PostList
             $this->getCategoryId(),
             $category !== null ? $category->getUrlKey() : null,
             $this->_urlBuilder,
-            $this->getUrlPrefix()
+            $this->getUrlPrefix(),
+            $this->getUrlSuffix()
         );
     }
 }

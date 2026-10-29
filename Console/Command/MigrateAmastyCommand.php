@@ -307,8 +307,8 @@ class MigrateAmastyCommand extends Command
             $tagIds = [];
             $categoryIds = [];
             try {
-                foreach ($this->tagNames($srcId) as $name) {
-                    $ourTagId = $this->tagResolver->getOrCreateByName($name);
+                foreach ($this->tagsWithKeys($srcId) as $name => $sourceKey) {
+                    $ourTagId = $this->tagResolver->getOrCreateByName($name, $sourceKey);
                     if ($ourTagId) {
                         $tagIds[] = $ourTagId;
                     }
@@ -351,7 +351,8 @@ class MigrateAmastyCommand extends Command
                 $blogAuthorId = $this->authorResolver->getOrCreateByName(
                     $amastyAuthor['name'],
                     $amastyAuthor['bio'],
-                    $amastyAuthor['avatar']
+                    $amastyAuthor['avatar'],
+                    $amastyAuthor['url_key']
                 );
                 if ($blogAuthorId && !isset($authorsSeen[$blogAuthorId])) {
                     $authorsSeen[$blogAuthorId] = true;
@@ -442,7 +443,7 @@ class MigrateAmastyCommand extends Command
      */
     private function authorDetails(int $authorId): array
     {
-        $empty = ['name' => '', 'bio' => '', 'avatar' => ''];
+        $empty = ['name' => '', 'bio' => '', 'avatar' => '', 'url_key' => ''];
         if (!$authorId) {
             return $empty;
         }
@@ -455,9 +456,10 @@ class MigrateAmastyCommand extends Command
 
         $storeColumns = array_keys($connection->describeTable($storeTable));
         $bioColumn = $this->firstExisting($storeColumns, ['description', 'bio', 'content']);
+        $keyColumn = $this->firstExisting($storeColumns, ['url_key']);
 
         $select = $connection->select()
-            ->from($storeTable, array_values(array_filter(['name', $bioColumn])))
+            ->from($storeTable, array_values(array_filter(['name', $bioColumn, $keyColumn])))
             ->where('author_id = ?', $authorId)
             ->where('store_id = ?', self::DEFAULT_STORE)
             ->limit(1);
@@ -467,6 +469,7 @@ class MigrateAmastyCommand extends Command
             'name' => trim((string) ($row['name'] ?? '')),
             'bio' => $bioColumn ? trim((string) ($row[$bioColumn] ?? '')) : '',
             'avatar' => '',
+            'url_key' => $keyColumn ? trim((string) ($row[$keyColumn] ?? '')) : '',
         ];
 
         $authorTable = $this->resource->getTableName('amasty_blog_author');
@@ -504,34 +507,43 @@ class MigrateAmastyCommand extends Command
     }
 
     /**
-     * Amasty tag names on a post (default store scope).
+     * Tag names on a source post, each with the url_key Amasty published for it.
+     *
+     * The key is carried across so the tag's page keeps its address; a tag named
+     * "magento 2.4" has the key magento-2.4, which a key made from the name
+     * would turn into magento-2-4.
      *
      * @param int $srcPostId
-     * @return string[]
+     * @return array<string, string> name => url_key (empty string when none)
      */
-    private function tagNames(int $srcPostId): array
+    private function tagsWithKeys(int $srcPostId): array
     {
         $connection = $this->resource->getConnection();
-
-        // Amasty's tag tables are not guaranteed to be there. A store that never
-        // used tags, or a partial install, has the posts table without them, and
-        // an unguarded join fails EVERY post rather than the one feature - which
-        // is a whole migration lost to something nobody was even asking for.
         foreach (['amasty_blog_posts_tag', 'amasty_blog_tags_store'] as $table) {
             if (!$connection->isTableExists($this->resource->getTableName($table))) {
                 return [];
             }
         }
 
+        $hasKey = isset($connection->describeTable($this->resource->getTableName('amasty_blog_tags_store'))['url_key']);
         $select = $connection->select()
             ->from(['pt' => $this->resource->getTableName('amasty_blog_posts_tag')], [])
             ->join(
                 ['ts' => $this->resource->getTableName('amasty_blog_tags_store')],
                 'ts.tag_id = pt.tag_id AND ts.store_id = ' . self::DEFAULT_STORE,
-                ['name']
+                $hasKey ? ['name', 'url_key'] : ['name']
             )
             ->where('pt.post_id = ?', $srcPostId);
-        return array_filter(array_map('trim', $connection->fetchCol($select)));
+
+        $tags = [];
+        foreach ($connection->fetchAll($select) as $row) {
+            $name = trim((string) ($row['name'] ?? ''));
+            if ($name !== '') {
+                $tags[$name] = trim((string) ($row['url_key'] ?? ''));
+            }
+        }
+
+        return $tags;
     }
 
     /**

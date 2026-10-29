@@ -38,9 +38,9 @@ class PostUrl
      * @param string $prefix from Model\Config::getUrlPrefix()
      * @return string
      */
-    public static function resolve(PostInterface $post, UrlInterface $urlBuilder, string $prefix): string // phpcs:ignore Magento2.Functions.StaticFunction
+    public static function resolve(PostInterface $post, UrlInterface $urlBuilder, string $prefix, string $suffix = ''): string // phpcs:ignore Magento2.Functions.StaticFunction
     {
-        return self::fromKey((int) $post->getPostId(), $post->getUrlKey(), $urlBuilder, $prefix);
+        return self::fromKey((int) $post->getPostId(), $post->getUrlKey(), $urlBuilder, $prefix, $suffix);
     }
 
     /**
@@ -55,7 +55,7 @@ class PostUrl
      * @param string $prefix from Model\Config::getUrlPrefix()
      * @return string
      */
-    public static function fromKey(int $postId, ?string $urlKey, UrlInterface $urlBuilder, string $prefix): string // phpcs:ignore Magento2.Functions.StaticFunction
+    public static function fromKey(int $postId, ?string $urlKey, UrlInterface $urlBuilder, string $prefix, string $suffix = ''): string // phpcs:ignore Magento2.Functions.StaticFunction
     {
         $urlKey = trim((string) $urlKey);
 
@@ -66,6 +66,6 @@ class PostUrl
         // _direct emits the path verbatim under the store base URL. Passing
         // "<prefix>/<key>" as a route path instead would have the URL builder
         // read the key as a controller name and rewrite it.
-        return $urlBuilder->getUrl('', ['_direct' => $prefix . '/' . $urlKey]);
+        return $urlBuilder->getUrl('', ['_direct' => $prefix . '/' . $urlKey . $suffix]);
     }
 }

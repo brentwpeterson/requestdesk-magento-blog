@@ -113,6 +113,6 @@ class OpenGraph extends Template
     public function getOgUrl(): string
     {
         $post = $this->getPost();
-        return $post ? PostUrl::resolve($post, $this->_urlBuilder, $this->config->getUrlPrefix()) : '';
+        return $post ? PostUrl::resolve($post, $this->_urlBuilder, $this->config->getUrlPrefix(), $this->config->getUrlSuffix()) : '';
     }
 }

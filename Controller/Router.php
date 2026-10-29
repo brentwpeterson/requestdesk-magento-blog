@@ -18,9 +18,12 @@ namespace RequestDesk\Blog\Controller;
 
 use Magento\Framework\App\ActionFactory;
 use Magento\Framework\App\ActionInterface;
+use Magento\Framework\App\Request\Http as HttpRequest;
 use Magento\Framework\App\RequestInterface;
+use Magento\Framework\App\ResponseInterface;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\App\RouterInterface;
+use Magento\Framework\UrlInterface;
 use RequestDesk\Blog\Model\Config;
 
 /**
@@ -51,6 +54,16 @@ use RequestDesk\Blog\Model\Config;
  * action that does not exist would come straight back here, and Magento stops
  * that loop after 100 passes with an exception rather than a 404. The old /blog
  * addresses on such a store are closed by Model\StorefrontGate.
+ *
+ * Blog URL Suffix. A store migrated from a blog whose addresses ended in .html
+ * sets the same suffix, and every address search engines already know keeps
+ * answering: /news.html, /news/post-name.html, /news/author/name.html. The
+ * router strips the suffix before it matches, so the rest of the module sees
+ * the same path it always did. The address without the suffix is redirected
+ * with a 301 to the one with it, which is what the old blog did, so the
+ * extensionless form never becomes a second copy of the page. Only posts,
+ * archives and the index are redirected; controller paths such as
+ * comment/save and search are left alone.
  *
  * Enable Blog set to No makes this router match nothing.
  */
@@ -108,7 +121,9 @@ class Router implements RouterInterface
     public function __construct(
         private readonly ActionFactory $actionFactory,
         private readonly ResourceConnection $resource,
-        private readonly Config $config
+        private readonly Config $config,
+        private readonly ResponseInterface $response,
+        private readonly UrlInterface $url
     ) {
     }
 
@@ -131,16 +146,30 @@ class Router implements RouterInterface
         }
 
         $prefix = $this->config->getUrlPrefix();
+        $suffix = $this->config->getUrlSuffix();
         $identifier = trim($request->getPathInfo(), '/');
+
+        // Match on the path without its suffix, remembering whether it had one.
+        $hadSuffix = false;
+        if ($suffix !== '' && str_ends_with($identifier, $suffix)) {
+            $identifier = substr($identifier, 0, -strlen($suffix));
+            $hadSuffix = true;
+        }
         $parts = explode('/', $identifier);
 
         if (($parts[0] ?? '') !== $prefix) {
             return null;
         }
 
+        // The suffixed index: /news.html, and /blog.html on the default prefix,
+        // which Magento's standard router does not know.
+        if ($hadSuffix && count($parts) === 1) {
+            return $this->matchControllerPath($request, $identifier, $parts);
+        }
+
         // /<prefix>/<type>/<url-key> — a category, tag or author archive.
         if (count($parts) === 3 && in_array($parts[1], self::ARCHIVE_TYPES, true)) {
-            $archive = $this->matchArchive($request, $identifier, $parts[1], $parts[2]);
+            $archive = $this->matchArchive($request, $identifier, $parts[1], $parts[2], $suffix, $hadSuffix);
             if ($archive !== null || $prefix === Config::ROUTE_FRONT_NAME) {
                 return $archive;
             }
@@ -151,6 +180,14 @@ class Router implements RouterInterface
         if ($prefix !== Config::ROUTE_FRONT_NAME
             && (count($parts) === 1 || in_array($parts[1], self::RESERVED, true))
         ) {
+            // The bare index (/news) goes to /news.html when a suffix is set.
+            if (count($parts) === 1) {
+                $redirect = $this->redirectToSuffix($request, $identifier, $suffix, $hadSuffix);
+                if ($redirect !== null) {
+                    return $redirect;
+                }
+            }
+
             return $this->matchControllerPath($request, $identifier, $parts);
         }
 
@@ -169,6 +206,11 @@ class Router implements RouterInterface
             return null;
         }
 
+        $redirect = $this->redirectToSuffix($request, $identifier, $suffix, $hadSuffix);
+        if ($redirect !== null) {
+            return $redirect;
+        }
+
         $request->setModuleName(Config::ROUTE_FRONT_NAME)
             ->setControllerName('post')
             ->setActionName('view')
@@ -179,6 +221,42 @@ class Router implements RouterInterface
         $request->setAlias(\Magento\Framework\Url::REWRITE_REQUEST_PATH_ALIAS, $identifier);
 
         return $this->actionFactory->create(\Magento\Framework\App\Action\Forward::class);
+    }
+
+    /**
+     * Send the address without the store's URL suffix to the one with it.
+     *
+     * Applies to a GET that matched a post, an archive or the index and did not
+     * already carry the suffix. The query string travels with the redirect, so
+     * /news?p=2 lands on /news.html?p=2. Everything else, including POSTs such
+     * as the comment form, is served as it arrived.
+     *
+     * @param RequestInterface $request
+     * @param string $identifier the path without suffix or surrounding slashes
+     * @param string $suffix the store's URL suffix, empty when none
+     * @param bool $hadSuffix whether the request already carried it
+     * @return ActionInterface|null null when no redirect applies
+     */
+    private function redirectToSuffix(
+        RequestInterface $request,
+        string $identifier,
+        string $suffix,
+        bool $hadSuffix
+    ): ?ActionInterface {
+        if ($suffix === '' || $hadSuffix || !$request instanceof HttpRequest || !$request->isGet()) {
+            return null;
+        }
+
+        $url = $this->url->getUrl('', ['_direct' => $identifier . $suffix]);
+        $query = (string) $request->getServer('QUERY_STRING');
+        if ($query !== '') {
+            $url .= (str_contains($url, '?') ? '&' : '?') . $query;
+        }
+
+        $this->response->setRedirect($url, 301);
+        $request->setDispatched(true);
+
+        return $this->actionFactory->create(\Magento\Framework\App\Action\Redirect::class);
     }
 
     /**
@@ -229,13 +307,17 @@ class Router implements RouterInterface
      * @param string $identifier the full path, for the address-bar alias
      * @param string $type one of self::ARCHIVE_TYPES
      * @param string $urlKey
+     * @param string $suffix the store's URL suffix, empty when none
+     * @param bool $hadSuffix whether the request already carried it
      * @return ActionInterface|null null when nothing matches, so the standard 404 runs
      */
     private function matchArchive(
         RequestInterface $request,
         string $identifier,
         string $type,
-        string $urlKey
+        string $urlKey,
+        string $suffix = '',
+        bool $hadSuffix = false
     ): ?ActionInterface {
         // /blog/category/view and friends belong to the real controllers. They
         // are matched by the standard router long before this one runs, but a
@@ -248,6 +330,11 @@ class Router implements RouterInterface
 
         if ($id === 0) {
             return null;
+        }
+
+        $redirect = $this->redirectToSuffix($request, $identifier, $suffix, $hadSuffix);
+        if ($redirect !== null) {
+            return $redirect;
         }
 
         $request->setModuleName(Config::ROUTE_FRONT_NAME)

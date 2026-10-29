@@ -168,6 +168,40 @@ class BlogItemProviderTest extends TestCase
     }
 
     /**
+     * A store migrated from Amasty keeps the .html ending on every address. The
+     * sitemap must list the suffixed form, not the redirecting one, and leave
+     * the id-form fallbacks alone because the router serves those exactly.
+     */
+    public function testSuffixedStoresListTheSuffixedAddresses(): void
+    {
+        $this->config->method('getUrlPrefix')->with(1)->willReturn('commerce-co-op');
+        $this->config->method('getUrlSuffix')->with(1)->willReturn('.html');
+        $this->configReader->method('isEnabled')->willReturn(true);
+        $this->scopeConfig->method('isSetFlag')->willReturn(true);
+        $this->connection->method('fetchAll')->willReturnOnConsecutiveCalls(
+            [
+                ['post_id' => '1', 'url_key' => 'episode-10-arron-moss', 'updated_at' => '2026-05-04 08:41:00'],
+                ['post_id' => '2', 'url_key' => '', 'updated_at' => '2026-03-27 12:00:00'],
+            ],
+            [['id' => '8', 'url_key' => 'podcasts', 'updated_at' => '2026-01-10 00:00:00']],
+            [['id' => '42', 'url_key' => 'magento', 'updated_at' => '2026-03-27 12:00:00']],
+            [['id' => '10', 'url_key' => 'Noah-Oken-Berg', 'updated_at' => '2026-03-27 12:00:00']]
+        );
+
+        $this->assertSame(
+            [
+                'commerce-co-op.html' => '2026-05-04 08:41:00',
+                'commerce-co-op/episode-10-arron-moss.html' => '2026-05-04 08:41:00',
+                'commerce-co-op/post/view/id/2' => '2026-03-27 12:00:00',
+                'commerce-co-op/category/podcasts.html' => '2026-01-10 00:00:00',
+                'commerce-co-op/tag/magento.html' => '2026-03-27 12:00:00',
+                'commerce-co-op/author/Noah-Oken-Berg.html' => '2026-03-27 12:00:00',
+            ],
+            $this->urls()
+        );
+    }
+
+    /**
      * The sitemap lists the addresses the store serves. On a store that moved
      * the blog to /news, a /blog entry would point search engines at a 404.
      */

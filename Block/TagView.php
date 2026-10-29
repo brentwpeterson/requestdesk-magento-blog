@@ -110,14 +110,15 @@ class TagView extends PostList
     }
 
     /**
-     * Page heading for the shared list template: the tag's name.
+     * Page heading for the shared list template: "Posts tagged 'Name'", the same
+     * wording as the page title and as Amasty Blog.
      *
      * @return string
      */
     public function getListingTitle(): string
     {
         $tag = $this->getTag();
-        return $tag !== null ? $tag['name'] : '';
+        return $tag !== null ? (string) __("Posts tagged '%1'", $tag['name']) : '';
     }
 
     /**

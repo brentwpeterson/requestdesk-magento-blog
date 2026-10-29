@@ -423,6 +423,27 @@ prefix for the purpose of Include Blog in Menu, which matches on where the
 entry points rather than on a hard-coded `/blog`. Flush the full page cache after
 changing it, which the admin marks as invalid for you.
 
+### Blog URL Suffix
+
+`.html` puts the listing at `/news.html`, posts at `/news/<url-key>.html` and
+archives at `/news/category/<url-key>.html`. Set it to the same ending the old
+blog used and every address search engines already know keeps answering.
+Amasty Blog Pro ends its addresses in `.html` by default, so a store migrating
+off Amasty sets `.html` here.
+
+With a suffix set, the address without it redirects to the one with it using a
+301, which is what Amasty does, so the extensionless form never becomes a second
+copy of a page. The redirect keeps the query string (`/news?p=2` goes to
+`/news.html?p=2`). Posts, archives and the listing take the suffix; the comment
+endpoint, search and the id forms (`/news/post/view/id/N`) do not, and a
+POST is never redirected. Links, the canonical tag, the JSON-LD and the XML
+sitemap all use the suffixed form.
+
+A dot followed by one to ten letters or digits. A value that is not (a slash, a
+space, a second dot) is logged as an error and ignored, so the blog keeps
+working without a suffix until it is corrected. Leave the field empty for no
+suffix, which is the default and changes nothing for existing stores.
+
 ### Include Blog in Menu
 
 Stores link the blog from their main menu with a catalog category, which is what
@@ -461,6 +482,7 @@ menu tree describes it, so nothing here can find it.
 | Setting | Description |
 |---------|-------------|
 | Blog URL Prefix | First path segment of every blog address. See below. Empty means `blog` |
+| Blog URL Suffix | Ending of every blog address, such as `.html`. See below. Empty means none |
 | Default Meta Title | Default meta title for blog listing |
 | Default Meta Description | Default meta description for blog listing |
 
@@ -921,6 +943,40 @@ Answer Engine Optimization (AEO) is the practice of structuring content so AI sy
 - Content not optimized for AI will become invisible
 
 ## Changelog
+
+### 1.14.0 (2026-10-09)
+
+Found by rehearsing the Magento Association migration from Amasty: the data
+moved cleanly, but every address the live blog serves ends in `.html` and every
+one of them would have returned 404, and the pages lost their canonical tag and
+breadcrumb data.
+
+- **New: Blog URL Suffix** (Stores → Configuration → RequestDesk → Blog → SEO
+  Settings). `.html` makes the module answer on the addresses Amasty used. The
+  address without the suffix redirects to the one with it with a 301. Default
+  empty, so existing stores change nothing
+- **Change: canonical links follow the suffix.** The canonical tags 1.13.1
+  added on posts, the listing, categories, tags and authors name the suffixed
+  address, the same one the links and the sitemap use
+- **New: BreadcrumbList structured data** on posts (Home, Blog, the post),
+  beside the BlogPosting. The post JSON-LD is now always a `@graph`
+- **Fix: migrated author and tag url_keys.** `migrate-amasty` rebuilt them from
+  names, so accents and dots were dropped and capitals lowercased, and the
+  pages Amasty published at the original keys returned 404. The Amasty key is
+  now kept exactly. Existing authors and tags are not rewritten
+- **Change: author and tag pages** are titled "Articles by Name" and "Posts
+  tagged 'Name'" (the wording Amasty used), and the author page takes its meta
+  description from the bio
+- **Change: XML sitemap** lists the suffixed form of the listing, posts and
+  archives on a store with a suffix. Id-form fallbacks are listed as before
+- **Fix: storefront gate** compared `news.html` to the prefix `news` and refused
+  the suffixed listing; it now ignores the suffix
+- **Change: `Controller\Router`** takes the response and URL builder as extra
+  constructor arguments. `BlogUrl`, `PostUrl` and `ArchiveUrl` take an optional
+  `$suffix`
+- **Test: `Test/Migration/verify_amasty_migration.py`** compares every migrated
+  post to its Amasty original (title, key, date, body, meta, author, tags,
+  categories, image) and re-runs the migration to prove it changes nothing
 
 ### 1.13.1 (2026-10-23)
 

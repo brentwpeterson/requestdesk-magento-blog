@@ -249,7 +249,7 @@ class PostView extends Template implements IdentityInterface
 
         return [
             'title' => (string) $post->getTitle(),
-            'url' => PostUrl::resolve($post, $this->_urlBuilder, $this->config->getUrlPrefix()),
+            'url' => PostUrl::resolve($post, $this->_urlBuilder, $this->config->getUrlPrefix(), $this->config->getUrlSuffix()),
         ];
     }
 
@@ -260,7 +260,7 @@ class PostView extends Template implements IdentityInterface
      */
     public function getBackUrl(): string
     {
-        return $this->_urlBuilder->getUrl('', ['_direct' => $this->config->getUrlPrefix()]);
+        return $this->_urlBuilder->getUrl('', ['_direct' => $this->config->getUrlPrefix() . $this->config->getUrlSuffix()]);
     }
 
     /**
@@ -272,7 +272,7 @@ class PostView extends Template implements IdentityInterface
     {
         $post = $this->getPost();
 
-        return $post ? PostUrl::resolve($post, $this->_urlBuilder, $this->config->getUrlPrefix()) : '';
+        return $post ? PostUrl::resolve($post, $this->_urlBuilder, $this->config->getUrlPrefix(), $this->config->getUrlSuffix()) : '';
     }
 
     /**

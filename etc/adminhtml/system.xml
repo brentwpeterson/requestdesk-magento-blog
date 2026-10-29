@@ -120,6 +120,11 @@
                     <comment>The first part of every blog address. "news" puts the blog at /news, posts at /news/post-name and archives at /news/category/name, and /blog stops answering. Lowercase letters, numbers, hyphens and underscores. Leave empty to keep /blog.</comment>
                 </field>
 
+                <field id="url_suffix" translate="label comment" type="text" sortOrder="15" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Blog URL Suffix</label>
+                    <comment>The ending of every blog address. ".html" gives /news/post-name.html and /news.html. Set it to the same ending the old blog used so addresses search engines already know keep working; the address without the ending then redirects to the one with it. A dot followed by letters or digits. Leave empty for no ending.</comment>
+                </field>
+
                 <field id="meta_title" translate="label comment" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Default Meta Title</label>
                     <comment>Default meta title for blog listing page.</comment>

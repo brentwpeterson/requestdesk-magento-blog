@@ -435,7 +435,7 @@ class PostList extends Template implements IdentityInterface
      */
     protected function getListingUrl(): string
     {
-        return $this->_urlBuilder->getUrl('', ['_direct' => $this->config->getUrlPrefix()]);
+        return $this->_urlBuilder->getUrl('', ['_direct' => $this->config->getUrlPrefix() . $this->config->getUrlSuffix()]);
     }
 
     /**
@@ -446,6 +446,16 @@ class PostList extends Template implements IdentityInterface
     protected function getUrlPrefix(): string
     {
         return $this->config->getUrlPrefix();
+    }
+
+    /**
+     * The store's blog URL suffix (.html or empty), for the archive blocks' getListingUrl().
+     *
+     * @return string
+     */
+    protected function getUrlSuffix(): string
+    {
+        return $this->config->getUrlSuffix();
     }
 
     /**
@@ -502,7 +512,7 @@ class PostList extends Template implements IdentityInterface
      */
     public function getPostUrl(PostInterface $post): string
     {
-        return PostUrl::resolve($post, $this->_urlBuilder, $this->config->getUrlPrefix());
+        return PostUrl::resolve($post, $this->_urlBuilder, $this->config->getUrlPrefix(), $this->config->getUrlSuffix());
     }
 
     /**

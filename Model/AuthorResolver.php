@@ -97,7 +97,8 @@ class AuthorResolver
                 (int) $row['author_id'],
                 $row['url_key'] ?? null,
                 $this->urlBuilder,
-                $this->config->getUrlPrefix()
+                $this->config->getUrlPrefix(),
+                $this->config->getUrlSuffix()
             ),
             'link' => (string) ($row['url'] ?? ''),
         ];
@@ -117,9 +118,17 @@ class AuthorResolver
      * @param string $name Display name; blank returns 0
      * @param string|null $bio Optional bio, only used when creating
      * @param string|null $avatar Optional avatar path, only used when creating
+     * @param string|null $urlKey Optional key to keep, only used when creating. A migration
+     *        passes the key the old blog already published, so the author's page keeps its
+     *        address; without one the key is made from the name
      * @return int author_id, or 0 when the name is blank
      */
-    public function getOrCreateByName(string $name, ?string $bio = null, ?string $avatar = null): int
+    public function getOrCreateByName(
+        string $name,
+        ?string $bio = null,
+        ?string $avatar = null,
+        ?string $urlKey = null
+    ): int
     {
         $name = trim($name);
         if ($name === '') {
@@ -141,7 +150,7 @@ class AuthorResolver
 
         $connection->insert($table, [
             'name' => $name,
-            'url_key' => $this->uniqueUrlKey($this->slugify($name)),
+            'url_key' => $this->uniqueUrlKey($this->preferredKey($urlKey) ?? $this->slugify($name)),
             'bio' => $bio !== null && trim($bio) !== '' ? $bio : null,
             'avatar' => $avatar !== null && trim($avatar) !== '' ? $avatar : null,
             'admin_user_id' => $this->matchUnlinkedAdminUser($name),
@@ -184,6 +193,21 @@ class AuthorResolver
         );
 
         return $alreadyLinked ? null : $userId;
+    }
+
+    /**
+     * The key a migration asked to keep, trimmed, or null when none was given.
+     *
+     * Kept exactly as published, case and punctuation included: the old blog
+     * answered on that spelling and search engines indexed it.
+     *
+     * @param string|null $urlKey
+     * @return string|null
+     */
+    private function preferredKey(?string $urlKey): ?string
+    {
+        $urlKey = trim((string) $urlKey);
+        return $urlKey !== '' ? $urlKey : null;
     }
 
     /**

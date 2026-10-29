@@ -40,10 +40,15 @@ class BlogUrl
         string $prefix,
         string $path,
         array $query,
-        UrlInterface $urlBuilder
+        UrlInterface $urlBuilder,
+        string $suffix = ''
     ): string {
         $path = trim($path, '/');
-        $direct = $prefix . '/' . ($path !== '' ? $path . '/' : '');
+        // Only the blog index takes the suffix (/news.html). Controller paths such as
+        // comment/save and search stay as they are: they are not pages to index.
+        $direct = ($path === '' && $suffix !== '')
+            ? $prefix . $suffix
+            : $prefix . '/' . ($path !== '' ? $path . '/' : '');
 
         $url = $urlBuilder->getUrl('', ['_direct' => $direct]);
 
