@@ -7,6 +7,7 @@
  * - POST   /V1/requestdesk/blog/posts          - Create/update post from RequestDesk
  * - GET    /V1/requestdesk/blog/posts          - List all posts
  * - GET    /V1/requestdesk/blog/posts/:postId  - Get single post
+ * - PUT    /V1/requestdesk/blog/posts/:postId  - Update post by Magento id (partial)
  * - DELETE /V1/requestdesk/blog/posts/:postId  - Delete post
  * - POST   /V1/requestdesk/blog/posts/:postId/products - Link products to post
  * - GET    /V1/requestdesk/blog/posts/:postId/products - Get linked products
@@ -56,6 +57,14 @@
         <service class="RequestDesk\Blog\Api\PostRepositoryInterface" method="getById"/>
         <resources>
             <resource ref="RequestDesk_Blog::view"/>
+        </resources>
+    </route>
+
+    <!-- Update Post by Magento id (partial; any post, RequestDesk-linked or not) -->
+    <route url="/V1/requestdesk/blog/posts/:postId" method="PUT">
+        <service class="RequestDesk\Blog\Api\PostManagementInterface" method="updatePost"/>
+        <resources>
+            <resource ref="RequestDesk_Blog::manage"/>
         </resources>
     </route>
 
