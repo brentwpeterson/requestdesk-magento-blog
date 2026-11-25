@@ -944,6 +944,20 @@ Answer Engine Optimization (AEO) is the practice of structuring content so AI sy
 
 ## Changelog
 
+### 1.14.1 (2026-11-25)
+
+Found setting up the first RequestDesk import on www.evrig.com.
+
+- **Fix: Import Posts and Sync Products buttons.** The admin calls behind
+  Import Posts, Sync Products and the Test Connection buttons on those two
+  screens sent no form key, so Magento answered with an HTML page and the
+  screen showed "Request Failed, Unexpected token '<'". They now send the
+  form key.
+- **Fix: default API endpoint.** The default was `https://api.requestdesk.ai`,
+  which does not resolve. It is now `https://app.requestdesk.ai`. A store
+  that already saved the old value keeps it; change it under Stores →
+  Configuration → RequestDesk Blog → RequestDesk API Configuration.
+
 ### 1.14.0 (2026-10-09)
 
 Found by rehearsing the Magento Association migration from Amasty: the data
