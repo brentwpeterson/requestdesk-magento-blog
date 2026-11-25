@@ -944,6 +944,18 @@ Answer Engine Optimization (AEO) is the practice of structuring content so AI sy
 
 ## Changelog
 
+### 1.14.2 (2026-11-25)
+
+Found publishing the first RequestDesk post on www.evrig.com.
+
+- **Fix: imported posts lost their author.** RequestDesk sends the byline as
+  `author_name`. The importer read `author`, which never arrives, so every
+  imported post was bylined "RequestDesk", and a byline set in Magento was
+  replaced on the next import. The importer now reads `author_name`, then
+  `author`, then falls back to "RequestDesk".
+- **Fix: image alt text on import.** `featured_image_alt` from RequestDesk is
+  now saved, so the frontend no longer falls back to the post title.
+
 ### 1.14.1 (2026-11-25)
 
 Found setting up the first RequestDesk import on www.evrig.com.
