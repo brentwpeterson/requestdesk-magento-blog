@@ -92,7 +92,7 @@
 
                 <field id="endpoint_url" translate="label comment" type="text" sortOrder="20" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>RequestDesk API Endpoint</label>
-                    <comment>Base URL for RequestDesk API (e.g., https://api.requestdesk.ai)</comment>
+                    <comment>Base URL for RequestDesk API (e.g., https://app.requestdesk.ai)</comment>
                 </field>
 
                 <field id="test_connection" translate="label" type="button" sortOrder="30" showInDefault="1" showInWebsite="0" showInStore="0">

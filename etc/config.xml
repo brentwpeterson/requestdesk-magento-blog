@@ -24,7 +24,7 @@
                 <items_per_group>3</items_per_group>
             </search>
             <api>
-                <endpoint_url>https://api.requestdesk.ai</endpoint_url>
+                <endpoint_url>https://app.requestdesk.ai</endpoint_url>
             </api>
             <seo>
                 <url_prefix>blog</url_prefix>
