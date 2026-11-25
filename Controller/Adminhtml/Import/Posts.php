@@ -96,6 +96,9 @@ class Posts extends Action
                     $result['failed'] ?? 0
                 );
                 $this->messageManager->addSuccessMessage($message);
+                foreach ($result['warnings'] ?? [] as $warning) {
+                    $this->messageManager->addWarningMessage($warning);
+                }
             } else {
                 $this->messageManager->addErrorMessage(
                     __('Import failed: %1', $result['error'] ?? 'Unknown error')

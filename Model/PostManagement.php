@@ -23,10 +23,18 @@ use Psr\Log\LoggerInterface;
 use RequestDesk\Blog\Api\Data\PostInterface;
 use RequestDesk\Blog\Api\PostManagementInterface;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
+use RequestDesk\Blog\Model\Qa\ContentQaSync;
 
 class PostManagement implements PostManagementInterface
 {
     private const PRODUCT_LINK_TABLE = 'requestdesk_blog_product';
+
+    private const VALID_STATUSES = [
+        PostInterface::STATUS_DRAFT,
+        PostInterface::STATUS_PUBLISHED,
+        PostInterface::STATUS_HIDDEN,
+        PostInterface::STATUS_SCHEDULED,
+    ];
 
     /**
      * @param PostRepositoryInterface $postRepository
@@ -35,6 +43,7 @@ class PostManagement implements PostManagementInterface
      * @param LoggerInterface $logger
      * @param PostCategoryResolver $postCategoryResolver
      * @param BlogCache $blogCache
+     * @param ContentQaSync $contentQaSync
      */
     public function __construct(
         private readonly PostRepositoryInterface $postRepository,
@@ -42,7 +51,8 @@ class PostManagement implements PostManagementInterface
         private readonly ResourceConnection $resourceConnection,
         private readonly LoggerInterface $logger,
         private readonly PostCategoryResolver $postCategoryResolver,
-        private readonly BlogCache $blogCache
+        private readonly BlogCache $blogCache,
+        private readonly ContentQaSync $contentQaSync
     ) {
     }
 
@@ -99,8 +109,12 @@ class PostManagement implements PostManagementInterface
             ->setRequestdeskSyncStatus(PostInterface::SYNC_STATUS_SYNCED)
             ->setRequestdeskLastSync(date('Y-m-d H:i:s'));
 
+        // The body's Q&A section moves into the Q&A library (see ContentQaSync).
+        $qa = $this->contentQaSync->prepare($post);
+
         // Save post
         $savedPost = $this->postRepository->save($post);
+        $this->contentQaSync->finish((int) $savedPost->getPostId(), $qa);
         $this->logger->info('RequestDesk Blog: Post saved', ['post_id' => $savedPost->getPostId()]);
 
         // Link products if provided
@@ -118,6 +132,113 @@ class PostManagement implements PostManagementInterface
                 array_values(array_filter(array_map('intval', $categoryIds)))
             );
         }
+
+        return $savedPost;
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function updatePost(
+        int $postId,
+        ?string $title = null,
+        ?string $content = null,
+        ?string $urlKey = null,
+        ?string $metaTitle = null,
+        ?string $metaDescription = null,
+        ?string $featuredImage = null,
+        ?string $featuredImageAlt = null,
+        ?int $status = null,
+        ?string $author = null,
+        ?int $storeId = null,
+        ?array $productIds = null,
+        ?array $categoryIds = null
+    ): PostInterface {
+        // getById throws NoSuchEntityException for an unknown id, which the
+        // REST layer returns as a 404. Nothing is created here, ever.
+        $post = $this->postRepository->getById($postId);
+
+        if ($status !== null && !in_array($status, self::VALID_STATUSES, true)) {
+            throw new LocalizedException(
+                __('Invalid status: %1. Valid values are: %2', $status, implode(', ', self::VALID_STATUSES))
+            );
+        }
+
+        // Only the fields the caller sent change. Unlike createOrUpdate, which
+        // replaces the whole post, this is a partial update, so it is safe on
+        // posts that never came from RequestDesk (no requestdesk_post_id).
+        $fields = [
+            'title' => $title,
+            'content' => $content,
+            'url_key' => $urlKey,
+            'meta_title' => $metaTitle,
+            'meta_description' => $metaDescription,
+            'featured_image' => $featuredImage,
+            'featured_image_alt' => $featuredImageAlt,
+            'status' => $status,
+            'author' => $author,
+            'store_id' => $storeId,
+        ];
+        $changed = array_keys(array_filter($fields, static fn ($value) => $value !== null));
+        if ($changed === [] && $productIds === null && $categoryIds === null) {
+            throw new LocalizedException(__('Nothing to update: send at least one field.'));
+        }
+
+        if ($title !== null) {
+            $post->setTitle($title);
+        }
+        if ($content !== null) {
+            $post->setContent($content);
+        }
+        if ($urlKey !== null) {
+            $post->setUrlKey($urlKey);
+        }
+        if ($metaTitle !== null) {
+            $post->setMetaTitle($metaTitle);
+        }
+        if ($metaDescription !== null) {
+            $post->setMetaDescription($metaDescription);
+        }
+        if ($featuredImage !== null) {
+            $post->setFeaturedImage($featuredImage);
+        }
+        if ($featuredImageAlt !== null) {
+            $post->setFeaturedImageAlt($featuredImageAlt);
+        }
+        if ($status !== null) {
+            $post->setStatus($status);
+        }
+        if ($author !== null) {
+            $post->setAuthor($author);
+        }
+        if ($storeId !== null) {
+            $post->setStoreId($storeId);
+        }
+
+        // A new body may carry a Q&A section; it moves to the library as on create.
+        $qa = $content !== null
+            ? $this->contentQaSync->prepare($post)
+            : ['status' => ContentQaSync::STATUS_NONE, 'qa_ids' => [], 'pairs' => 0];
+
+        $savedPost = $this->postRepository->save($post);
+        $savedId = (int) $savedPost->getPostId();
+        $this->contentQaSync->finish($savedId, $qa);
+
+        if ($productIds !== null) {
+            $this->linkProducts($savedId, $productIds);
+        }
+        if ($categoryIds !== null) {
+            $this->postCategoryResolver->syncForPost(
+                $savedId,
+                array_values(array_filter(array_map('intval', $categoryIds)))
+            );
+        }
+
+        $this->logger->info('RequestDesk Blog: Post updated by id', [
+            'post_id' => $savedId,
+            'fields' => $changed,
+            'requestdesk_post_id' => $savedPost->getRequestdeskPostId(),
+        ]);
 
         return $savedPost;
     }

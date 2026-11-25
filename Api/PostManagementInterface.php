@@ -57,6 +57,47 @@ interface PostManagementInterface
     ): PostInterface;
 
     /**
+     * Update an existing post by its Magento id, changing only the fields sent
+     *
+     * Works on every post, including ones with no RequestDesk post id, which
+     * createOrUpdate cannot reach (it matches on requestdeskPostId and would
+     * create a duplicate). A post that is linked to RequestDesk is overwritten
+     * by the next import, so edit those in RequestDesk.
+     *
+     * @param int $postId Magento blog post ID
+     * @param string|null $title Post title
+     * @param string|null $content Post HTML content
+     * @param string|null $urlKey URL key/slug
+     * @param string|null $metaTitle SEO meta title
+     * @param string|null $metaDescription SEO meta description
+     * @param string|null $featuredImage Featured image URL or media path
+     * @param string|null $featuredImageAlt Featured image alt text
+     * @param int|null $status Status (0=draft, 1=published, 2=hidden, 3=scheduled)
+     * @param string|null $author Author byline
+     * @param int|null $storeId Store ID (0 for all stores)
+     * @param int[]|null $productIds Product IDs to link; replaces existing links
+     * @param int[]|null $categoryIds Blog category IDs; replaces existing categories
+     * @return PostInterface
+     * @throws LocalizedException
+     * @throws \Magento\Framework\Exception\NoSuchEntityException
+     */
+    public function updatePost(
+        int $postId,
+        ?string $title = null,
+        ?string $content = null,
+        ?string $urlKey = null,
+        ?string $metaTitle = null,
+        ?string $metaDescription = null,
+        ?string $featuredImage = null,
+        ?string $featuredImageAlt = null,
+        ?int $status = null,
+        ?string $author = null,
+        ?int $storeId = null,
+        ?array $productIds = null,
+        ?array $categoryIds = null
+    ): PostInterface;
+
+    /**
      * Link products to a blog post
      *
      * @param int $postId Blog post ID

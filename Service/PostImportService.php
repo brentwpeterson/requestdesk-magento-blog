@@ -27,6 +27,7 @@ use Psr\Log\LoggerInterface;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
 use RequestDesk\Blog\Api\Data\PostInterface;
 use RequestDesk\Blog\Model\PostFactory;
+use RequestDesk\Blog\Model\Qa\ContentQaSync;
 use RequestDesk\Blog\Model\TagResolver;
 
 class PostImportService
@@ -95,6 +96,7 @@ class PostImportService
      * @param PostFactory $postFactory
      * @param ResourceConnection $resource
      * @param TagResolver $tagResolver
+     * @param ContentQaSync $contentQaSync
      */
     public function __construct(
         ScopeConfigInterface $scopeConfig,
@@ -105,7 +107,8 @@ class PostImportService
         PostRepositoryInterface $postRepository,
         PostFactory $postFactory,
         private readonly ResourceConnection $resource,
-        private readonly TagResolver $tagResolver
+        private readonly TagResolver $tagResolver,
+        private readonly ContentQaSync $contentQaSync
     ) {
         $this->scopeConfig = $scopeConfig;
         $this->encryptor = $encryptor;
@@ -157,10 +160,15 @@ class PostImportService
             $updated = 0;
             $failed = 0;
             $errors = [];
+            $warnings = [];
 
             foreach ($posts as $postData) {
                 try {
                     $result = $this->importSinglePost($postData);
+                    if ($result['qa_status'] === ContentQaSync::STATUS_QA_MODULE_MISSING) {
+                        $warnings[] = "Post {$postData['id']}: has a Q&A section but no FAQ schema, "
+                            . 'because RequestDesk_Qa is not installed (composer require requestdesk/magento-qa).';
+                    }
                     if ($result['created']) {
                         $imported++;
                     } else {
@@ -191,15 +199,21 @@ class PostImportService
 
             $this->logger->info("RequestDesk: Import complete - {$imported} created, {$updated} updated, {$failed} failed");
 
+            $message = "Import complete: {$imported} created, {$updated} updated, {$failed} failed";
+            if ($warnings !== []) {
+                $message .= '. ' . count($warnings) . ' post(s) imported without FAQ schema: RequestDesk_Qa is not installed.';
+            }
+
             return [
                 'success' => true,
-                'message' => "Import complete: {$imported} created, {$updated} updated, {$failed} failed",
+                'message' => $message,
                 'total_fetched' => count($posts),
                 'imported' => $imported,
                 'updated' => $updated,
                 'failed' => $failed,
                 'has_more' => $postsData['has_more'] ?? false,
-                'errors' => $errors
+                'errors' => $errors,
+                'warnings' => $warnings
             ];
 
         } catch (\Exception $e) {
@@ -344,9 +358,16 @@ class PostImportService
         $post->setRequestdeskSyncStatus(PostInterface::SYNC_STATUS_SYNCED);
         $post->setRequestdeskLastSync(date('Y-m-d H:i:s'));
 
+        // Q&A: the body's Q&A section moves into the Q&A library so the post
+        // gets FAQPage schema and one visible FAQ block from the linked pairs.
+        // Pairs are stored before the save, with the body still intact.
+        $qa = $this->contentQaSync->prepare($post);
+
         // Save the post
         $savedPost = $this->postRepository->save($post);
         $savedId = (int) $savedPost->getPostId();
+
+        $qa = $this->contentQaSync->finish($savedId, $qa);
 
         // Tags: incoming tag names become real tag entities (auto-create) and
         // are linked to the post. Only touch links when the payload carries a
@@ -367,7 +388,9 @@ class PostImportService
 
         return [
             'created' => $created,
-            'magento_post_id' => $savedPost->getPostId()
+            'magento_post_id' => $savedPost->getPostId(),
+            'qa_status' => $qa['status'],
+            'qa_pairs' => $qa['pairs']
         ];
     }
 

@@ -91,6 +91,10 @@ class ImportPosts
                     $result['failed'] ?? 0
                 ));
 
+                foreach ($result['warnings'] ?? [] as $warning) {
+                    $this->logger->error('RequestDesk: ' . $warning);
+                }
+
                 // If there are more posts, log it
                 if (!empty($result['has_more'])) {
                     $this->logger->info('RequestDesk: More posts available, will import on next cron run');
