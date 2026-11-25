@@ -117,8 +117,9 @@ $endpointUrl = $block->getEndpointUrl();
 
         fetch('<?= $escaper->escapeUrl($block->getTestUrl()) ?>', {
             method: 'POST',
+            body: new URLSearchParams({form_key: window.FORM_KEY}),
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded',
                 'X-Requested-With': 'XMLHttpRequest'
             }
         })
@@ -162,8 +163,9 @@ $endpointUrl = $block->getEndpointUrl();
 
         fetch('<?= $escaper->escapeUrl($block->getSyncUrl()) ?>', {
             method: 'POST',
+            body: new URLSearchParams({form_key: window.FORM_KEY}),
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded',
                 'X-Requested-With': 'XMLHttpRequest'
             }
         })
