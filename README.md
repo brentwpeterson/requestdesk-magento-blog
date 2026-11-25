@@ -546,6 +546,7 @@ attach them to posts (and products) to drive on-page FAQ and `FAQPage` schema.
 | `POST` | `/V1/requestdesk/blog/posts` | Create or update post |
 | `GET` | `/V1/requestdesk/blog/posts` | List all posts |
 | `GET` | `/V1/requestdesk/blog/posts/:postId` | Get single post |
+| `PUT` | `/V1/requestdesk/blog/posts/:postId` | Update post by Magento id, only the fields sent |
 | `DELETE` | `/V1/requestdesk/blog/posts/:postId` | Delete post |
 | `PUT` | `/V1/requestdesk/blog/posts/:postId/sync-status` | Update sync status |
 
@@ -943,6 +944,30 @@ Answer Engine Optimization (AEO) is the practice of structuring content so AI sy
 - Content not optimized for AI will become invisible
 
 ## Changelog
+
+### 1.14.3 (2026-11-25)
+
+Found publishing the first RequestDesk post on www.evrig.com.
+
+- **Fix: RequestDesk posts got no FAQ schema.** RequestDesk writes a post's Q&A
+  as a `<section data-qa>` block at the end of the body. FAQPage schema is
+  built from Q&A pairs linked to the post, and nothing turned that block into
+  pairs, so the post showed its Q&A and shipped without schema. The importer
+  and the `POST /V1/requestdesk/blog/posts` endpoint now store each question
+  and answer in the Q&A library, link them to the post, and take the block out
+  of the body. The post then renders one FAQ block and its FAQPage schema from
+  the same pairs. A pair with the same question and answer is reused, so
+  re-imports do not duplicate the library.
+- **Needs `requestdesk/magento-qa`.** Without it there is no Q&A library and no
+  FAQPage builder. The body is left as it is, so readers still see the Q&A, the
+  log records an error for the post, and the admin import shows a warning for
+  each post that went without schema.
+- **New: update a post by its Magento id.** `PUT
+  /V1/requestdesk/blog/posts/:postId` changes only the fields sent. It reaches
+  posts that never came from RequestDesk, which `POST` cannot: `POST` matches on
+  `requestdeskPostId` and would create a duplicate. It never creates a post; an
+  unknown id returns 404. A post linked to RequestDesk is overwritten by the
+  next import, so edit those in RequestDesk.
 
 ### 1.14.2 (2026-11-25)
 
