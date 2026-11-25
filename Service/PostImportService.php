@@ -316,11 +316,18 @@ class PostImportService
         $post->setMetaTitle($postData['seo_title'] ?? $postData['title']);
         $post->setMetaDescription($postData['seo_description'] ?? substr(strip_tags($postData['content'] ?? ''), 0, 160));
         $post->setFeaturedImage($postData['featured_image'] ?? null);
+        $post->setFeaturedImageAlt($postData['featured_image_alt'] ?? null);
 
         // Author: keep the incoming name as the free-text byline (fallback),
         // and additionally resolve it to a native admin_user when one matches
         // so the imported post gets the author page + profile.
-        $authorName = (string) ($postData['author'] ?? 'RequestDesk');
+        // RequestDesk's public posts API sends the byline as author_name; the
+        // old 'author' key never arrived, so every import was bylined
+        // "RequestDesk" (2026-11-25, Evrig).
+        $authorName = trim((string) ($postData['author_name'] ?? $postData['author'] ?? ''));
+        if ($authorName === '') {
+            $authorName = 'RequestDesk';
+        }
         $post->setAuthor($authorName);
         $post->setAuthorId($this->resolveAuthorId($authorName));
 
