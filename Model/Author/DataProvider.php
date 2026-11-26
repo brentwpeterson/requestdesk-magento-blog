@@ -14,9 +14,8 @@ declare(strict_types=1);
 namespace RequestDesk\Blog\Model\Author;
 
 use Magento\Framework\App\Request\DataPersistorInterface;
-use Magento\Store\Model\StoreManagerInterface;
+use RequestDesk\Blog\Model\ImagePreview;
 use Magento\Ui\DataProvider\AbstractDataProvider;
-use RequestDesk\Blog\Block\ImageUrl;
 use RequestDesk\Blog\Model\ResourceModel\Author\CollectionFactory;
 
 class DataProvider extends AbstractDataProvider
@@ -37,7 +36,7 @@ class DataProvider extends AbstractDataProvider
      * @param string $requestFieldName
      * @param CollectionFactory $collectionFactory
      * @param DataPersistorInterface $dataPersistor
-     * @param StoreManagerInterface $storeManager
+     * @param ImagePreview $imagePreview
      * @param array $meta
      * @param array $data
      */
@@ -47,7 +46,7 @@ class DataProvider extends AbstractDataProvider
         $requestFieldName,
         CollectionFactory $collectionFactory,
         DataPersistorInterface $dataPersistor,
-        private readonly StoreManagerInterface $storeManager,
+        private readonly ImagePreview $imagePreview,
         array $meta = [],
         array $data = []
     ) {
@@ -92,13 +91,6 @@ class DataProvider extends AbstractDataProvider
      */
     private function avatarForUploader(string $path): array
     {
-        if (trim($path) === '') {
-            return [];
-        }
-
-        return [[
-            'name' => basename($path), // phpcs:ignore Magento2.Functions.DiscouragedFunction
-            'url' => ImageUrl::resolve($path, $this->storeManager),
-        ]];
+        return $this->imagePreview->forUploader($path);
     }
 }
