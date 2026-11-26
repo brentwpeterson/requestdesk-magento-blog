@@ -717,10 +717,16 @@ are no redirects to maintain.
 1. Create blog post in RequestDesk (manually or AI-generated)
 2. Set post status to "Published"
 3. Hourly cron job runs OR admin clicks "Import Posts"
-4. Extension fetches posts via RequestDesk API
-5. Posts created/updated in Magento
-6. Sync status reported back to RequestDesk
+4. Extension lists the agent's published posts (GET /api/public-posts/)
+5. A post imported before and not changed in RequestDesk since is skipped
+6. Each new or changed post's body is fetched (GET /api/public-posts/{slug});
+   a post that comes back without a body is reported as failed and not saved
+7. Post created or updated in Magento, with its tags and categories
+   (created in Magento when missing). A post with no tags or categories in
+   RequestDesk keeps the ones set in the Magento admin.
 ```
+
+RequestDesk no longer accepts sync status reports, so nothing is sent back.
 
 ### API Key Authentication
 
@@ -944,6 +950,34 @@ Answer Engine Optimization (AEO) is the practice of structuring content so AI sy
 - Content not optimized for AI will become invisible
 
 ## Changelog
+
+### 1.14.4 (2026-11-26)
+
+Found reviewing the import with Evrig before their first deploy.
+
+- **Fix: imported posts were saved with an empty body.** RequestDesk's list call
+  returns posts without their content, and the importer saved straight from
+  it. A new post got an empty body, and a post already in Magento had its body
+  emptied on the next import. The importer now fetches each post's body from
+  the single-post call and never saves a post without one: an empty or failed
+  fetch is reported as a failed post and the existing post is left as it is.
+  A post an earlier version emptied is fetched again on the next run.
+- **Fix: every post was re-imported every hour.** RequestDesk ignores the
+  `sync_status` filter the cron sends, so each run updated every published
+  post and replaced edits made in the Magento admin. A post is now imported
+  again only when RequestDesk shows it changed after its last import. The
+  import result counts these as "unchanged".
+- **New: categories are imported.** A RequestDesk post's categories are linked
+  to blog categories matched by name or URL key, and created (enabled) when
+  missing. A post with no categories in RequestDesk keeps the ones set in the
+  Magento admin.
+- **Fix: tags sent as objects were dropped.** RequestDesk sends tags as
+  `{name, slug}` objects for companies with a tag list, and the importer read
+  only plain names.
+- **Fix: "NaN undefined" under saved images.** The post and author forms gave
+  Magento's image preview no file size, which it prints as "NaN undefined".
+  Images in `pub/media` now show their real size. Images held elsewhere, such
+  as the S3 URL an import stores, show their dimensions without a size.
 
 ### 1.14.3 (2026-11-25)
 

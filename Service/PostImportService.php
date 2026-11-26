@@ -26,6 +26,7 @@ use Magento\Store\Model\StoreManagerInterface;
 use Psr\Log\LoggerInterface;
 use RequestDesk\Blog\Api\PostRepositoryInterface;
 use RequestDesk\Blog\Api\Data\PostInterface;
+use RequestDesk\Blog\Model\PostCategoryResolver;
 use RequestDesk\Blog\Model\PostFactory;
 use RequestDesk\Blog\Model\Qa\ContentQaSync;
 use RequestDesk\Blog\Model\TagResolver;
@@ -97,6 +98,7 @@ class PostImportService
      * @param ResourceConnection $resource
      * @param TagResolver $tagResolver
      * @param ContentQaSync $contentQaSync
+     * @param PostCategoryResolver $postCategoryResolver
      */
     public function __construct(
         ScopeConfigInterface $scopeConfig,
@@ -108,7 +110,8 @@ class PostImportService
         PostFactory $postFactory,
         private readonly ResourceConnection $resource,
         private readonly TagResolver $tagResolver,
-        private readonly ContentQaSync $contentQaSync
+        private readonly ContentQaSync $contentQaSync,
+        private readonly PostCategoryResolver $postCategoryResolver
     ) {
         $this->scopeConfig = $scopeConfig;
         $this->encryptor = $encryptor;
@@ -158,12 +161,27 @@ class PostImportService
             $posts = $postsData['posts'] ?? [];
             $imported = 0;
             $updated = 0;
+            $unchanged = 0;
             $failed = 0;
             $errors = [];
             $warnings = [];
 
-            foreach ($posts as $postData) {
+            foreach ($posts as $listedPost) {
+                $postData = $listedPost;
                 try {
+                    // RequestDesk ignores sync_status, so the list holds every
+                    // published post on every run. A post already imported and
+                    // not edited in RequestDesk since is left alone, so a manual
+                    // edit in the Magento admin survives the hourly run.
+                    if ($this->isUnchangedSinceLastImport($listedPost)) {
+                        $unchanged++;
+                        continue;
+                    }
+
+                    // The list call carries no body. Importing from it saved
+                    // every post with an empty body, over the existing one on
+                    // update. The single-post call has the content.
+                    $postData = $this->fetchFullPost($listedPost);
                     $result = $this->importSinglePost($postData);
                     if ($result['qa_status'] === ContentQaSync::STATUS_QA_MODULE_MISSING) {
                         $warnings[] = "Post {$postData['id']}: has a Q&A section but no FAQ schema, "
@@ -197,9 +215,13 @@ class PostImportService
                 }
             }
 
-            $this->logger->info("RequestDesk: Import complete - {$imported} created, {$updated} updated, {$failed} failed");
+            $this->logger->info(
+                "RequestDesk: Import complete - {$imported} created, {$updated} updated, "
+                . "{$unchanged} unchanged, {$failed} failed"
+            );
 
-            $message = "Import complete: {$imported} created, {$updated} updated, {$failed} failed";
+            $message = "Import complete: {$imported} created, {$updated} updated, "
+                . "{$unchanged} unchanged, {$failed} failed";
             if ($warnings !== []) {
                 $message .= '. ' . count($warnings) . ' post(s) imported without FAQ schema: RequestDesk_Qa is not installed.';
             }
@@ -210,6 +232,7 @@ class PostImportService
                 'total_fetched' => count($posts),
                 'imported' => $imported,
                 'updated' => $updated,
+                'unchanged' => $unchanged,
                 'failed' => $failed,
                 'has_more' => $postsData['has_more'] ?? false,
                 'errors' => $errors,
@@ -323,9 +346,16 @@ class PostImportService
             $this->logger->info("RequestDesk: Creating new post for {$requestdeskPostId}");
         }
 
+        // A post is never saved without a body. An empty body here means the
+        // payload is incomplete, and saving it would wipe the post on update.
+        $content = (string) ($postData['content'] ?? '');
+        if (trim($content) === '') {
+            throw new \RuntimeException('RequestDesk sent no body for this post, so it was not imported.');
+        }
+
         // Map RequestDesk fields to Magento fields
         $post->setTitle($postData['title'] ?? 'Untitled');
-        $post->setContent($postData['content'] ?? '');
+        $post->setContent($content);
         $post->setUrlKey($this->generateUrlKey($postData['slug'] ?? $postData['title']));
         $post->setMetaTitle($postData['seo_title'] ?? $postData['title']);
         $post->setMetaDescription($postData['seo_description'] ?? substr(strip_tags($postData['content'] ?? ''), 0, 160));
@@ -356,7 +386,7 @@ class PostImportService
         // Set RequestDesk tracking fields
         $post->setRequestdeskPostId($requestdeskPostId);
         $post->setRequestdeskSyncStatus(PostInterface::SYNC_STATUS_SYNCED);
-        $post->setRequestdeskLastSync(date('Y-m-d H:i:s'));
+        $post->setRequestdeskLastSync(gmdate('Y-m-d H:i:s'));
 
         // Q&A: the body's Q&A section moves into the Q&A library so the post
         // gets FAQPage schema and one visible FAQ block from the linked pairs.
@@ -369,21 +399,32 @@ class PostImportService
 
         $qa = $this->contentQaSync->finish($savedId, $qa);
 
-        // Tags: incoming tag names become real tag entities (auto-create) and
-        // are linked to the post. Only touch links when the payload carries a
-        // tags array, so re-imports of tag-less posts don't wipe manual tags.
-        if (isset($postData['tags']) && is_array($postData['tags'])) {
+        // Tags and categories: incoming names become real entities (created
+        // when missing) and are linked to the post. RequestDesk sends each as
+        // a {name, slug} object when the company has that taxonomy and as a
+        // plain name otherwise; the import used to accept only plain names,
+        // so tags were dropped and categories were never read at all.
+        // Links change only when the post carries at least one, so a post
+        // with none in RequestDesk keeps what was set in the Magento admin.
+        $tags = $this->taxonomyTerms($postData['tags'] ?? null);
+        if ($tags !== []) {
             $tagIds = [];
-            foreach ($postData['tags'] as $tagName) {
-                if (!is_string($tagName)) {
-                    continue;
-                }
-                $tagId = $this->tagResolver->getOrCreateByName($tagName);
+            foreach ($tags as $term) {
+                $tagId = $this->tagResolver->getOrCreateByName($term['name'], $term['slug']);
                 if ($tagId) {
                     $tagIds[] = $tagId;
                 }
             }
             $this->tagResolver->syncForPost($savedId, $tagIds);
+        }
+
+        $categories = $this->taxonomyTerms($postData['categories'] ?? null);
+        if ($categories !== []) {
+            $categoryIds = [];
+            foreach ($categories as $term) {
+                $categoryIds[] = $this->postCategoryResolver->getOrCreateByName($term['name'], $term['slug']);
+            }
+            $this->postCategoryResolver->syncForPost($savedId, $categoryIds);
         }
 
         return [
@@ -392,6 +433,104 @@ class PostImportService
             'qa_status' => $qa['status'],
             'qa_pairs' => $qa['pairs']
         ];
+    }
+
+    /**
+     * The full post, body included, from RequestDesk's single-post call.
+     *
+     * @param array $listedPost A row from the list call, which has no body
+     * @return array
+     * @throws \RuntimeException When the post cannot be fetched or has no body
+     */
+    private function fetchFullPost(array $listedPost): array
+    {
+        $slug = trim((string) ($listedPost['slug'] ?? ''));
+        if ($slug === '') {
+            throw new \RuntimeException('RequestDesk listed this post with no slug, so its body cannot be fetched.');
+        }
+
+        $url = rtrim((string) $this->getEndpointUrl(), '/') . self::PATH_POSTS . rawurlencode($slug);
+
+        $this->applyTimeouts();
+        $this->curl->setHeaders([
+            'Content-Type' => 'application/json',
+            self::HEADER_API_KEY => (string) $this->getApiKey()
+        ]);
+        $this->curl->get($url);
+
+        $status = (int) $this->curl->getStatus();
+        if ($status < 200 || $status >= 300) {
+            throw new \RuntimeException("Fetching the post body failed with HTTP {$status}.");
+        }
+
+        $response = json_decode((string) $this->curl->getBody(), true);
+        $post = is_array($response) ? ($response['post'] ?? null) : null;
+        if (!is_array($post)) {
+            throw new \RuntimeException('RequestDesk returned no post for slug "' . $slug . '".');
+        }
+        if ((string) ($post['id'] ?? '') !== (string) ($listedPost['id'] ?? '')) {
+            throw new \RuntimeException('RequestDesk returned a different post for slug "' . $slug . '".');
+        }
+
+        return $post;
+    }
+
+    /**
+     * Whether this post was imported before and RequestDesk has not changed
+     * it since. A post whose stored body is empty is never unchanged, so the
+     * next run repairs posts an earlier version saved without a body.
+     *
+     * @param array $listedPost
+     * @return bool
+     */
+    private function isUnchangedSinceLastImport(array $listedPost): bool
+    {
+        $modifiedAt = strtotime((string) ($listedPost['modified_at'] ?? '') . ' UTC');
+        if ($modifiedAt === false || empty($listedPost['modified_at'])) {
+            return false;
+        }
+
+        try {
+            $existing = $this->postRepository->getByRequestdeskPostId((string) $listedPost['id']);
+        } catch (\Magento\Framework\Exception\NoSuchEntityException $e) {
+            return false;
+        }
+
+        if (trim((string) $existing->getContent()) === '') {
+            return false;
+        }
+
+        $lastSync = strtotime((string) $existing->getRequestdeskLastSync() . ' UTC');
+
+        return $lastSync !== false && $lastSync >= $modifiedAt;
+    }
+
+    /**
+     * Names and slugs from a RequestDesk tags or categories array, which holds
+     * {name, slug} objects or plain names. A slug that is not a clean URL key
+     * is dropped, so the URL key is made from the name instead.
+     *
+     * @param mixed $items
+     * @return array<int, array{name:string, slug:?string}>
+     */
+    private function taxonomyTerms($items): array
+    {
+        if (!is_array($items)) {
+            return [];
+        }
+
+        $terms = [];
+        foreach ($items as $item) {
+            $name = is_array($item) ? ($item['name'] ?? '') : $item;
+            $slug = is_array($item) ? ($item['slug'] ?? null) : null;
+            if (!is_string($name) || trim($name) === '') {
+                continue;
+            }
+            $slug = is_string($slug) && preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $slug) ? $slug : null;
+            $terms[] = ['name' => trim($name), 'slug' => $slug];
+        }
+
+        return $terms;
     }
 
     /**

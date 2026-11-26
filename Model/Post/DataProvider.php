@@ -17,10 +17,9 @@ declare(strict_types=1);
 namespace RequestDesk\Blog\Model\Post;
 
 use Magento\Framework\App\Request\DataPersistorInterface;
-use Magento\Store\Model\StoreManagerInterface;
+use RequestDesk\Blog\Model\ImagePreview;
 use Magento\Ui\DataProvider\AbstractDataProvider;
 use RequestDesk\Blog\Api\QaLinkResolverInterface;
-use RequestDesk\Blog\Block\ImageUrl;
 use RequestDesk\Blog\Model\PostCategoryResolver;
 use RequestDesk\Blog\Model\ResourceModel\Post\CollectionFactory;
 use RequestDesk\Blog\Model\TagResolver;
@@ -46,7 +45,7 @@ class DataProvider extends AbstractDataProvider
      * @param PostCategoryResolver $categoryResolver
      * @param TagResolver $tagResolver
      * @param QaLinkResolverInterface $qaLinkResolver
-     * @param StoreManagerInterface $storeManager
+     * @param ImagePreview $imagePreview
      * @param array $meta
      * @param array $data
      */
@@ -59,7 +58,7 @@ class DataProvider extends AbstractDataProvider
         private readonly PostCategoryResolver $categoryResolver,
         private readonly TagResolver $tagResolver,
         private readonly QaLinkResolverInterface $qaLinkResolver,
-        private readonly StoreManagerInterface $storeManager,
+        private readonly ImagePreview $imagePreview,
         array $meta = [],
         array $data = []
     ) {
@@ -127,13 +126,6 @@ class DataProvider extends AbstractDataProvider
      */
     private function imageForUploader(string $path): array
     {
-        if (trim($path) === '') {
-            return [];
-        }
-
-        return [[
-            'name' => basename($path), // phpcs:ignore Magento2.Functions.DiscouragedFunction
-            'url' => ImageUrl::resolve($path, $this->storeManager),
-        ]];
+        return $this->imagePreview->forUploader($path);
     }
 }

@@ -126,7 +126,7 @@
                     <item name="uploaderConfig" xsi:type="array">
                         <item name="url" xsi:type="url" path="requestdesk_blog/author/upload"/>
                     </item>
-                    <item name="previewTmpl" xsi:type="string">Magento_Catalog/image-preview</item>
+                    <item name="previewTmpl" xsi:type="string">RequestDesk_Blog/form/element/image-preview</item>
                     <item name="allowedExtensions" xsi:type="string">jpg jpeg png gif webp</item>
                     <item name="maxFileSize" xsi:type="number">4194304</item>
                     <item name="notice" xsi:type="string" translate="true">Upload a square image. JPG, PNG, GIF or WebP, up to 4 MB.</item>

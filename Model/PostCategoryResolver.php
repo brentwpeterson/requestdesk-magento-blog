@@ -207,6 +207,84 @@ class PostCategoryResolver
     }
 
     /**
+     * The id of the category with this name or URL key, created when there is
+     * none.
+     *
+     * For the RequestDesk import, which sends category names. A match on name
+     * ignores case; a match on URL key covers a category renamed in the admin.
+     * A new category is enabled, top level, with its URL key from the slug when
+     * one is given and from the name otherwise.
+     *
+     * @param string $name
+     * @param string|null $urlKey
+     * @return int
+     * @throws \InvalidArgumentException When the name is empty
+     */
+    public function getOrCreateByName(string $name, ?string $urlKey = null): int
+    {
+        $name = trim($name);
+        if ($name === '') {
+            throw new \InvalidArgumentException('A category name is required.');
+        }
+
+        $urlKey = trim((string) $urlKey);
+        $connection = $this->resource->getConnection();
+        $table = $this->resource->getTableName(self::CATEGORY_TABLE);
+
+        $select = $connection->select()
+            ->from($table, ['category_id'])
+            ->where('LOWER(name) = ?', mb_strtolower($name));
+        if ($urlKey !== '') {
+            $select->orWhere('url_key = ?', $urlKey);
+        }
+        $existing = (int) $connection->fetchOne($select->limit(1));
+        if ($existing) {
+            return $existing;
+        }
+
+        $connection->insert($table, [
+            'name' => $name,
+            'url_key' => $this->uniqueUrlKey($urlKey !== '' ? $urlKey : $this->slugify($name)),
+            'status' => Category::STATUS_ENABLED,
+        ]);
+        $this->blogCache->clean();
+
+        return (int) $connection->lastInsertId();
+    }
+
+    /**
+     * Lowercase URL key from a name.
+     *
+     * @param string $value
+     * @return string
+     */
+    private function slugify(string $value): string
+    {
+        $value = trim((string) preg_replace('/[^a-z0-9]+/', '-', strtolower(trim($value))), '-');
+        return $value !== '' ? $value : 'category';
+    }
+
+    /**
+     * The URL key, suffixed -2, -3 and so on until no category holds it.
+     *
+     * @param string $base
+     * @return string
+     */
+    private function uniqueUrlKey(string $base): string
+    {
+        $connection = $this->resource->getConnection();
+        $table = $this->resource->getTableName(self::CATEGORY_TABLE);
+        $candidate = $base;
+        $suffix = 2;
+        while ((int) $connection->fetchOne(
+            $connection->select()->from($table, ['category_id'])->where('url_key = ?', $candidate)->limit(1)
+        )) {
+            $candidate = $base . '-' . ($suffix++);
+        }
+        return $candidate;
+    }
+
+    /**
      * The subset of ids that are real categories.
      *
      * @param array $categoryIds array<int|string>
